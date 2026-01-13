@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Shield, Shirt, Watch, Footprints, Backpack, Target, ChevronRight } from "lucide-react";
 import { Header } from "@/components/Header";
 import { BottomNavigation } from "@/components/BottomNavigation";
@@ -7,6 +8,9 @@ import { CategoryCard } from "@/components/CategoryCard";
 import { LiveFeedItem } from "@/components/LiveFeedItem";
 import { PartnerBanner } from "@/components/PartnerBanner";
 import { PromoCard } from "@/components/PromoCard";
+import { SearchModal } from "@/components/SearchModal";
+import { CartModal } from "@/components/CartModal";
+import { AllCategoriesModal } from "@/components/AllCategoriesModal";
 import { toast } from "sonner";
 
 // Product images
@@ -21,8 +25,6 @@ const categories = [
   { id: "2", name: "Одяг", icon: Shirt, count: 234, gradient: "from-primary to-primary/70" },
   { id: "3", name: "Аксесуари", icon: Watch, count: 89, gradient: "from-accent to-accent/70" },
   { id: "4", name: "Взуття", icon: Footprints, count: 67, gradient: "from-[#5a4a3a] to-[#7a6a5a]" },
-  { id: "5", name: "Сумки", icon: Backpack, count: 45, gradient: "from-[#3a4a5a] to-[#5a6a7a]" },
-  { id: "6", name: "Тактика", icon: Target, count: 112, gradient: "from-[#2a3a2a] to-[#4a5a4a]" },
 ];
 
 const products = [
@@ -93,19 +95,39 @@ const promos = [
   },
 ];
 
+interface CartItem {
+  id: string;
+  name: string;
+  price: number;
+  image: string;
+  size?: string;
+  quantity: number;
+}
+
 // Tab content components
-const CatalogTab = () => (
+const CatalogTab = ({ 
+  onOpenAllCategories, 
+  onProductClick,
+  onAddToCart 
+}: { 
+  onOpenAllCategories: () => void; 
+  onProductClick: (id: string) => void;
+  onAddToCart: (product: typeof products[0]) => void;
+}) => (
   <div className="space-y-6 pb-28 animate-fade-in">
     {/* Categories */}
     <section>
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-lg font-bold text-foreground">Категорії</h2>
-        <button className="text-sm text-primary flex items-center gap-1 hover:underline">
+        <button 
+          onClick={onOpenAllCategories}
+          className="text-sm text-primary flex items-center gap-1 hover:underline"
+        >
           Всі <ChevronRight className="h-4 w-4" />
         </button>
       </div>
       <div className="grid grid-cols-2 gap-3">
-        {categories.slice(0, 4).map((cat) => (
+        {categories.map((cat) => (
           <CategoryCard
             key={cat.id}
             name={cat.name}
@@ -131,8 +153,8 @@ const CatalogTab = () => (
           <ProductCard
             key={product.id}
             {...product}
-            onClick={() => toast.info(`Товар: ${product.name}`)}
-            onAddToCart={() => toast.success(`${product.name} додано до кошика`)}
+            onClick={() => onProductClick(product.id)}
+            onAddToCart={() => onAddToCart(product)}
           />
         ))}
       </div>
@@ -278,13 +300,93 @@ const AccountTab = () => (
 );
 
 const Index = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("catalog");
-  const [cartCount] = useState(2);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isAllCategoriesOpen, setIsAllCategoriesOpen] = useState(false);
+  const [cartItems, setCartItems] = useState<CartItem[]>([
+    {
+      id: "1",
+      name: "Тактичні рукавички M-Pact",
+      price: 890,
+      image: tacticalGloves,
+      size: "L",
+      quantity: 1,
+    },
+    {
+      id: "3",
+      name: "Рюкзак тактичний 35л",
+      price: 2450,
+      image: tacticalBackpack,
+      quantity: 1,
+    },
+  ]);
+
+  const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+
+  const handleSearch = (query: string) => {
+    setIsSearchOpen(false);
+    toast.info(`Пошук: ${query}`);
+  };
+
+  const handleUpdateQuantity = (id: string, quantity: number) => {
+    setCartItems(items =>
+      items.map(item =>
+        item.id === id ? { ...item, quantity } : item
+      )
+    );
+  };
+
+  const handleRemoveItem = (id: string) => {
+    setCartItems(items => items.filter(item => item.id !== id));
+    toast.success("Товар видалено з кошика");
+  };
+
+  const handleCheckout = () => {
+    setIsCartOpen(false);
+    toast.info("Перехід до оформлення замовлення");
+  };
+
+  const handleAddToCart = (product: typeof products[0]) => {
+    const existingItem = cartItems.find(item => item.id === product.id);
+    if (existingItem) {
+      handleUpdateQuantity(product.id, existingItem.quantity + 1);
+    } else {
+      setCartItems([...cartItems, {
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        image: product.image,
+        quantity: 1,
+      }]);
+    }
+    toast.success(`${product.name} додано до кошика`);
+  };
+
+  const handleProductClick = (id: string) => {
+    navigate(`/product/${id}`);
+  };
+
+  const handleSelectCategory = (categoryId: string, subcategoryId?: string) => {
+    setIsAllCategoriesOpen(false);
+    if (subcategoryId) {
+      toast.info(`Підкатегорія: ${subcategoryId}`);
+    } else {
+      toast.info(`Категорія: ${categoryId}`);
+    }
+  };
 
   const renderTabContent = () => {
     switch (activeTab) {
       case "catalog":
-        return <CatalogTab />;
+        return (
+          <CatalogTab 
+            onOpenAllCategories={() => setIsAllCategoriesOpen(true)}
+            onProductClick={handleProductClick}
+            onAddToCart={handleAddToCart}
+          />
+        );
       case "orders":
         return <OrdersTab />;
       case "news":
@@ -296,7 +398,13 @@ const Index = () => {
       case "account":
         return <AccountTab />;
       default:
-        return <CatalogTab />;
+        return (
+          <CatalogTab 
+            onOpenAllCategories={() => setIsAllCategoriesOpen(true)}
+            onProductClick={handleProductClick}
+            onAddToCart={handleAddToCart}
+          />
+        );
     }
   };
 
@@ -304,8 +412,8 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <Header 
         cartCount={cartCount}
-        onCartClick={() => toast.info("Перехід до кошика")}
-        onSearchClick={() => toast.info("Пошук товарів")}
+        onCartClick={() => setIsCartOpen(true)}
+        onSearchClick={() => setIsSearchOpen(true)}
         onNotificationsClick={() => toast.info("Сповіщення")}
       />
       
@@ -316,6 +424,28 @@ const Index = () => {
       <BottomNavigation 
         activeTab={activeTab} 
         onTabChange={setActiveTab} 
+      />
+
+      {/* Modals */}
+      <SearchModal
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+        onSearch={handleSearch}
+      />
+
+      <CartModal
+        isOpen={isCartOpen}
+        onClose={() => setIsCartOpen(false)}
+        items={cartItems}
+        onUpdateQuantity={handleUpdateQuantity}
+        onRemoveItem={handleRemoveItem}
+        onCheckout={handleCheckout}
+      />
+
+      <AllCategoriesModal
+        isOpen={isAllCategoriesOpen}
+        onClose={() => setIsAllCategoriesOpen(false)}
+        onSelectCategory={handleSelectCategory}
       />
     </div>
   );
