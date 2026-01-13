@@ -95,7 +95,7 @@ const promos = [
 
 // Tab content components
 const CatalogTab = () => (
-  <div className="space-y-6 pb-24 animate-fade-in">
+  <div className="space-y-6 pb-28 animate-fade-in">
     {/* Categories */}
     <section>
       <div className="flex items-center justify-between mb-3">
@@ -141,7 +141,7 @@ const CatalogTab = () => (
 );
 
 const OrdersTab = () => (
-  <div className="space-y-4 pb-24 animate-fade-in">
+  <div className="space-y-4 pb-28 animate-fade-in">
     <h2 className="text-lg font-bold text-foreground">Мої Замовлення</h2>
     
     <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -156,8 +156,48 @@ const OrdersTab = () => (
   </div>
 );
 
+const NewsTab = () => (
+  <div className="space-y-4 pb-28 animate-fade-in">
+    <h2 className="text-lg font-bold text-foreground">Новини Taverna</h2>
+    
+    <div className="space-y-4">
+      {[
+        { 
+          title: "Новий постачальник MyDrop", 
+          date: "Сьогодні", 
+          content: "Додано нову категорію товарів Military від перевіреного постачальника.",
+          type: "info" 
+        },
+        { 
+          title: "Оновлення цін", 
+          date: "Вчора", 
+          content: "Актуалізовано ціни на понад 100 товарів категорії Мілітарі.",
+          type: "update" 
+        },
+        { 
+          title: "Новорічні акції", 
+          date: "2 дні тому", 
+          content: "Стартували святкові знижки до -30% на весь асортимент!",
+          type: "promo" 
+        },
+      ].map((news, idx) => (
+        <div 
+          key={idx} 
+          className="bg-card rounded-xl p-4 border border-border hover:shadow-md transition-shadow"
+        >
+          <div className="flex items-start justify-between gap-2 mb-2">
+            <h3 className="font-semibold text-foreground">{news.title}</h3>
+            <span className="text-xs text-muted-foreground whitespace-nowrap">{news.date}</span>
+          </div>
+          <p className="text-sm text-muted-foreground">{news.content}</p>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
 const LiveTab = () => (
-  <div className="space-y-4 pb-24 animate-fade-in">
+  <div className="space-y-4 pb-28 animate-fade-in">
     <div className="flex items-center gap-2">
       <h2 className="text-lg font-bold text-foreground">Live Активність</h2>
       <span className="w-2 h-2 rounded-full bg-live animate-pulse-live" />
@@ -172,7 +212,7 @@ const LiveTab = () => (
 );
 
 const PromoTab = () => (
-  <div className="space-y-4 pb-24 animate-fade-in">
+  <div className="space-y-4 pb-28 animate-fade-in">
     <h2 className="text-lg font-bold text-foreground">Акції та Бонуси</h2>
     
     <div className="space-y-4">
@@ -188,7 +228,7 @@ const PromoTab = () => (
 );
 
 const AccountTab = () => (
-  <div className="space-y-4 pb-24 animate-fade-in">
+  <div className="space-y-4 pb-28 animate-fade-in">
     <h2 className="text-lg font-bold text-foreground">Акаунт</h2>
     
     {/* User Card */}
@@ -247,6 +287,8 @@ const Index = () => {
         return <CatalogTab />;
       case "orders":
         return <OrdersTab />;
+      case "news":
+        return <NewsTab />;
       case "live":
         return <LiveTab />;
       case "promo":
