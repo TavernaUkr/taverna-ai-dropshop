@@ -1,1 +1,13 @@
 project_id = "ofoahvwwmxovswpzjpsu"
+
+[functions.parse-xml]
+verify_jwt = false
+
+[functions.telegram-auth]
+verify_jwt = false
+
+[functions.nova-poshta]
+verify_jwt = false
+
+[functions.ai-categorize]
+verify_jwt = false
