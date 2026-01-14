@@ -1,0 +1,218 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const { products, action } = await req.json();
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    
+    if (!LOVABLE_API_KEY) {
+      throw new Error('LOVABLE_API_KEY is not configured');
+    }
+    
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    // Fetch existing categories for context
+    const { data: categories } = await supabase
+      .from('categories')
+      .select('id, name, slug, parent_id');
+    
+    const categoryList = categories?.map(c => c.name).join(', ') || 'Мілітарі, Одяг, Взуття, Аксесуари';
+    
+    if (action === 'categorize') {
+      // Categorize products using AI
+      const productDescriptions = products.slice(0, 20).map((p: any) => 
+        `ID: ${p.id}, Назва: ${p.name}, Опис: ${p.description?.substring(0, 100) || 'немає'}`
+      ).join('\n');
+      
+      const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'google/gemini-2.5-flash',
+          messages: [
+            {
+              role: 'system',
+              content: `Ти AI асистент для категоризації товарів інтернет-магазину. 
+Існуючі категорії: ${categoryList}
+
+Для кожного товару визнач:
+1. Найкращу категорію (ai_category)
+2. Теги для пошуку (ai_tags) - масив з 3-5 ключових слів
+
+Відповідай у форматі JSON масиву:
+[{"id": "...", "ai_category": "...", "ai_tags": ["...", "..."]}]`
+            },
+            {
+              role: 'user',
+              content: `Категоризуй ці товари:\n${productDescriptions}`
+            }
+          ],
+          tools: [
+            {
+              type: 'function',
+              function: {
+                name: 'categorize_products',
+                description: 'Категоризує товари та додає теги',
+                parameters: {
+                  type: 'object',
+                  properties: {
+                    results: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'string' },
+                          ai_category: { type: 'string' },
+                          ai_tags: { 
+                            type: 'array',
+                            items: { type: 'string' }
+                          }
+                        },
+                        required: ['id', 'ai_category', 'ai_tags']
+                      }
+                    }
+                  },
+                  required: ['results']
+                }
+              }
+            }
+          ],
+          tool_choice: { type: 'function', function: { name: 'categorize_products' } }
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('AI API error:', response.status, errorText);
+        throw new Error(`AI API error: ${response.status}`);
+      }
+      
+      const aiResult = await response.json();
+      const toolCall = aiResult.choices?.[0]?.message?.tool_calls?.[0];
+      
+      if (toolCall?.function?.arguments) {
+        const categorizedProducts = JSON.parse(toolCall.function.arguments);
+        
+        // Update products with AI categorization
+        for (const item of categorizedProducts.results || []) {
+          await supabase
+            .from('products')
+            .update({
+              ai_category: item.ai_category,
+              ai_tags: item.ai_tags,
+            })
+            .eq('id', item.id);
+        }
+        
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            categorized: categorizedProducts.results?.length || 0 
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+    
+    if (action === 'suggest_subcategories') {
+      // Suggest subcategories based on product names
+      const { parent_category } = await req.json();
+      
+      const { data: productsData } = await supabase
+        .from('products')
+        .select('name')
+        .limit(100);
+      
+      const productNames = productsData?.map(p => p.name).join(', ') || '';
+      
+      const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'google/gemini-2.5-flash',
+          messages: [
+            {
+              role: 'system',
+              content: `Ти AI асистент для структурування каталогу товарів.
+На основі списку товарів запропонуй логічні підкатегорії для категорії "${parent_category}".
+Підкатегорії мають бути українською мовою, короткими та зрозумілими.`
+            },
+            {
+              role: 'user',
+              content: `Товари: ${productNames}\n\nЗапропонуй 5-10 підкатегорій.`
+            }
+          ],
+          tools: [
+            {
+              type: 'function',
+              function: {
+                name: 'suggest_subcategories',
+                description: 'Пропонує підкатегорії',
+                parameters: {
+                  type: 'object',
+                  properties: {
+                    subcategories: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          name: { type: 'string' },
+                          description: { type: 'string' }
+                        },
+                        required: ['name']
+                      }
+                    }
+                  },
+                  required: ['subcategories']
+                }
+              }
+            }
+          ],
+          tool_choice: { type: 'function', function: { name: 'suggest_subcategories' } }
+        }),
+      });
+      
+      const aiResult = await response.json();
+      const toolCall = aiResult.choices?.[0]?.message?.tool_calls?.[0];
+      
+      if (toolCall?.function?.arguments) {
+        const suggestions = JSON.parse(toolCall.function.arguments);
+        return new Response(
+          JSON.stringify({ success: true, subcategories: suggestions.subcategories }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+    
+    return new Response(
+      JSON.stringify({ success: false, error: 'Unknown action' }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+    
+  } catch (error: unknown) {
+    console.error('AI categorize error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return new Response(
+      JSON.stringify({ error: errorMessage }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+});
