@@ -14,7 +14,244 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      categories: {
+        Row: {
+          created_at: string
+          external_id: string | null
+          id: string
+          image_url: string | null
+          is_active: boolean | null
+          name: string
+          parent_id: string | null
+          product_count: number | null
+          slug: string
+          telegram_channel_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          external_id?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          name: string
+          parent_id?: string | null
+          product_count?: number | null
+          slug: string
+          telegram_channel_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          external_id?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          name?: string
+          parent_id?: string | null
+          product_count?: number | null
+          slug?: string
+          telegram_channel_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "categories_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      import_logs: {
+        Row: {
+          completed_at: string | null
+          error_message: string | null
+          failed_products: number | null
+          id: string
+          imported_products: number | null
+          started_at: string
+          status: string
+          supplier_id: string | null
+          total_products: number | null
+        }
+        Insert: {
+          completed_at?: string | null
+          error_message?: string | null
+          failed_products?: number | null
+          id?: string
+          imported_products?: number | null
+          started_at?: string
+          status: string
+          supplier_id?: string | null
+          total_products?: number | null
+        }
+        Update: {
+          completed_at?: string | null
+          error_message?: string | null
+          failed_products?: number | null
+          id?: string
+          imported_products?: number | null
+          started_at?: string
+          status?: string
+          supplier_id?: string | null
+          total_products?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "import_logs_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products: {
+        Row: {
+          ai_category: string | null
+          ai_tags: string[] | null
+          attributes: Json | null
+          brand: string | null
+          category_id: string | null
+          colors: string[] | null
+          created_at: string
+          currency: string | null
+          description: string | null
+          external_id: string | null
+          group_id: string | null
+          id: string
+          images: string[] | null
+          in_stock: boolean | null
+          model: string | null
+          name: string
+          original_price: number | null
+          price: number
+          sizes: string[] | null
+          source_url: string | null
+          stock_quantity: number | null
+          supplier_id: string | null
+          updated_at: string
+          vendor_code: string | null
+        }
+        Insert: {
+          ai_category?: string | null
+          ai_tags?: string[] | null
+          attributes?: Json | null
+          brand?: string | null
+          category_id?: string | null
+          colors?: string[] | null
+          created_at?: string
+          currency?: string | null
+          description?: string | null
+          external_id?: string | null
+          group_id?: string | null
+          id?: string
+          images?: string[] | null
+          in_stock?: boolean | null
+          model?: string | null
+          name: string
+          original_price?: number | null
+          price: number
+          sizes?: string[] | null
+          source_url?: string | null
+          stock_quantity?: number | null
+          supplier_id?: string | null
+          updated_at?: string
+          vendor_code?: string | null
+        }
+        Update: {
+          ai_category?: string | null
+          ai_tags?: string[] | null
+          attributes?: Json | null
+          brand?: string | null
+          category_id?: string | null
+          colors?: string[] | null
+          created_at?: string
+          currency?: string | null
+          description?: string | null
+          external_id?: string | null
+          group_id?: string | null
+          id?: string
+          images?: string[] | null
+          in_stock?: boolean | null
+          model?: string | null
+          name?: string
+          original_price?: number | null
+          price?: number
+          sizes?: string[] | null
+          source_url?: string | null
+          stock_quantity?: number | null
+          supplier_id?: string | null
+          updated_at?: string
+          vendor_code?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      suppliers: {
+        Row: {
+          company_name: string
+          contact_email: string | null
+          contact_name: string
+          contact_phone: string
+          created_at: string
+          id: string
+          is_active: boolean | null
+          legal_type: string
+          shop_name: string
+          tax_code: string | null
+          telegram_channel_url: string | null
+          telegram_id: number | null
+          updated_at: string
+          xml_url: string | null
+        }
+        Insert: {
+          company_name: string
+          contact_email?: string | null
+          contact_name: string
+          contact_phone: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          legal_type: string
+          shop_name: string
+          tax_code?: string | null
+          telegram_channel_url?: string | null
+          telegram_id?: number | null
+          updated_at?: string
+          xml_url?: string | null
+        }
+        Update: {
+          company_name?: string
+          contact_email?: string | null
+          contact_name?: string
+          contact_phone?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          legal_type?: string
+          shop_name?: string
+          tax_code?: string | null
+          telegram_channel_url?: string | null
+          telegram_id?: number | null
+          updated_at?: string
+          xml_url?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
