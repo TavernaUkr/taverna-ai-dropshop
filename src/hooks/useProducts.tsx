@@ -26,7 +26,12 @@ interface Product {
   source_url?: string;
   created_at: string;
   updated_at: string;
-  category?: Category | null;
+  category?: {
+    id: string;
+    name: string;
+    slug: string;
+    parent_id?: string | null;
+  } | null;
 }
 
 interface Category {

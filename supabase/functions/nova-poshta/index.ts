@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -7,13 +8,59 @@ const corsHeaders = {
 
 const NOVA_POSHTA_API = 'https://api.novaposhta.ua/v2.0/json/';
 
+// Hash the token for lookup
+async function hashToken(token: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(token);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hashBuffer), b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Validate session
+async function validateSession(supabase: any, sessionToken: string): Promise<any> {
+  const tokenHash = await hashToken(sessionToken);
+  
+  const { data: session, error } = await supabase
+    .from('sessions')
+    .select('*, profile:profiles(*)')
+    .eq('token_hash', tokenHash)
+    .gt('expires_at', new Date().toISOString())
+    .single();
+  
+  if (error || !session) {
+    return null;
+  }
+  
+  return session;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { action, params } = await req.json();
+    const { action, params, session_token } = await req.json();
+    
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    // Validate session token
+    if (!session_token) {
+      throw new Error('Authentication required');
+    }
+    
+    const session = await validateSession(supabase, session_token);
+    if (!session) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid or expired session' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    console.log(`Nova Poshta request from user ${session.profile.id}: ${action}`);
+    
     const apiKey = Deno.env.get('NOVA_POSHTA_API_KEY');
     
     if (!apiKey) {
@@ -43,7 +90,7 @@ serve(async (req) => {
         calledMethod = 'getWarehouses';
         methodProperties = {
           CityRef: params.cityRef,
-          TypeOfWarehouseRef: params.type, // postomat or warehouse
+          TypeOfWarehouseRef: params.type,
           Limit: params.limit || 50,
         };
         break;
@@ -145,8 +192,8 @@ function getMockData(action: string, params: any) {
             Warehouses: 180,
           },
         ].filter(c => 
-          c.Description.toLowerCase().includes((params.query || '').toLowerCase()) ||
-          c.DescriptionRu.toLowerCase().includes((params.query || '').toLowerCase())
+          c.Description.toLowerCase().includes((params?.query || '').toLowerCase()) ||
+          c.DescriptionRu.toLowerCase().includes((params?.query || '').toLowerCase())
         ),
       };
       
@@ -191,7 +238,7 @@ function getMockData(action: string, params: any) {
         data: [
           {
             Cost: 75,
-            AssessedCost: params.cost || 1000,
+            AssessedCost: params?.cost || 1000,
             CostRedelivery: 45,
             EstimatedDeliveryDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
           },
@@ -203,7 +250,7 @@ function getMockData(action: string, params: any) {
         success: true,
         data: [
           {
-            Number: params.trackingNumber,
+            Number: params?.trackingNumber,
             Status: 'Відправлення отримано',
             StatusCode: '9',
             WarehouseSender: 'Відділення №1',

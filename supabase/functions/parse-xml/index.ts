@@ -6,21 +6,95 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Hash the token for lookup
+async function hashToken(token: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(token);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hashBuffer), b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Validate session and get profile
+async function validateSession(supabase: any, sessionToken: string): Promise<any> {
+  const tokenHash = await hashToken(sessionToken);
+  
+  const { data: session, error } = await supabase
+    .from('sessions')
+    .select('*, profile:profiles(*)')
+    .eq('token_hash', tokenHash)
+    .gt('expires_at', new Date().toISOString())
+    .single();
+  
+  if (error || !session) {
+    return null;
+  }
+  
+  return session;
+}
+
+// Validate URL to prevent SSRF attacks
+function validateUrl(urlString: string): URL {
+  let url: URL;
+  try {
+    url = new URL(urlString);
+  } catch {
+    throw new Error('Invalid URL format');
+  }
+  
+  // Only allow HTTP and HTTPS
+  if (!['http:', 'https:'].includes(url.protocol)) {
+    throw new Error('Only HTTP and HTTPS protocols are allowed');
+  }
+  
+  // Block private and internal IP ranges
+  const hostname = url.hostname.toLowerCase();
+  const privatePatterns = [
+    /^127\./,
+    /^10\./,
+    /^172\.(1[6-9]|2[0-9]|3[0-1])\./,
+    /^192\.168\./,
+    /^169\.254\./,
+    /^0\./,
+    /^localhost$/i,
+    /^host\.docker\.internal$/i,
+    /^kubernetes\.default/i,
+    /^metadata\.google\.internal$/i,
+    /\.local$/i,
+    /\.internal$/i,
+  ];
+  
+  if (privatePatterns.some(pattern => pattern.test(hostname))) {
+    throw new Error('Access to private/internal networks is not allowed');
+  }
+  
+  // Block cloud metadata endpoints
+  const metadataEndpoints = [
+    '169.254.169.254',
+    'metadata.google.internal',
+    '100.100.100.200', // Alibaba Cloud
+  ];
+  
+  if (metadataEndpoints.some(endpoint => hostname === endpoint)) {
+    throw new Error('Access to cloud metadata is not allowed');
+  }
+  
+  return url;
+}
+
 // Price markup function: +33% with aggressive rounding
 function calculateDropPrice(originalPrice: number): number {
   const markup = originalPrice * 1.33;
   
-  // Aggressive rounding rules
   if (markup < 100) {
-    return Math.ceil(markup / 5) * 5; // Round up to nearest 5
+    return Math.ceil(markup / 5) * 5;
   } else if (markup < 500) {
-    return Math.ceil(markup / 10) * 10; // Round up to nearest 10
+    return Math.ceil(markup / 10) * 10;
   } else if (markup < 1000) {
-    return Math.ceil(markup / 50) * 50; // Round up to nearest 50
+    return Math.ceil(markup / 50) * 50;
   } else if (markup < 5000) {
-    return Math.ceil(markup / 100) * 100; // Round up to nearest 100
+    return Math.ceil(markup / 100) * 100;
   } else {
-    return Math.ceil(markup / 500) * 500; // Round up to nearest 500
+    return Math.ceil(markup / 500) * 500;
   }
 }
 
@@ -29,7 +103,6 @@ function parseXML(xmlText: string) {
   const categories: Map<string, { id: string; name: string; parentId?: string }> = new Map();
   const products: any[] = [];
   
-  // Parse categories
   const categoryRegex = /<category id="(\d+)"(?:\s+parentId="(\d+)")?>([^<]+)<\/category>/g;
   let match;
   while ((match = categoryRegex.exec(xmlText)) !== null) {
@@ -40,14 +113,12 @@ function parseXML(xmlText: string) {
     });
   }
   
-  // Parse offers/products
   const offerRegex = /<offer[^>]*id="(\d+)"[^>]*(?:group_id="(\d+)")?[^>]*>([\s\S]*?)<\/offer>/g;
   while ((match = offerRegex.exec(xmlText)) !== null) {
     const offerId = match[1];
     const groupId = match[2];
     const offerContent = match[3];
     
-    // Extract product details
     const getName = (content: string) => {
       const m = content.match(/<name>([^<]+)<\/name>/);
       return m ? m[1].trim() : '';
@@ -123,7 +194,6 @@ function parseXML(xmlText: string) {
   return { categories: Array.from(categories.values()), products };
 }
 
-// Create URL-safe slug from name
 function createSlug(name: string): string {
   const translitMap: Record<string, string> = {
     'а': 'a', 'б': 'b', 'в': 'v', 'г': 'h', 'ґ': 'g', 'д': 'd', 'е': 'e', 'є': 'ye',
@@ -148,32 +218,77 @@ serve(async (req) => {
   }
 
   try {
-    const { xml_url, supplier_id } = await req.json();
+    const { xml_url, supplier_id, session_token } = await req.json();
+    
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    // Validate session token
+    if (!session_token) {
+      throw new Error('Authentication required');
+    }
+    
+    const session = await validateSession(supabase, session_token);
+    if (!session) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid or expired session' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    // Check if user has supplier role
+    if (session.profile.user_type !== 'supplier' && session.profile.user_type !== 'admin') {
+      return new Response(
+        JSON.stringify({ error: 'Only suppliers and admins can import products' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    console.log(`User ${session.profile.id} (${session.profile.user_type}) initiating XML import`);
     
     if (!xml_url) {
       throw new Error('XML URL is required');
     }
-
-    console.log('Fetching XML from:', xml_url);
     
-    // Fetch XML content
-    const xmlResponse = await fetch(xml_url);
+    // Validate URL to prevent SSRF
+    const validatedUrl = validateUrl(xml_url);
+    console.log('Fetching XML from:', validatedUrl.href);
+    
+    // Fetch XML with timeout and size limit
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+    
+    const xmlResponse = await fetch(validatedUrl.href, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'Taverna-Parser/1.0',
+        'Accept': 'application/xml, text/xml, */*',
+      },
+    });
+    
+    clearTimeout(timeoutId);
+    
     if (!xmlResponse.ok) {
       throw new Error(`Failed to fetch XML: ${xmlResponse.status}`);
     }
-    const xmlText = await xmlResponse.text();
     
+    // Check content length
+    const contentLength = xmlResponse.headers.get('content-length');
+    if (contentLength && parseInt(contentLength) > 100_000_000) { // 100MB limit
+      throw new Error('XML file too large (max 100MB)');
+    }
+    
+    const xmlText = await xmlResponse.text();
     console.log('XML fetched, size:', xmlText.length);
     
-    // Parse XML
+    // Validate it looks like XML
+    if (!xmlText.trim().startsWith('<?xml') && !xmlText.trim().startsWith('<')) {
+      throw new Error('Response does not appear to be valid XML');
+    }
+    
     const { categories, products } = parseXML(xmlText);
-    
     console.log(`Parsed ${categories.length} categories and ${products.length} products`);
-    
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
     
     // Create import log
     const { data: importLog, error: logError } = await supabase
@@ -193,7 +308,6 @@ serve(async (req) => {
     // Insert/update categories
     const categoryIdMap = new Map<string, string>();
     
-    // First pass: insert parent categories
     for (const cat of categories.filter(c => !c.parentId)) {
       const slug = createSlug(cat.name) + '-' + cat.id;
       const { data, error } = await supabase
@@ -213,7 +327,6 @@ serve(async (req) => {
       if (error) console.error('Category insert error:', error);
     }
     
-    // Second pass: insert child categories
     for (const cat of categories.filter(c => c.parentId)) {
       const parentUuid = categoryIdMap.get(cat.parentId!);
       const slug = createSlug(cat.name) + '-' + cat.id;
@@ -235,7 +348,6 @@ serve(async (req) => {
       if (error) console.error('Child category insert error:', error);
     }
     
-    // Fetch all categories for ID mapping
     const { data: allCategories } = await supabase
       .from('categories')
       .select('id, external_id');
@@ -248,7 +360,6 @@ serve(async (req) => {
       }
     }
     
-    // Group products by group_id to combine sizes
     const productGroups = new Map<string, any[]>();
     for (const product of products) {
       const key = product.group_id || product.external_id;
@@ -258,7 +369,6 @@ serve(async (req) => {
       productGroups.get(key)!.push(product);
     }
     
-    // Insert products (grouped)
     let importedCount = 0;
     let failedCount = 0;
     
@@ -299,7 +409,6 @@ serve(async (req) => {
       }
     }
     
-    // Update import log
     if (importLog) {
       await supabase
         .from('import_logs')
@@ -311,9 +420,6 @@ serve(async (req) => {
         })
         .eq('id', importLog.id);
     }
-    
-    // Update category product counts
-    await supabase.rpc('update_category_counts');
     
     return new Response(
       JSON.stringify({
