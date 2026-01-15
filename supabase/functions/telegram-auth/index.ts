@@ -268,6 +268,18 @@ serve(async (req) => {
     }
     
     // Handle logout
+    if (action === 'logout' && session_token) {
+      const tokenHash = await hashToken(session_token);
+      await supabase
+        .from('sessions')
+        .delete()
+        .eq('token_hash', tokenHash);
+      
+      return new Response(
+        JSON.stringify({ success: true }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
     
     // Handle login/authentication
     let telegramUser: any;

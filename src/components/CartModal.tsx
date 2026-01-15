@@ -1,12 +1,14 @@
 import { X, Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-interface CartItem {
+export interface CartItem {
   id: string;
+  productId?: string;
   name: string;
   price: number;
   image: string;
   size?: string;
+  color?: string;
   quantity: number;
 }
 
@@ -88,10 +90,11 @@ export const CartModal = ({
                     <h4 className="font-medium text-sm text-foreground line-clamp-2">
                       {item.name}
                     </h4>
-                    {item.size && (
-                      <span className="text-xs text-muted-foreground">
-                        Розмір: {item.size}
-                      </span>
+                    {(item.size || item.color) && (
+                      <div className="flex gap-2 text-xs text-muted-foreground">
+                        {item.size && <span>Розмір: {item.size}</span>}
+                        {item.color && <span>Колір: {item.color}</span>}
+                      </div>
                     )}
                     <div className="mt-2 flex items-center justify-between">
                       <span className="font-bold text-primary">

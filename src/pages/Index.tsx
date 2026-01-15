@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Shield, Shirt, Watch, Footprints, Backpack, Target, ChevronRight, LogOut, User } from "lucide-react";
+import { Shield, Shirt, Watch, Footprints, ChevronRight, LogOut } from "lucide-react";
 import { Header } from "@/components/Header";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { ProductCard } from "@/components/ProductCard";
@@ -12,6 +12,7 @@ import { SearchModal } from "@/components/SearchModal";
 import { CartModal } from "@/components/CartModal";
 import { AllCategoriesModal } from "@/components/AllCategoriesModal";
 import { useTelegramAuthContext } from "@/components/TelegramAuthProvider";
+import { useCartContext } from "@/contexts/CartContext";
 import { toast } from "sonner";
 
 // Product images
@@ -96,14 +97,7 @@ const promos = [
   },
 ];
 
-interface CartItem {
-  id: string;
-  name: string;
-  price: number;
-  image: string;
-  size?: string;
-  quantity: number;
-}
+// CartItem interface moved to useCart hook
 
 // Tab content components
 const CatalogTab = ({ 
@@ -353,42 +347,24 @@ const Index = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isAllCategoriesOpen, setIsAllCategoriesOpen] = useState(false);
-  const [cartItems, setCartItems] = useState<CartItem[]>([
-    {
-      id: "1",
-      name: "Тактичні рукавички M-Pact",
-      price: 890,
-      image: tacticalGloves,
-      size: "L",
-      quantity: 1,
-    },
-    {
-      id: "3",
-      name: "Рюкзак тактичний 35л",
-      price: 2450,
-      image: tacticalBackpack,
-      quantity: 1,
-    },
-  ]);
-
-  const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+  
+  // Use cart context for synchronized cart
+  const { items: cartItems, totalItems, addItem, updateQuantity, removeItem } = useCartContext();
 
   const handleSearch = (query: string) => {
     setIsSearchOpen(false);
     toast.info(`Пошук: ${query}`);
   };
 
-  const handleUpdateQuantity = (id: string, quantity: number) => {
-    setCartItems(items =>
-      items.map(item =>
-        item.id === id ? { ...item, quantity } : item
-      )
-    );
+  const handleUpdateQuantity = async (id: string, quantity: number) => {
+    await updateQuantity(id, quantity);
   };
 
-  const handleRemoveItem = (id: string) => {
-    setCartItems(items => items.filter(item => item.id !== id));
-    toast.success("Товар видалено з кошика");
+  const handleRemoveItem = async (id: string) => {
+    const success = await removeItem(id);
+    if (success) {
+      toast.success("Товар видалено з кошика");
+    }
   };
 
   const handleCheckout = () => {
@@ -396,20 +372,16 @@ const Index = () => {
     toast.info("Перехід до оформлення замовлення");
   };
 
-  const handleAddToCart = (product: typeof products[0]) => {
-    const existingItem = cartItems.find(item => item.id === product.id);
-    if (existingItem) {
-      handleUpdateQuantity(product.id, existingItem.quantity + 1);
-    } else {
-      setCartItems([...cartItems, {
-        id: product.id,
-        name: product.name,
-        price: product.price,
-        image: product.image,
-        quantity: 1,
-      }]);
+  const handleAddToCart = async (product: typeof products[0]) => {
+    const success = await addItem(
+      product.id,
+      product.name,
+      product.price,
+      product.image
+    );
+    if (success) {
+      toast.success(`${product.name} додано до кошика`);
     }
-    toast.success(`${product.name} додано до кошика`);
   };
 
   const handleProductClick = (id: string) => {
@@ -459,7 +431,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header 
-        cartCount={cartCount}
+        cartCount={totalItems}
         onCartClick={() => setIsCartOpen(true)}
         onSearchClick={() => setIsSearchOpen(true)}
         onNotificationsClick={() => toast.info("Сповіщення")}
