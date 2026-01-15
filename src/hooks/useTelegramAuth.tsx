@@ -48,8 +48,11 @@ interface AuthState {
   isAuthenticated: boolean;
   profile: Profile | null;
   addresses: DeliveryAddress[];
+  sessionToken: string | null;
   error: string | null;
 }
+
+const SESSION_TOKEN_KEY = 'taverna_session_token';
 
 export function useTelegramAuth() {
   const [state, setState] = useState<AuthState>({
@@ -57,12 +60,72 @@ export function useTelegramAuth() {
     isAuthenticated: false,
     profile: null,
     addresses: [],
+    sessionToken: null,
     error: null,
   });
+
+  // Get session token from storage
+  const getStoredToken = useCallback((): string | null => {
+    try {
+      return localStorage.getItem(SESSION_TOKEN_KEY);
+    } catch {
+      return null;
+    }
+  }, []);
+
+  // Store session token
+  const storeToken = useCallback((token: string | null) => {
+    try {
+      if (token) {
+        localStorage.setItem(SESSION_TOKEN_KEY, token);
+      } else {
+        localStorage.removeItem(SESSION_TOKEN_KEY);
+      }
+    } catch {
+      // Ignore storage errors
+    }
+  }, []);
+
+  // Validate existing session
+  const validateSession = useCallback(async (token: string): Promise<boolean> => {
+    try {
+      const { data, error } = await supabase.functions.invoke('telegram-auth', {
+        body: { action: 'validate', session_token: token },
+      });
+      
+      if (error || !data?.success) {
+        return false;
+      }
+      
+      setState({
+        isLoading: false,
+        isAuthenticated: true,
+        profile: data.profile,
+        addresses: data.addresses || [],
+        sessionToken: token,
+        error: null,
+      });
+      
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
 
   const authenticate = useCallback(async () => {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
+      
+      // Check for existing session first
+      const existingToken = getStoredToken();
+      if (existingToken) {
+        const isValid = await validateSession(existingToken);
+        if (isValid) {
+          return state.profile;
+        }
+        // Invalid session, clear it
+        storeToken(null);
+      }
       
       // Check if running in Telegram Mini App
       const tg = (window as any).Telegram?.WebApp;
@@ -81,11 +144,17 @@ export function useTelegramAuth() {
       if (error) throw error;
       
       if (data?.success && data?.profile) {
+        // Store the session token
+        if (data.session_token) {
+          storeToken(data.session_token);
+        }
+        
         setState({
           isLoading: false,
           isAuthenticated: true,
           profile: data.profile,
           addresses: data.addresses || [],
+          sessionToken: data.session_token || null,
           error: null,
         });
         return data.profile;
@@ -100,120 +169,163 @@ export function useTelegramAuth() {
         isAuthenticated: false,
         profile: null,
         addresses: [],
+        sessionToken: null,
         error: errorMessage,
       });
       return null;
     }
-  }, []);
+  }, [getStoredToken, storeToken, validateSession]);
 
   const updateProfile = useCallback(async (updates: Partial<Profile>) => {
-    if (!state.profile) return null;
+    if (!state.profile || !state.sessionToken) return null;
     
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .update(updates)
-        .eq('id', state.profile.id)
-        .select()
-        .single();
+      // Use edge function for profile updates
+      const { data, error } = await supabase.functions.invoke('telegram-auth', {
+        body: { 
+          action: 'update_profile',
+          session_token: state.sessionToken,
+          updates,
+        },
+      });
       
       if (error) throw error;
       
-      setState(prev => ({ ...prev, profile: data }));
-      return data;
+      if (data?.profile) {
+        setState(prev => ({ ...prev, profile: data.profile }));
+        return data.profile;
+      }
+      return null;
     } catch (error) {
       console.error('Update profile error:', error);
       return null;
     }
-  }, [state.profile]);
+  }, [state.profile, state.sessionToken]);
 
   const addAddress = useCallback(async (address: Omit<DeliveryAddress, 'id' | 'profile_id'>) => {
-    if (!state.profile) return null;
+    if (!state.profile || !state.sessionToken) return null;
     
     try {
-      const { data, error } = await supabase
-        .from('delivery_addresses')
-        .insert({
-          ...address,
-          profile_id: state.profile.id,
-        })
-        .select()
-        .single();
+      const { data, error } = await supabase.functions.invoke('telegram-auth', {
+        body: { 
+          action: 'add_address',
+          session_token: state.sessionToken,
+          address,
+        },
+      });
       
       if (error) throw error;
       
-      setState(prev => ({ 
-        ...prev, 
-        addresses: [...prev.addresses, data] 
-      }));
-      return data;
+      if (data?.address) {
+        setState(prev => ({ 
+          ...prev, 
+          addresses: [...prev.addresses, data.address] 
+        }));
+        return data.address;
+      }
+      return null;
     } catch (error) {
       console.error('Add address error:', error);
       return null;
     }
-  }, [state.profile]);
+  }, [state.profile, state.sessionToken]);
 
   const updateAddress = useCallback(async (id: string, updates: Partial<DeliveryAddress>) => {
+    if (!state.sessionToken) return null;
+    
     try {
-      const { data, error } = await supabase
-        .from('delivery_addresses')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
+      const { data, error } = await supabase.functions.invoke('telegram-auth', {
+        body: { 
+          action: 'update_address',
+          session_token: state.sessionToken,
+          address_id: id,
+          updates,
+        },
+      });
       
       if (error) throw error;
       
-      setState(prev => ({
-        ...prev,
-        addresses: prev.addresses.map(a => a.id === id ? data : a),
-      }));
-      return data;
+      if (data?.address) {
+        setState(prev => ({
+          ...prev,
+          addresses: prev.addresses.map(a => a.id === id ? data.address : a),
+        }));
+        return data.address;
+      }
+      return null;
     } catch (error) {
       console.error('Update address error:', error);
       return null;
     }
-  }, []);
+  }, [state.sessionToken]);
 
   const deleteAddress = useCallback(async (id: string) => {
+    if (!state.sessionToken) return false;
+    
     try {
-      const { error } = await supabase
-        .from('delivery_addresses')
-        .delete()
-        .eq('id', id);
+      const { data, error } = await supabase.functions.invoke('telegram-auth', {
+        body: { 
+          action: 'delete_address',
+          session_token: state.sessionToken,
+          address_id: id,
+        },
+      });
       
       if (error) throw error;
       
-      setState(prev => ({
-        ...prev,
-        addresses: prev.addresses.filter(a => a.id !== id),
-      }));
-      return true;
+      if (data?.success) {
+        setState(prev => ({
+          ...prev,
+          addresses: prev.addresses.filter(a => a.id !== id),
+        }));
+        return true;
+      }
+      return false;
     } catch (error) {
       console.error('Delete address error:', error);
       return false;
     }
-  }, []);
+  }, [state.sessionToken]);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    if (state.sessionToken) {
+      // Invalidate server session
+      await supabase.functions.invoke('telegram-auth', {
+        body: { action: 'logout', session_token: state.sessionToken },
+      }).catch(() => {});
+    }
+    
+    storeToken(null);
     setState({
       isLoading: false,
       isAuthenticated: false,
       profile: null,
       addresses: [],
+      sessionToken: null,
       error: null,
     });
-  }, []);
+  }, [state.sessionToken, storeToken]);
 
-  // Auto-authenticate on mount if in Telegram
+  // Check for existing session on mount
   useEffect(() => {
-    const tg = (window as any).Telegram?.WebApp;
-    if (tg?.initData) {
-      authenticate();
-    } else {
-      setState(prev => ({ ...prev, isLoading: false }));
-    }
-  }, [authenticate]);
+    const checkSession = async () => {
+      const existingToken = getStoredToken();
+      if (existingToken) {
+        const isValid = await validateSession(existingToken);
+        if (isValid) return;
+      }
+      
+      // If in Telegram WebApp, auto-authenticate
+      const tg = (window as any).Telegram?.WebApp;
+      if (tg?.initData) {
+        authenticate();
+      } else {
+        setState(prev => ({ ...prev, isLoading: false }));
+      }
+    };
+    
+    checkSession();
+  }, [getStoredToken, validateSession, authenticate]);
 
   return {
     ...state,

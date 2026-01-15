@@ -6,6 +6,21 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Generate a secure random token
+function generateSessionToken(): string {
+  const array = new Uint8Array(32);
+  crypto.getRandomValues(array);
+  return Array.from(array, b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Hash the token for storage
+async function hashToken(token: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(token);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hashBuffer), b => b.toString(16).padStart(2, '0')).join('');
+}
+
 // Telegram Mini App auth validation
 async function validateTelegramAuth(initData: string, botToken: string): Promise<any> {
   const urlParams = new URLSearchParams(initData);
@@ -65,38 +80,118 @@ async function validateTelegramAuth(initData: string, botToken: string): Promise
   return JSON.parse(userString);
 }
 
+// Validate session token
+async function validateSession(supabase: any, sessionToken: string): Promise<any> {
+  const tokenHash = await hashToken(sessionToken);
+  
+  const { data: session, error } = await supabase
+    .from('sessions')
+    .select('*, profile:profiles(*)')
+    .eq('token_hash', tokenHash)
+    .gt('expires_at', new Date().toISOString())
+    .single();
+  
+  if (error || !session) {
+    return null;
+  }
+  
+  // Update last_used_at
+  await supabase
+    .from('sessions')
+    .update({ last_used_at: new Date().toISOString() })
+    .eq('id', session.id);
+  
+  return session;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { init_data, action } = await req.json();
+    const body = await req.json();
+    const { init_data, action, session_token } = body;
     
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
     
-    // For development/testing, allow mock auth
-    let telegramUser: any;
+    // Handle session validation
+    if (action === 'validate' && session_token) {
+      const session = await validateSession(supabase, session_token);
+      
+      if (!session) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Invalid or expired session' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      // Fetch delivery addresses
+      const { data: addresses } = await supabase
+        .from('delivery_addresses')
+        .select('*')
+        .eq('profile_id', session.profile.id)
+        .order('is_default', { ascending: false });
+      
+      return new Response(
+        JSON.stringify({
+          success: true,
+          profile: session.profile,
+          addresses: addresses || [],
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
     
+    // Handle logout
+    if (action === 'logout' && session_token) {
+      const tokenHash = await hashToken(session_token);
+      await supabase
+        .from('sessions')
+        .delete()
+        .eq('token_hash', tokenHash);
+      
+      return new Response(
+        JSON.stringify({ success: true }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    // Handle login/authentication
+    let telegramUser: any;
+    const isProduction = Deno.env.get('DENO_ENV') === 'production';
+    
+    // Only allow mock auth in non-production
     if (init_data === 'mock_dev_auth') {
-      // Mock user for development
+      if (isProduction) {
+        throw new Error('Mock authentication not allowed in production');
+      }
+      // Mock user for development only
       telegramUser = {
         id: 123456789,
         first_name: 'Test',
         last_name: 'User',
         username: 'testuser',
       };
+      console.log('Using mock auth for development');
     } else if (init_data) {
       const botToken = Deno.env.get('TELEGRAM_BOT_TOKEN');
       if (!botToken) {
-        // If no bot token, use the data directly for demo
+        // If no bot token configured, require it in production
+        if (isProduction) {
+          throw new Error('TELEGRAM_BOT_TOKEN not configured');
+        }
+        // In development, try to parse user data directly with warning
         try {
           const urlParams = new URLSearchParams(init_data);
           const userString = urlParams.get('user');
           if (userString) {
             telegramUser = JSON.parse(userString);
+            console.warn('DEV MODE: Using unvalidated Telegram data');
+          } else {
+            throw new Error('No user data found');
           }
         } catch {
           throw new Error('TELEGRAM_BOT_TOKEN not configured');
@@ -108,7 +203,7 @@ serve(async (req) => {
       throw new Error('No auth data provided');
     }
     
-    console.log('Telegram user:', telegramUser);
+    console.log('Telegram user:', telegramUser.id);
     
     // Check if profile exists
     const { data: existingProfile, error: fetchError } = await supabase
@@ -163,6 +258,31 @@ serve(async (req) => {
       }
     }
     
+    // Create session token
+    const sessionToken = generateSessionToken();
+    const tokenHash = await hashToken(sessionToken);
+    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+    
+    // Delete any existing sessions for this profile (optional: keep multiple sessions)
+    await supabase
+      .from('sessions')
+      .delete()
+      .eq('profile_id', profile.id);
+    
+    // Insert new session
+    const { error: sessionError } = await supabase
+      .from('sessions')
+      .insert({
+        profile_id: profile.id,
+        token_hash: tokenHash,
+        expires_at: expiresAt.toISOString(),
+      });
+    
+    if (sessionError) {
+      console.error('Session creation error:', sessionError);
+      throw new Error('Failed to create session');
+    }
+    
     // Fetch delivery addresses
     const { data: addresses } = await supabase
       .from('delivery_addresses')
@@ -182,6 +302,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
+        session_token: sessionToken,
         profile,
         addresses: addresses || [],
         cart: cartItems || [],

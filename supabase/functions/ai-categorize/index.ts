@@ -6,22 +6,72 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Hash the token for lookup
+async function hashToken(token: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(token);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hashBuffer), b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Validate session
+async function validateSession(supabase: any, sessionToken: string): Promise<any> {
+  const tokenHash = await hashToken(sessionToken);
+  
+  const { data: session, error } = await supabase
+    .from('sessions')
+    .select('*, profile:profiles(*)')
+    .eq('token_hash', tokenHash)
+    .gt('expires_at', new Date().toISOString())
+    .single();
+  
+  if (error || !session) {
+    return null;
+  }
+  
+  return session;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { products, action } = await req.json();
+    const { products, action, session_token, parent_category } = await req.json();
+    
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    // Validate session token
+    if (!session_token) {
+      throw new Error('Authentication required');
+    }
+    
+    const session = await validateSession(supabase, session_token);
+    if (!session) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid or expired session' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    // Check if user has appropriate role
+    if (session.profile.user_type !== 'supplier' && session.profile.user_type !== 'admin') {
+      return new Response(
+        JSON.stringify({ error: 'Only suppliers and admins can use AI categorization' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    console.log(`AI categorize request from user ${session.profile.id}: ${action}`);
+    
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
-    
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
     
     // Fetch existing categories for context
     const { data: categories } = await supabase
@@ -130,9 +180,6 @@ serve(async (req) => {
     }
     
     if (action === 'suggest_subcategories') {
-      // Suggest subcategories based on product names
-      const { parent_category } = await req.json();
-      
       const { data: productsData } = await supabase
         .from('products')
         .select('name')
