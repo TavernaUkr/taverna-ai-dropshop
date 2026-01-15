@@ -145,19 +145,129 @@ serve(async (req) => {
       );
     }
     
-    // Handle logout
-    if (action === 'logout' && session_token) {
-      const tokenHash = await hashToken(session_token);
-      await supabase
-        .from('sessions')
+    // Handle profile update
+    if (action === 'update_profile' && session_token) {
+      const session = await validateSession(supabase, session_token);
+      if (!session) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid or expired session' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      const { updates } = body;
+      const { data: updatedProfile, error } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', session.profile.id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      return new Response(
+        JSON.stringify({ success: true, profile: updatedProfile }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    // Handle add address
+    if (action === 'add_address' && session_token) {
+      const session = await validateSession(supabase, session_token);
+      if (!session) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid or expired session' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      const { address } = body;
+      const { data: newAddress, error } = await supabase
+        .from('delivery_addresses')
+        .insert({
+          ...address,
+          profile_id: session.profile.id,
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      return new Response(
+        JSON.stringify({ success: true, address: newAddress }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    // Handle update address
+    if (action === 'update_address' && session_token) {
+      const session = await validateSession(supabase, session_token);
+      if (!session) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid or expired session' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      const { address_id, updates } = body;
+      
+      // Verify address belongs to user
+      const { data: existing } = await supabase
+        .from('delivery_addresses')
+        .select('id')
+        .eq('id', address_id)
+        .eq('profile_id', session.profile.id)
+        .single();
+      
+      if (!existing) {
+        return new Response(
+          JSON.stringify({ error: 'Address not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      const { data: updatedAddress, error } = await supabase
+        .from('delivery_addresses')
+        .update(updates)
+        .eq('id', address_id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      return new Response(
+        JSON.stringify({ success: true, address: updatedAddress }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    // Handle delete address
+    if (action === 'delete_address' && session_token) {
+      const session = await validateSession(supabase, session_token);
+      if (!session) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid or expired session' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      const { address_id } = body;
+      
+      const { error } = await supabase
+        .from('delivery_addresses')
         .delete()
-        .eq('token_hash', tokenHash);
+        .eq('id', address_id)
+        .eq('profile_id', session.profile.id);
+      
+      if (error) throw error;
       
       return new Response(
         JSON.stringify({ success: true }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    
+    // Handle logout
     
     // Handle login/authentication
     let telegramUser: any;
