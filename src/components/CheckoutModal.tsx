@@ -1,8 +1,9 @@
-import { useState } from 'react';
-import { X, MapPin, Plus, Check, Loader2, CreditCard, Banknote, ChevronRight, ShoppingBag, Truck } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, MapPin, Plus, Check, Loader2, CreditCard, Banknote, ChevronRight, ShoppingBag, Truck, UserCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { AddressForm, AddressData } from './AddressForm';
+import { GuestCheckoutForm, GuestCheckoutData } from './GuestCheckoutForm';
 import { useTelegramAuthContext } from './TelegramAuthProvider';
 import { CartItem } from '@/hooks/useCart';
 import { supabase } from '@/integrations/supabase/client';
@@ -21,19 +22,42 @@ type PaymentMethod = 'card' | 'cash';
 export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: CheckoutModalProps) {
   const { isAuthenticated, profile, addresses, addAddress, sessionToken } = useTelegramAuthContext();
   const [step, setStep] = useState<CheckoutStep>('address');
-  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(
-    addresses.find(a => a.is_default)?.id || addresses[0]?.id || null
-  );
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
   const [isAddingAddress, setIsAddingAddress] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderNotes, setOrderNotes] = useState('');
+  
+  // Guest checkout state
+  const [guestData, setGuestData] = useState<GuestCheckoutData | null>(null);
+  const [isGuestFormValid, setIsGuestFormValid] = useState(false);
+
+  // Initialize selected address when addresses change
+  useEffect(() => {
+    if (addresses.length > 0 && !selectedAddressId) {
+      const defaultAddr = addresses.find(a => a.is_default);
+      setSelectedAddressId(defaultAddr?.id || addresses[0]?.id || null);
+    }
+  }, [addresses, selectedAddressId]);
 
   const totalPrice = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const deliveryCost = 70; // Nova Poshta base delivery
   const grandTotal = totalPrice + deliveryCost;
 
   const selectedAddress = addresses.find(a => a.id === selectedAddressId);
+
+  // Reset state when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setStep('address');
+      setIsAddingAddress(false);
+      setOrderNotes('');
+      if (!isAuthenticated) {
+        setGuestData(null);
+        setIsGuestFormValid(false);
+      }
+    }
+  }, [isOpen, isAuthenticated]);
 
   if (!isOpen) return null;
 
@@ -52,47 +76,94 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
     }
   };
 
-  const handleSubmitOrder = async () => {
-    if (!isAuthenticated || !profile || !selectedAddress || !sessionToken) {
-      toast.error('Необхідно авторизуватись');
-      return;
-    }
+  const handleGuestDataChange = (data: GuestCheckoutData, isValid: boolean) => {
+    setGuestData(data);
+    setIsGuestFormValid(isValid);
+  };
 
+  const handleSubmitOrder = async () => {
     setIsSubmitting(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('telegram-auth', {
-        body: {
-          action: 'create_order',
-          session_token: sessionToken,
-          order: {
-            delivery_address_id: selectedAddressId,
-            payment_method: paymentMethod,
-            delivery_cost: deliveryCost,
-            subtotal: totalPrice,
-            total: grandTotal,
-            notes: orderNotes || null,
-            items: items.map(item => ({
-              product_id: item.productId,
-              product_name: item.name,
-              product_image: item.image,
-              price: item.price,
-              quantity: item.quantity,
-              size: item.size || null,
-              color: item.color || null,
-              total: item.price * item.quantity,
-            })),
+      if (isAuthenticated && sessionToken) {
+        // Authenticated user order
+        if (!selectedAddress) {
+          toast.error('Оберіть адресу доставки');
+          return;
+        }
+
+        const { data, error } = await supabase.functions.invoke('telegram-auth', {
+          body: {
+            action: 'create_order',
+            session_token: sessionToken,
+            order: {
+              delivery_address_id: selectedAddressId,
+              payment_method: paymentMethod,
+              delivery_cost: deliveryCost,
+              subtotal: totalPrice,
+              total: grandTotal,
+              notes: orderNotes || null,
+              items: items.map(item => ({
+                product_id: item.productId,
+                product_name: item.name,
+                product_image: item.image,
+                price: item.price,
+                quantity: item.quantity,
+                size: item.size || null,
+                color: item.color || null,
+                total: item.price * item.quantity,
+              })),
+            },
           },
-        },
-      });
+        });
 
-      if (error) throw error;
+        if (error) throw error;
 
-      if (data?.success && data?.order) {
-        toast.success(`Замовлення #${data.order.order_number} створено!`);
-        onOrderComplete(data.order.id);
+        if (data?.success && data?.order) {
+          toast.success(`Замовлення #${data.order.order_number} створено!`);
+          onOrderComplete(data.order.id);
+        } else {
+          throw new Error(data?.error || 'Failed to create order');
+        }
       } else {
-        throw new Error(data?.error || 'Failed to create order');
+        // Guest order
+        if (!guestData || !isGuestFormValid) {
+          toast.error('Заповніть всі обов\'язкові поля');
+          return;
+        }
+
+        const { data, error } = await supabase.functions.invoke('telegram-auth', {
+          body: {
+            action: 'create_guest_order',
+            guest_info: guestData,
+            order: {
+              payment_method: paymentMethod,
+              delivery_cost: deliveryCost,
+              subtotal: totalPrice,
+              total: grandTotal,
+              notes: guestData.notes || orderNotes || null,
+              items: items.map(item => ({
+                product_id: item.productId,
+                product_name: item.name,
+                product_image: item.image,
+                price: item.price,
+                quantity: item.quantity,
+                size: item.size || null,
+                color: item.color || null,
+                total: item.price * item.quantity,
+              })),
+            },
+          },
+        });
+
+        if (error) throw error;
+
+        if (data?.success && data?.order) {
+          toast.success(`Замовлення #${data.order.order_number} створено!`);
+          onOrderComplete(data.order.id);
+        } else {
+          throw new Error(data?.error || 'Failed to create order');
+        }
       }
     } catch (err) {
       console.error('Order creation error:', err);
@@ -102,101 +173,141 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
     }
   };
 
-  const renderAddressStep = () => (
-    <div className="space-y-4">
-      <h3 className="font-semibold text-lg text-foreground">Адреса доставки</h3>
+  // Check if can proceed from address step
+  const canProceedFromAddress = () => {
+    if (isAuthenticated) {
+      return !!selectedAddressId || isAddingAddress;
+    }
+    return isGuestFormValid;
+  };
 
-      {isAddingAddress ? (
-        <AddressForm
-          onSubmit={handleAddAddress}
-          onCancel={() => setIsAddingAddress(false)}
-        />
-      ) : (
-        <>
-          {addresses.length === 0 ? (
-            <div className="text-center py-8">
-              <MapPin className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground mb-4">Немає збережених адрес</p>
-              <Button onClick={() => setIsAddingAddress(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Додати адресу
-              </Button>
+  const renderAddressStep = () => {
+    // Guest checkout flow
+    if (!isAuthenticated) {
+      return (
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-xl">
+            <UserCircle2 className="h-6 w-6 text-muted-foreground" />
+            <div>
+              <h3 className="font-medium text-foreground">Оформлення як гість</h3>
+              <p className="text-xs text-muted-foreground">Заповніть форму для доставки</p>
             </div>
-          ) : (
-            <>
-              <div className="space-y-3">
-                {addresses.map((address) => (
-                  <button
-                    key={address.id}
-                    onClick={() => setSelectedAddressId(address.id)}
-                    className={cn(
-                      'w-full p-4 rounded-xl border text-left transition-all',
-                      selectedAddressId === address.id
-                        ? 'border-primary bg-primary/5'
-                        : 'border-border hover:border-primary/50'
-                    )}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className={cn(
-                        'w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5',
+          </div>
+
+          <GuestCheckoutForm 
+            onDataChange={handleGuestDataChange}
+            initialData={guestData || undefined}
+          />
+
+          <Button
+            onClick={() => setStep('payment')}
+            className="w-full"
+            disabled={!isGuestFormValid}
+          >
+            Продовжити
+            <ChevronRight className="h-4 w-4 ml-2" />
+          </Button>
+        </div>
+      );
+    }
+
+    // Authenticated user flow
+    return (
+      <div className="space-y-4">
+        <h3 className="font-semibold text-lg text-foreground">Адреса доставки</h3>
+
+        {isAddingAddress ? (
+          <AddressForm
+            onSubmit={handleAddAddress}
+            onCancel={() => setIsAddingAddress(false)}
+          />
+        ) : (
+          <>
+            {addresses.length === 0 ? (
+              <div className="text-center py-8">
+                <MapPin className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground mb-4">Немає збережених адрес</p>
+                <Button onClick={() => setIsAddingAddress(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Додати адресу
+                </Button>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-3">
+                  {addresses.map((address) => (
+                    <button
+                      key={address.id}
+                      onClick={() => setSelectedAddressId(address.id)}
+                      className={cn(
+                        'w-full p-4 rounded-xl border text-left transition-all',
                         selectedAddressId === address.id
-                          ? 'border-primary bg-primary'
-                          : 'border-muted-foreground'
-                      )}>
-                        {selectedAddressId === address.id && (
-                          <Check className="h-3 w-3 text-primary-foreground" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-foreground">{address.recipient_name}</span>
-                          {address.is_default && (
-                            <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">
-                              Основна
-                            </span>
+                          ? 'border-primary bg-primary/5'
+                          : 'border-border hover:border-primary/50'
+                      )}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className={cn(
+                          'w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5',
+                          selectedAddressId === address.id
+                            ? 'border-primary bg-primary'
+                            : 'border-muted-foreground'
+                        )}>
+                          {selectedAddressId === address.id && (
+                            <Check className="h-3 w-3 text-primary-foreground" />
                           )}
                         </div>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {address.city}
-                          {address.delivery_type === 'warehouse' && address.warehouse_number && (
-                            <>, Відділення №{address.warehouse_number}</>
-                          )}
-                          {address.delivery_type === 'courier' && address.street_address && (
-                            <>, {address.street_address} {address.building_number}
-                            {address.apartment && `, кв. ${address.apartment}`}</>
-                          )}
-                        </p>
-                        <p className="text-sm text-muted-foreground">{address.phone}</p>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-foreground">{address.recipient_name}</span>
+                            {address.is_default && (
+                              <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">
+                                Основна
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {address.city}
+                            {address.delivery_type === 'warehouse' && address.warehouse_number && (
+                              <>, Відділення №{address.warehouse_number}</>
+                            )}
+                            {address.delivery_type === 'courier' && address.street_address && (
+                              <>, {address.street_address} {address.building_number}
+                              {address.apartment && `, кв. ${address.apartment}`}</>
+                            )}
+                          </p>
+                          <p className="text-sm text-muted-foreground">{address.phone}</p>
+                        </div>
                       </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
+                    </button>
+                  ))}
+                </div>
 
+                <Button
+                  variant="outline"
+                  onClick={() => setIsAddingAddress(true)}
+                  className="w-full"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Додати нову адресу
+                </Button>
+              </>
+            )}
+
+            {addresses.length > 0 && selectedAddressId && (
               <Button
-                variant="outline"
-                onClick={() => setIsAddingAddress(true)}
+                onClick={() => setStep('payment')}
                 className="w-full"
               >
-                <Plus className="h-4 w-4 mr-2" />
-                Додати нову адресу
+                Продовжити
+                <ChevronRight className="h-4 w-4 ml-2" />
               </Button>
-            </>
-          )}
-
-          {addresses.length > 0 && selectedAddressId && (
-            <Button
-              onClick={() => setStep('payment')}
-              className="w-full"
-            >
-              Продовжити
-              <ChevronRight className="h-4 w-4 ml-2" />
-            </Button>
-          )}
-        </>
-      )}
-    </div>
-  );
+            )}
+          </>
+        )}
+      </div>
+    );
+  };
 
   const renderPaymentStep = () => (
     <div className="space-y-4">
@@ -250,16 +361,18 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
         </button>
       </div>
 
-      {/* Order Notes */}
-      <div className="space-y-2">
-        <label className="text-sm font-medium text-foreground">Коментар до замовлення</label>
-        <textarea
-          value={orderNotes}
-          onChange={(e) => setOrderNotes(e.target.value)}
-          placeholder="Додаткові побажання..."
-          className="w-full h-20 p-3 rounded-lg border border-border bg-background text-sm resize-none"
-        />
-      </div>
+      {/* Order Notes - only for authenticated users (guests have notes in their form) */}
+      {isAuthenticated && (
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-foreground">Коментар до замовлення</label>
+          <textarea
+            value={orderNotes}
+            onChange={(e) => setOrderNotes(e.target.value)}
+            placeholder="Додаткові побажання..."
+            className="w-full h-20 p-3 rounded-lg border border-border bg-background text-sm resize-none"
+          />
+        </div>
+      )}
 
       <div className="flex gap-3">
         <Button
@@ -279,6 +392,34 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
       </div>
     </div>
   );
+
+  // Get delivery info for confirmation
+  const getDeliveryInfo = () => {
+    if (isAuthenticated && selectedAddress) {
+      return {
+        city: selectedAddress.city,
+        details: selectedAddress.delivery_type === 'warehouse' && selectedAddress.warehouse_number
+          ? `Відділення №${selectedAddress.warehouse_number}`
+          : selectedAddress.street_address 
+            ? `${selectedAddress.street_address} ${selectedAddress.building_number}${selectedAddress.apartment ? `, кв. ${selectedAddress.apartment}` : ''}`
+            : '',
+        recipient: `${selectedAddress.recipient_name}, ${selectedAddress.phone}`,
+      };
+    } else if (guestData) {
+      return {
+        city: guestData.city,
+        details: guestData.delivery_type === 'warehouse' && guestData.warehouse_number
+          ? `Відділення №${guestData.warehouse_number}`
+          : guestData.street_address 
+            ? `${guestData.street_address} ${guestData.building_number}${guestData.apartment ? `, кв. ${guestData.apartment}` : ''}`
+            : '',
+        recipient: `${guestData.recipient_name}, ${guestData.phone}`,
+      };
+    }
+    return null;
+  };
+
+  const deliveryInfo = getDeliveryInfo();
 
   const renderConfirmStep = () => (
     <div className="space-y-4">
@@ -305,22 +446,17 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
       </div>
 
       {/* Delivery Address */}
-      {selectedAddress && (
+      {deliveryInfo && (
         <div className="bg-muted/50 rounded-xl p-4 space-y-2">
           <div className="flex items-center gap-2 text-sm font-medium text-foreground">
             <MapPin className="h-4 w-4" />
             Доставка
           </div>
           <p className="text-sm text-muted-foreground">
-            {selectedAddress.city}
-            {selectedAddress.delivery_type === 'warehouse' && selectedAddress.warehouse_number && (
-              <>, Відділення №{selectedAddress.warehouse_number}</>
-            )}
-            {selectedAddress.delivery_type === 'courier' && selectedAddress.street_address && (
-              <>, {selectedAddress.street_address} {selectedAddress.building_number}</>
-            )}
+            {deliveryInfo.city}
+            {deliveryInfo.details && <>, {deliveryInfo.details}</>}
           </p>
-          <p className="text-sm text-muted-foreground">{selectedAddress.recipient_name}, {selectedAddress.phone}</p>
+          <p className="text-sm text-muted-foreground">{deliveryInfo.recipient}</p>
         </div>
       )}
 
@@ -395,9 +531,13 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
           <div className="flex items-center gap-3">
             <ShoppingBag className="h-6 w-6 text-primary" />
             <div>
-              <h2 className="font-bold text-lg text-foreground">Оформлення</h2>
+              <h2 className="font-bold text-lg text-foreground">
+                {isAuthenticated ? 'Оформлення' : 'Оформлення (Гість)'}
+              </h2>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <span className={cn(step === 'address' && 'text-primary font-medium')}>Адреса</span>
+                <span className={cn(step === 'address' && 'text-primary font-medium')}>
+                  {isAuthenticated ? 'Адреса' : 'Дані'}
+                </span>
                 <ChevronRight className="h-3 w-3" />
                 <span className={cn(step === 'payment' && 'text-primary font-medium')}>Оплата</span>
                 <ChevronRight className="h-3 w-3" />
