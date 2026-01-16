@@ -157,22 +157,9 @@ const CatalogTab = ({
     </section>
   </div>
 );
+import { OrdersHistory } from "@/components/OrdersHistory";
 
-const OrdersTab = () => (
-  <div className="space-y-4 pb-28 animate-fade-in">
-    <h2 className="text-lg font-bold text-foreground">Мої Замовлення</h2>
-    
-    <div className="flex flex-col items-center justify-center py-12 text-center">
-      <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mb-4">
-        <Shield className="h-10 w-10 text-muted-foreground" />
-      </div>
-      <h3 className="font-medium text-foreground mb-1">Ще немає замовлень</h3>
-      <p className="text-sm text-muted-foreground">
-        Ваші замовлення з'являться тут після покупки
-      </p>
-    </div>
-  </div>
-);
+const OrdersTab = () => <OrdersHistory />;
 
 const NewsTab = () => (
   <div className="space-y-4 pb-28 animate-fade-in">
@@ -371,10 +358,6 @@ const Index = () => {
   };
 
   const handleCheckout = () => {
-    if (!isAuthenticated) {
-      toast.error("Увійдіть для оформлення замовлення");
-      return;
-    }
     if (cartItems.length === 0) {
       toast.error("Кошик порожній");
       return;
