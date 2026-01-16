@@ -10,6 +10,7 @@ import { PartnerBanner } from "@/components/PartnerBanner";
 import { PromoCard } from "@/components/PromoCard";
 import { SearchModal } from "@/components/SearchModal";
 import { CartModal } from "@/components/CartModal";
+import { CheckoutModal } from "@/components/CheckoutModal";
 import { AllCategoriesModal } from "@/components/AllCategoriesModal";
 import { useTelegramAuthContext } from "@/components/TelegramAuthProvider";
 import { useCartContext } from "@/contexts/CartContext";
@@ -343,13 +344,15 @@ const AccountTab = () => {
 
 const Index = () => {
   const navigate = useNavigate();
+  const { isAuthenticated } = useTelegramAuthContext();
   const [activeTab, setActiveTab] = useState("catalog");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isAllCategoriesOpen, setIsAllCategoriesOpen] = useState(false);
   
   // Use cart context for synchronized cart
-  const { items: cartItems, totalItems, addItem, updateQuantity, removeItem } = useCartContext();
+  const { items: cartItems, totalItems, addItem, updateQuantity, removeItem, clearCart, fetchCart } = useCartContext();
 
   const handleSearch = (query: string) => {
     setIsSearchOpen(false);
@@ -368,8 +371,24 @@ const Index = () => {
   };
 
   const handleCheckout = () => {
+    if (!isAuthenticated) {
+      toast.error("Увійдіть для оформлення замовлення");
+      return;
+    }
+    if (cartItems.length === 0) {
+      toast.error("Кошик порожній");
+      return;
+    }
     setIsCartOpen(false);
-    toast.info("Перехід до оформлення замовлення");
+    setIsCheckoutOpen(true);
+  };
+
+  const handleOrderComplete = async (orderId: string) => {
+    setIsCheckoutOpen(false);
+    await clearCart();
+    await fetchCart();
+    setActiveTab("orders");
+    toast.success("Дякуємо за замовлення!");
   };
 
   const handleAddToCart = async (product: typeof products[0]) => {
@@ -466,6 +485,13 @@ const Index = () => {
         isOpen={isAllCategoriesOpen}
         onClose={() => setIsAllCategoriesOpen(false)}
         onSelectCategory={handleSelectCategory}
+      />
+
+      <CheckoutModal
+        isOpen={isCheckoutOpen}
+        onClose={() => setIsCheckoutOpen(false)}
+        items={cartItems}
+        onOrderComplete={handleOrderComplete}
       />
     </div>
   );

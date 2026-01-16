@@ -281,6 +281,83 @@ serve(async (req) => {
       );
     }
     
+    // Handle create order
+    if (action === 'create_order' && session_token) {
+      const session = await validateSession(supabase, session_token);
+      if (!session) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid or expired session' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      const { order } = body;
+      
+      // Generate order number
+      const orderNumber = `TAV-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+      
+      // Create order
+      const { data: newOrder, error: orderError } = await supabase
+        .from('orders')
+        .insert({
+          profile_id: session.profile.id,
+          delivery_address_id: order.delivery_address_id,
+          order_number: orderNumber,
+          payment_method: order.payment_method,
+          payment_status: 'pending',
+          delivery_service: 'nova_poshta',
+          delivery_cost: order.delivery_cost,
+          subtotal: order.subtotal,
+          total: order.total,
+          notes: order.notes,
+          status: 'pending',
+        })
+        .select()
+        .single();
+      
+      if (orderError) {
+        console.error('Order creation error:', orderError);
+        throw new Error('Failed to create order');
+      }
+      
+      // Create order items
+      const orderItems = order.items.map((item: any) => ({
+        order_id: newOrder.id,
+        product_id: item.product_id,
+        product_name: item.product_name,
+        product_image: item.product_image,
+        price: item.price,
+        quantity: item.quantity,
+        size: item.size,
+        color: item.color,
+        total: item.total,
+      }));
+      
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItems);
+      
+      if (itemsError) {
+        console.error('Order items creation error:', itemsError);
+        // Rollback order
+        await supabase.from('orders').delete().eq('id', newOrder.id);
+        throw new Error('Failed to create order items');
+      }
+      
+      // Clear cart
+      await supabase
+        .from('cart_items')
+        .delete()
+        .eq('profile_id', session.profile.id);
+      
+      console.log('Order created:', orderNumber);
+      
+      return new Response(
+        JSON.stringify({ success: true, order: newOrder }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
     // Handle login/authentication
     let telegramUser: any;
     const isProduction = Deno.env.get('DENO_ENV') === 'production';
