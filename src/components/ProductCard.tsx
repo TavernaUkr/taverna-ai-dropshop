@@ -1,4 +1,4 @@
-import { ShoppingCart } from "lucide-react";
+import { ShoppingCart, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ProductCardProps {
@@ -9,8 +9,10 @@ interface ProductCardProps {
   image: string;
   category?: string;
   inStock?: boolean;
+  isFavorite?: boolean;
   onClick?: () => void;
   onAddToCart?: () => void;
+  onToggleFavorite?: () => void;
 }
 
 export const ProductCard = ({
@@ -20,8 +22,10 @@ export const ProductCard = ({
   image,
   category,
   inStock = true,
+  isFavorite = false,
   onClick,
   onAddToCart,
+  onToggleFavorite,
 }: ProductCardProps) => {
   const discount = originalPrice ? Math.round((1 - price / originalPrice) * 100) : 0;
 
@@ -45,9 +49,25 @@ export const ProductCard = ({
           </div>
         )}
 
+        {/* Favorite Button */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleFavorite?.();
+          }}
+          className={cn(
+            "absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center transition-all",
+            isFavorite 
+              ? "bg-live/90 text-live-foreground" 
+              : "bg-background/80 text-muted-foreground hover:text-live hover:bg-background"
+          )}
+        >
+          <Heart className={cn("h-4 w-4", isFavorite && "fill-current")} />
+        </button>
+
         {/* Category Badge */}
         {category && (
-          <div className="absolute top-2 right-2 bg-primary/90 text-primary-foreground text-[10px] font-medium px-2 py-1 rounded-md backdrop-blur-sm">
+          <div className="absolute bottom-2 left-2 bg-primary/90 text-primary-foreground text-[10px] font-medium px-2 py-1 rounded-md backdrop-blur-sm">
             {category}
           </div>
         )}

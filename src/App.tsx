@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { TelegramAuthProvider } from "@/components/TelegramAuthProvider";
 import { CartProvider } from "@/contexts/CartContext";
+import { FavoritesProvider } from "@/components/FavoritesContext";
 import Index from "./pages/Index";
 import SupplierRegistration from "./pages/SupplierRegistration";
 import ProductDetail from "./pages/ProductDetail";
@@ -17,17 +18,19 @@ const App = () => (
     <TooltipProvider>
       <TelegramAuthProvider>
         <CartProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/partner" element={<SupplierRegistration />} />
-              <Route path="/product/:id" element={<ProductDetail />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
+          <FavoritesProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/partner" element={<SupplierRegistration />} />
+                <Route path="/product/:id" element={<ProductDetail />} />
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </FavoritesProvider>
         </CartProvider>
       </TelegramAuthProvider>
     </TooltipProvider>

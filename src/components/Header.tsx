@@ -1,19 +1,23 @@
-import { ShoppingCart, Search, Bell } from "lucide-react";
+import { ShoppingCart, Search, Bell, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import tavernaLogo from "@/assets/taverna-logo.png";
 
 interface HeaderProps {
   cartCount?: number;
+  favoritesCount?: number;
   onCartClick?: () => void;
   onSearchClick?: () => void;
   onNotificationsClick?: () => void;
+  onFavoritesClick?: () => void;
 }
 
 export const Header = ({
   cartCount = 0,
+  favoritesCount = 0,
   onCartClick,
   onSearchClick,
   onNotificationsClick,
+  onFavoritesClick,
 }: HeaderProps) => {
   return (
     <header className="sticky top-0 z-40 bg-card/95 backdrop-blur-md border-b border-border shadow-sm">
@@ -35,21 +39,39 @@ export const Header = ({
         <div className="flex items-center gap-1">
           <button
             onClick={onSearchClick}
-            className="w-12 h-12 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all"
+            className="w-11 h-11 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all"
           >
             <Search className="h-5 w-5" />
           </button>
 
           <button
+            onClick={onFavoritesClick}
+            className="relative w-11 h-11 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all"
+          >
+            <Heart className="h-5 w-5" />
+            {favoritesCount > 0 && (
+              <span className={cn(
+                "absolute -top-0.5 -right-0.5",
+                "min-w-[18px] h-[18px] px-1",
+                "flex items-center justify-center",
+                "bg-live text-live-foreground",
+                "text-[10px] font-bold rounded-full shadow-md"
+              )}>
+                {favoritesCount > 99 ? "99+" : favoritesCount}
+              </span>
+            )}
+          </button>
+
+          <button
             onClick={onNotificationsClick}
-            className="w-12 h-12 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all"
+            className="w-11 h-11 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all"
           >
             <Bell className="h-5 w-5" />
           </button>
 
           <button
             onClick={onCartClick}
-            className="relative w-12 h-12 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all"
+            className="relative w-11 h-11 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all"
           >
             <ShoppingCart className="h-5 w-5" />
             {cartCount > 0 && (

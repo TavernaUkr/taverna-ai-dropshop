@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Package, Truck, CheckCircle2, Clock, XCircle, ChevronRight, Loader2, MapPin, RefreshCw } from 'lucide-react';
+import { Package, Truck, CheckCircle2, Clock, XCircle, ChevronRight, Loader2, MapPin, RefreshCw, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTelegramAuthContext } from './TelegramAuthProvider';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from './ui/button';
+import { OrderTracking } from './OrderTracking';
 
 interface OrderItem {
   id: string;
@@ -166,15 +167,9 @@ function OrderDetailsModal({ order, onClose }: OrderDetailsModalProps) {
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {/* Tracking */}
+          {/* Nova Poshta Tracking */}
           {order.delivery_tracking && (
-            <div className="bg-primary/5 border border-primary/20 rounded-xl p-4">
-              <div className="flex items-center gap-2 text-primary mb-1">
-                <Truck className="h-5 w-5" />
-                <span className="font-medium">Номер ТТН</span>
-              </div>
-              <p className="text-lg font-bold text-foreground">{order.delivery_tracking}</p>
-            </div>
+            <OrderTracking trackingNumber={order.delivery_tracking} />
           )}
 
           {/* Delivery Address */}
