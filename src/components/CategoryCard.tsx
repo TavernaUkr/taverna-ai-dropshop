@@ -1,9 +1,9 @@
 import { cn } from "@/lib/utils";
-import { LucideIcon } from "lucide-react";
+import { ElementType } from "react";
 
 interface CategoryCardProps {
   name: string;
-  icon: LucideIcon;
+  icon: ElementType;
   count?: number;
   gradient?: string;
   onClick?: () => void;
