@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      auto_promotion_queue: {
+        Row: {
+          created_at: string
+          id: string
+          last_promoted_at: string | null
+          position: number
+          supplier_id: string
+          total_promotions: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_promoted_at?: string | null
+          position: number
+          supplier_id: string
+          total_promotions?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_promoted_at?: string | null
+          position?: number
+          supplier_id?: string
+          total_promotions?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auto_promotion_queue_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "auto_promotion_queue_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cart_items: {
         Row: {
           color: string | null
@@ -504,6 +546,124 @@ export type Database = {
           user_type?: string | null
         }
         Relationships: []
+      }
+      promotion_platforms: {
+        Row: {
+          cost_per_promotion: number | null
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+        }
+        Insert: {
+          cost_per_promotion?: number | null
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+        }
+        Update: {
+          cost_per_promotion?: number | null
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+        }
+        Relationships: []
+      }
+      promotions: {
+        Row: {
+          ai_generated_text: string | null
+          budget: number | null
+          clicks: number | null
+          created_at: string
+          end_date: string | null
+          id: string
+          orders: number | null
+          platforms: string[] | null
+          product_id: string | null
+          promotion_type: string
+          queue_position: number | null
+          spent: number | null
+          start_date: string | null
+          status: string
+          supplier_id: string | null
+          telegram_channel_id: string | null
+          telegram_message_id: number | null
+          updated_at: string
+          views: number | null
+        }
+        Insert: {
+          ai_generated_text?: string | null
+          budget?: number | null
+          clicks?: number | null
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          orders?: number | null
+          platforms?: string[] | null
+          product_id?: string | null
+          promotion_type: string
+          queue_position?: number | null
+          spent?: number | null
+          start_date?: string | null
+          status?: string
+          supplier_id?: string | null
+          telegram_channel_id?: string | null
+          telegram_message_id?: number | null
+          updated_at?: string
+          views?: number | null
+        }
+        Update: {
+          ai_generated_text?: string | null
+          budget?: number | null
+          clicks?: number | null
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          orders?: number | null
+          platforms?: string[] | null
+          product_id?: string | null
+          promotion_type?: string
+          queue_position?: number | null
+          spent?: number | null
+          start_date?: string | null
+          status?: string
+          supplier_id?: string | null
+          telegram_channel_id?: string | null
+          telegram_message_id?: number | null
+          updated_at?: string
+          views?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promotions_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "promotions_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "promotions_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers_public"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sessions: {
         Row: {

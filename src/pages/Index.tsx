@@ -395,7 +395,7 @@ const Index = () => {
 
   const handleSearch = (query: string) => {
     setIsSearchOpen(false);
-    toast.info(`Пошук: ${query}`);
+    navigate(`/search?q=${encodeURIComponent(query)}`);
   };
 
   const handleUpdateQuantity = async (id: string, quantity: number) => {
