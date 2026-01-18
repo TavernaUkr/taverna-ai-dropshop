@@ -46,20 +46,33 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
     
-    // Validate session token
-    if (!session_token) {
-      throw new Error('Authentication required');
+    // Public actions that don't require authentication
+    const publicActions = ['trackPackage', 'searchCity', 'getWarehouses'];
+    
+    let userId = 'anonymous';
+    
+    // Validate session token for non-public actions
+    if (!publicActions.includes(action)) {
+      if (!session_token) {
+        throw new Error('Authentication required');
+      }
+      
+      const session = await validateSession(supabase, session_token);
+      if (!session) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid or expired session' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      userId = session.profile?.id || 'unknown';
+    } else if (session_token) {
+      const session = await validateSession(supabase, session_token);
+      if (session) {
+        userId = session.profile?.id || 'unknown';
+      }
     }
     
-    const session = await validateSession(supabase, session_token);
-    if (!session) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid or expired session' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-    
-    console.log(`Nova Poshta request from user ${session.profile.id}: ${action}`);
+    console.log(`Nova Poshta request from user ${userId}: ${action}`);
     
     const apiKey = Deno.env.get('NOVA_POSHTA_API_KEY');
     
