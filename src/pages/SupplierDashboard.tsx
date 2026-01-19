@@ -148,8 +148,16 @@ export default function SupplierDashboard() {
 
     setIsSubmitting(true);
     try {
+      // Get product ID (random if needed)
+      let productId = selectedProduct;
+      if (isRandom && products.length > 0) {
+        const randomIndex = Math.floor(Math.random() * products.length);
+        productId = products[randomIndex].id;
+      }
+
+      // Create promotion record
       const { error } = await supabase.from("promotions").insert({
-        product_id: isRandom ? null : selectedProduct,
+        product_id: productId || null,
         promotion_type: promoType,
         platforms: promoType === "post" ? ["Telegram"] : selectedPlatforms,
         status: "pending",
@@ -158,11 +166,27 @@ export default function SupplierDashboard() {
 
       if (error) throw error;
 
-      toast.success(
-        promoType === "post" 
-          ? "Пост на просування створено! Буде опубліковано в Telegram каналі."
-          : "Рекламну кампанію створено!"
-      );
+      // If it's a Telegram post, publish it
+      if (promoType === "post" && productId) {
+        toast.info("Публікуємо в Telegram...");
+        
+        const { data: publishResult, error: publishError } = await supabase.functions.invoke(
+          "telegram-publish",
+          {
+            body: { product_id: productId },
+          }
+        );
+
+        if (publishError) {
+          console.error("Telegram publish error:", publishError);
+          toast.error("Помилка публікації в Telegram");
+        } else {
+          toast.success("Пост опубліковано в Telegram каналі!");
+        }
+      } else {
+        toast.success("Рекламну кампанію створено!");
+      }
+
       setIsNewPromoOpen(false);
       setSelectedProduct("");
       setSelectedPlatforms([]);
