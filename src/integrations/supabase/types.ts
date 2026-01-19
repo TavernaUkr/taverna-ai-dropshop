@@ -665,6 +665,66 @@ export type Database = {
           },
         ]
       }
+      reviews: {
+        Row: {
+          author_name: string
+          content: string | null
+          created_at: string
+          helpful_count: number | null
+          id: string
+          images: string[] | null
+          is_verified_purchase: boolean | null
+          product_id: string | null
+          profile_id: string | null
+          rating: number
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          author_name: string
+          content?: string | null
+          created_at?: string
+          helpful_count?: number | null
+          id?: string
+          images?: string[] | null
+          is_verified_purchase?: boolean | null
+          product_id?: string | null
+          profile_id?: string | null
+          rating: number
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          author_name?: string
+          content?: string | null
+          created_at?: string
+          helpful_count?: number | null
+          id?: string
+          images?: string[] | null
+          is_verified_purchase?: boolean | null
+          product_id?: string | null
+          profile_id?: string | null
+          rating?: number
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sessions: {
         Row: {
           created_at: string
