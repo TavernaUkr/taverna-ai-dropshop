@@ -13,6 +13,8 @@ import {
   Check,
   Briefcase,
   Store,
+  HelpCircle,
+  BookOpen,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -21,6 +23,8 @@ import { useTelegramAuthContext } from "@/components/TelegramAuthProvider";
 import { OrdersHistory } from "@/components/OrdersHistory";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { SupplierGuideModal } from "@/components/SupplierGuideModal";
+import { CustomerGuideModal } from "@/components/CustomerGuideModal";
 
 export const ProfileDashboard = () => {
   const navigate = useNavigate();
@@ -28,6 +32,8 @@ export const ProfileDashboard = () => {
   const [activeTab, setActiveTab] = useState("orders");
   const [copied, setCopied] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [showSupplierGuide, setShowSupplierGuide] = useState(false);
+  const [showCustomerGuide, setShowCustomerGuide] = useState(false);
 
   // Check roles from secure user_roles table (not from profile.user_type to prevent privilege escalation)
   const userRoles = profile?.roles || [];
@@ -324,6 +330,42 @@ export const ProfileDashboard = () => {
                 </div>
                 <ChevronRight className="h-5 w-5 text-muted-foreground" />
               </button>
+
+              {/* Help Guides */}
+              <Separator />
+              <button 
+                onClick={() => setShowCustomerGuide(true)}
+                className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <HelpCircle className="h-5 w-5 text-muted-foreground" />
+                  <div className="text-left">
+                    <p className="font-medium text-foreground">Як користуватись</p>
+                    <p className="text-sm text-muted-foreground">
+                      Інструкція для покупців
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className="h-5 w-5 text-muted-foreground" />
+              </button>
+
+              {(isSupplier || isAdmin) && (
+                <button 
+                  onClick={() => setShowSupplierGuide(true)}
+                  className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors border-t border-border"
+                >
+                  <div className="flex items-center gap-3">
+                    <BookOpen className="h-5 w-5 text-primary" />
+                    <div className="text-left">
+                      <p className="font-medium text-foreground">Гід для партнерів</p>
+                      <p className="text-sm text-muted-foreground">
+                        Черга, націнки, реклама
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight className="h-5 w-5 text-primary" />
+                </button>
+              )}
             </div>
 
             {/* Logout */}
@@ -363,8 +405,27 @@ export const ProfileDashboard = () => {
               <p className="text-xs text-muted-foreground">Налаштування</p>
             </div>
           </div>
+
+          {/* Help button for guests */}
+          <button 
+            onClick={() => setShowCustomerGuide(true)}
+            className="w-full flex items-center justify-center gap-2 p-3 bg-primary/10 rounded-xl text-primary hover:bg-primary/20 transition-colors"
+          >
+            <HelpCircle className="h-4 w-4" />
+            <span className="text-sm font-medium">Як користуватись Taverna</span>
+          </button>
         </div>
       )}
+
+      {/* Modals */}
+      <SupplierGuideModal 
+        isOpen={showSupplierGuide} 
+        onClose={() => setShowSupplierGuide(false)} 
+      />
+      <CustomerGuideModal 
+        isOpen={showCustomerGuide} 
+        onClose={() => setShowCustomerGuide(false)} 
+      />
     </div>
   );
 };
