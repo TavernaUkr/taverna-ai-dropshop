@@ -1,6 +1,7 @@
-import { ShoppingCart, Heart, Package, Flame } from "lucide-react";
+import { ShoppingCart, Heart, Package, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LowStockBadge } from "./product/LowStockBadge";
+import { useState, useEffect } from "react";
 
 interface ProductCardProps {
   id: string;
@@ -14,6 +15,8 @@ interface ProductCardProps {
   stockQuantity?: number;
   sizes?: string[];
   colors?: string[];
+  rating?: number;
+  reviewCount?: number;
   isFavorite?: boolean;
   onClick?: () => void;
   onAddToCart?: () => void;
@@ -64,6 +67,8 @@ export const ProductCard = ({
   stockQuantity,
   sizes,
   colors,
+  rating,
+  reviewCount,
   isFavorite = false,
   onClick,
   onAddToCart,
@@ -196,6 +201,28 @@ export const ProductCard = ({
         <h3 className="text-sm font-medium text-card-foreground line-clamp-2 min-h-[40px] leading-snug">
           {name}
         </h3>
+        
+        {/* Rating */}
+        {rating !== undefined && rating > 0 && (
+          <div className="flex items-center gap-1 mt-1">
+            <div className="flex items-center gap-0.5">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <Star
+                  key={star}
+                  className={cn(
+                    "h-3 w-3",
+                    star <= Math.round(rating) ? "text-warning fill-warning" : "text-muted"
+                  )}
+                />
+              ))}
+            </div>
+            {reviewCount !== undefined && reviewCount > 0 && (
+              <span className="text-[10px] text-muted-foreground">
+                ({reviewCount})
+              </span>
+            )}
+          </div>
+        )}
         
         {/* Price and Variants Row */}
         <div className="mt-2 flex items-start justify-between gap-2">
