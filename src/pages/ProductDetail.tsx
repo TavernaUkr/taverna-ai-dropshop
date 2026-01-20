@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { 
   ArrowLeft, ShoppingCart, Heart, Share2, Minus, Plus, Check, 
   Star, ChevronLeft, ChevronRight, Package, Truck, Shield, 
-  MessageCircle, ThumbsUp, User, Loader2
+  MessageCircle, ThumbsUp, User, Loader2, Home
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -27,6 +27,14 @@ import { ProductVariantSelector } from "@/components/product/ProductVariantSelec
 import { ShareButton } from "@/components/product/ShareButton";
 import { AIVerdict } from "@/components/product/AIVerdict";
 import { LowStockBadge } from "@/components/product/LowStockBadge";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 
 interface Product {
   id: string;
@@ -45,10 +53,16 @@ interface Product {
   stock_quantity?: number;
   attributes?: Record<string, unknown>;
   supplier_id?: string;
+  video_url?: string;
   category?: {
     id: string;
     name: string;
     slug: string;
+    parent?: {
+      id: string;
+      name: string;
+      slug: string;
+    };
   };
 }
 
@@ -95,7 +109,7 @@ const ProductDetail = () => {
         .from("products")
         .select(`
           *,
-          category:categories(id, name, slug)
+          category:categories(id, name, slug, parent:parent_id(id, name, slug))
         `)
         .eq("id", id)
         .single();
@@ -277,6 +291,61 @@ const ProductDetail = () => {
           </div>
         </div>
       </header>
+
+      {/* Breadcrumbs Navigation */}
+      <div className="px-4 py-2 bg-muted/30 border-b border-border">
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink asChild>
+                <Link to="/" className="flex items-center gap-1 text-muted-foreground hover:text-foreground">
+                  <Home className="h-3.5 w-3.5" />
+                  <span>Головна</span>
+                </Link>
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            
+            {product.category?.parent && (
+              <>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbLink asChild>
+                    <Link 
+                      to={`/search?category=${product.category.parent.id}`}
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      {product.category.parent.name}
+                    </Link>
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+              </>
+            )}
+            
+            {product.category && (
+              <>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbLink asChild>
+                    <Link 
+                      to={`/search?category=${product.category.id}`}
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      {product.category.name}
+                    </Link>
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+              </>
+            )}
+            
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage className="line-clamp-1 max-w-[180px]">
+                {product.name}
+              </BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+      </div>
 
       {/* Image Gallery */}
       <Dialog open={isGalleryOpen} onOpenChange={setIsGalleryOpen}>
