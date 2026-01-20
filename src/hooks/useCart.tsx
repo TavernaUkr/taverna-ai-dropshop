@@ -11,6 +11,8 @@ export interface CartItem {
   size?: string;
   color?: string;
   quantity: number;
+  supplierId?: string;
+  supplierName?: string;
 }
 
 interface CartItemDB {
@@ -29,6 +31,11 @@ interface CartItemDB {
     images: string[] | null;
     sizes: string[] | null;
     colors: string[] | null;
+    supplier_id: string | null;
+    supplier: {
+      id: string;
+      shop_name: string;
+    } | null;
   } | null;
 }
 
@@ -51,6 +58,8 @@ export function useCart() {
       size: dbItem.size || undefined,
       color: dbItem.color || undefined,
       quantity: dbItem.quantity,
+      supplierId: dbItem.product.supplier_id || undefined,
+      supplierName: dbItem.product.supplier?.shop_name || undefined,
     };
   };
 
@@ -69,7 +78,16 @@ export function useCart() {
         .from('cart_items')
         .select(`
           *,
-          product:products(id, name, price, images, sizes, colors)
+          product:products(
+            id, 
+            name, 
+            price, 
+            images, 
+            sizes, 
+            colors,
+            supplier_id,
+            supplier:suppliers(id, shop_name)
+          )
         `)
         .eq('profile_id', profile.id)
         .order('created_at', { ascending: false });

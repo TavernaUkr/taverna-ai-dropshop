@@ -1,5 +1,6 @@
-import { ShoppingCart, Heart, Package } from "lucide-react";
+import { ShoppingCart, Heart, Package, Flame } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { LowStockBadge } from "./product/LowStockBadge";
 
 interface ProductCardProps {
   id: string;
@@ -107,6 +108,13 @@ export const ProductCard = ({
         {savings >= 100 && inStock && (
           <div className="absolute top-12 left-3 bg-accent text-accent-foreground text-[10px] font-medium px-2 py-0.5 rounded-full shadow-md">
             Економія {savings.toLocaleString()} ₴
+          </div>
+        )}
+
+        {/* Low Stock Badge - FOMO effect */}
+        {inStock && stockQuantity !== undefined && stockQuantity > 0 && stockQuantity <= 5 && (
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10">
+            <LowStockBadge quantity={stockQuantity} animated={true} />
           </div>
         )}
 
