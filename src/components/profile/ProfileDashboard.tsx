@@ -86,9 +86,9 @@ export const ProfileDashboard = () => {
   return (
     <div className="space-y-4 pb-28 animate-fade-in">
       {/* User Card */}
-      <div className="bg-card rounded-xl p-4 shadow-sm border border-border">
-        <div className="flex items-center gap-3">
-          <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
+      <div className="bg-card rounded-2xl p-5 shadow-lg border border-border">
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center overflow-hidden shadow-md ring-2 ring-primary/20">
             {profile?.avatar_url ? (
               <img
                 src={profile.avatar_url}
@@ -96,7 +96,7 @@ export const ProfileDashboard = () => {
                 className="w-full h-full object-cover"
               />
             ) : (
-              <span className="text-xl font-bold text-primary">{getUserInitials()}</span>
+              <span className="text-2xl font-bold text-primary">{getUserInitials()}</span>
             )}
           </div>
           <div className="flex-1">
