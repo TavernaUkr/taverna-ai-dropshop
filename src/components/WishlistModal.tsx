@@ -1,9 +1,24 @@
-import { X, Heart, ShoppingCart, Trash2, Package } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, Heart, ShoppingCart, Trash2, Package, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useFavoritesContext } from './FavoritesContext';
 import { useCartContext } from '@/contexts/CartContext';
 import { Button } from './ui/button';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { hapticImpact, hapticNotification } from '@/lib/haptics';
+import { EmptyState } from './ui/empty-state';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+
+interface ProductVariants {
+  sizes: string[];
+  colors: string[];
+}
 
 interface WishlistModalProps {
   isOpen: boolean;
@@ -14,19 +29,88 @@ interface WishlistModalProps {
 export function WishlistModal({ isOpen, onClose, onProductClick }: WishlistModalProps) {
   const { favorites, removeFavorite } = useFavoritesContext();
   const { addItem } = useCartContext();
+  const [selectedVariants, setSelectedVariants] = useState<Record<string, { size?: string; color?: string }>>({});
+  const [productVariants, setProductVariants] = useState<Record<string, ProductVariants>>({});
+
+  // Fetch variants for all favorite products
+  useEffect(() => {
+    const fetchVariants = async () => {
+      if (favorites.length === 0) return;
+      
+      const productIds = favorites.map(f => f.productId);
+      const { data, error } = await supabase
+        .from('products')
+        .select('id, sizes, colors')
+        .in('id', productIds);
+
+      if (error) {
+        console.error('Error fetching variants:', error);
+        return;
+      }
+
+      const variants: Record<string, ProductVariants> = {};
+      data?.forEach(product => {
+        variants[product.id] = {
+          sizes: product.sizes || [],
+          colors: product.colors || [],
+        };
+      });
+      setProductVariants(variants);
+    };
+
+    if (isOpen) {
+      fetchVariants();
+    }
+  }, [favorites, isOpen]);
 
   if (!isOpen) return null;
 
   const handleAddToCart = async (item: typeof favorites[0]) => {
-    const success = await addItem(item.productId, item.name, item.price, item.image);
+    const selected = selectedVariants[item.productId] || {};
+    const variants = productVariants[item.productId] || { sizes: [], colors: [] };
+    
+    // Check if variants are required
+    if (variants.sizes.length > 0 && !selected.size) {
+      toast.error('Оберіть розмір');
+      hapticNotification('error');
+      return;
+    }
+    if (variants.colors.length > 0 && !selected.color) {
+      toast.error('Оберіть колір');
+      hapticNotification('error');
+      return;
+    }
+    
+    const success = await addItem(
+      item.productId, 
+      item.name, 
+      item.price, 
+      item.image,
+      selected.size,
+      selected.color
+    );
+    
     if (success) {
+      hapticNotification('success');
       toast.success(`${item.name} додано до кошика`);
     }
   };
 
   const handleRemove = async (productId: string) => {
+    hapticImpact('light');
     await removeFavorite(productId);
     toast.success('Видалено з обраного');
+  };
+
+  const handleVariantSelect = (productId: string, type: 'size' | 'color', value: string) => {
+    hapticImpact('light');
+    setSelectedVariants(prev => ({
+      ...prev,
+      [productId]: {
+        ...prev[productId],
+        [type]: value,
+      },
+    }));
   };
 
   return (
@@ -53,15 +137,11 @@ export function WishlistModal({ isOpen, onClose, onProductClick }: WishlistModal
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4">
           {favorites.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mb-4">
-                <Heart className="h-10 w-10 text-muted-foreground" />
-              </div>
-              <h3 className="font-medium text-foreground mb-1">Список порожній</h3>
-              <p className="text-sm text-muted-foreground">
-                Додайте товари до обраного, щоб не втратити їх
-              </p>
-            </div>
+            <EmptyState
+              type="favorites"
+              title="Список обраного порожній"
+              description="Додайте товари до обраного, щоб не втратити їх"
+            />
           ) : (
             <div className="space-y-3">
               {favorites.map((item) => (
@@ -94,6 +174,65 @@ export function WishlistModal({ isOpen, onClose, onProductClick }: WishlistModal
                     <p className="font-bold text-primary mt-1">
                       {item.price.toLocaleString()} ₴
                     </p>
+                    
+                    {/* Variant Selectors */}
+                    {productVariants[item.productId] && (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {productVariants[item.productId].sizes.length > 0 && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-muted hover:bg-muted/80 rounded-md transition-colors">
+                                <span className="text-muted-foreground">Розмір:</span>
+                                <span className="font-medium">
+                                  {selectedVariants[item.productId]?.size || "Обрати"}
+                                </span>
+                                <ChevronDown className="h-3 w-3" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start">
+                              {productVariants[item.productId].sizes.map(size => (
+                                <DropdownMenuItem
+                                  key={size}
+                                  onClick={() => handleVariantSelect(item.productId, 'size', size)}
+                                  className={cn(
+                                    selectedVariants[item.productId]?.size === size && "bg-primary/10"
+                                  )}
+                                >
+                                  {size}
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                        
+                        {productVariants[item.productId].colors.length > 0 && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-muted hover:bg-muted/80 rounded-md transition-colors">
+                                <span className="text-muted-foreground">Колір:</span>
+                                <span className="font-medium">
+                                  {selectedVariants[item.productId]?.color || "Обрати"}
+                                </span>
+                                <ChevronDown className="h-3 w-3" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start">
+                              {productVariants[item.productId].colors.map(color => (
+                                <DropdownMenuItem
+                                  key={color}
+                                  onClick={() => handleVariantSelect(item.productId, 'color', color)}
+                                  className={cn(
+                                    selectedVariants[item.productId]?.color === color && "bg-primary/10"
+                                  )}
+                                >
+                                  {color}
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </div>
+                    )}
                     
                     <div className="flex items-center gap-2 mt-2">
                       <Button
