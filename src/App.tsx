@@ -12,6 +12,9 @@ import SupplierDashboard from "./pages/SupplierDashboard";
 import ProductDetail from "./pages/ProductDetail";
 import SearchResults from "./pages/SearchResults";
 import Manager from "./pages/Manager";
+import Suppliers from "./pages/Suppliers";
+import SupplierProfile from "./pages/SupplierProfile";
+import Support from "./pages/Support";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -32,6 +35,9 @@ const App = () => (
                 <Route path="/product/:id" element={<ProductDetail />} />
                 <Route path="/search" element={<SearchResults />} />
                 <Route path="/manager" element={<Manager />} />
+                <Route path="/suppliers" element={<Suppliers />} />
+                <Route path="/supplier/:id" element={<SupplierProfile />} />
+                <Route path="/support" element={<Support />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>

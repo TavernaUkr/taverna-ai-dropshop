@@ -205,48 +205,6 @@ const CatalogTab = ({
   );
 };
 
-const OrdersTab = () => <OrdersHistory />;
-
-const NewsTab = () => (
-  <div className="space-y-4 pb-28 animate-fade-in">
-    <h2 className="text-lg font-bold text-foreground">Новини Taverna</h2>
-    
-    <div className="space-y-4">
-      {[
-        { 
-          title: "Новий постачальник MyDrop", 
-          date: "Сьогодні", 
-          content: "Додано нову категорію товарів Military від перевіреного постачальника.",
-          type: "info" 
-        },
-        { 
-          title: "Оновлення цін", 
-          date: "Вчора", 
-          content: "Актуалізовано ціни на понад 100 товарів категорії Мілітарі.",
-          type: "update" 
-        },
-        { 
-          title: "Новорічні акції", 
-          date: "2 дні тому", 
-          content: "Стартували святкові знижки до -30% на весь асортимент!",
-          type: "promo" 
-        },
-      ].map((news, idx) => (
-        <div 
-          key={idx} 
-          className="bg-card rounded-xl p-4 border border-border hover:shadow-md transition-shadow"
-        >
-          <div className="flex items-start justify-between gap-2 mb-2">
-            <h3 className="font-semibold text-foreground">{news.title}</h3>
-            <span className="text-xs text-muted-foreground whitespace-nowrap">{news.date}</span>
-          </div>
-          <p className="text-sm text-muted-foreground">{news.content}</p>
-        </div>
-      ))}
-    </div>
-  </div>
-);
-
 const LiveTab = () => (
   <div className="space-y-4 pb-28 animate-fade-in">
     <div className="flex items-center gap-2">
@@ -257,22 +215,6 @@ const LiveTab = () => (
     <div className="space-y-3">
       {liveFeed.map((item, idx) => (
         <LiveFeedItem key={idx} {...item} />
-      ))}
-    </div>
-  </div>
-);
-
-const PromoTab = () => (
-  <div className="space-y-4 pb-28 animate-fade-in">
-    <h2 className="text-lg font-bold text-foreground">Акції та Бонуси</h2>
-    
-    <div className="space-y-4">
-      {promos.map((promo) => (
-        <PromoCard
-          key={promo.id}
-          {...promo}
-          onClick={() => toast.info(`Акція: ${promo.title}`)}
-        />
       ))}
     </div>
   </div>
@@ -388,6 +330,16 @@ const Index = () => {
     }
   };
 
+  const handleTabChange = (tab: string) => {
+    if (tab === "suppliers") {
+      navigate("/suppliers");
+    } else if (tab === "support") {
+      navigate("/support");
+    } else {
+      setActiveTab(tab);
+    }
+  };
+
   const renderTabContent = () => {
     switch (activeTab) {
       case "catalog":
@@ -403,14 +355,8 @@ const Index = () => {
             isLoading={isLoading}
           />
         );
-      case "orders":
-        return <OrdersTab />;
-      case "news":
-        return <NewsTab />;
       case "live":
         return <LiveTab />;
-      case "promo":
-        return <PromoTab />;
       case "account":
         return <AccountTab />;
       default:
@@ -446,7 +392,7 @@ const Index = () => {
 
       <BottomNavigation 
         activeTab={activeTab} 
-        onTabChange={setActiveTab} 
+        onTabChange={handleTabChange} 
       />
 
       {/* Modals */}
