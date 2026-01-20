@@ -27,7 +27,15 @@ export const ProductCard = ({
   onAddToCart,
   onToggleFavorite,
 }: ProductCardProps) => {
-  const discount = originalPrice ? Math.round((1 - price / originalPrice) * 100) : 0;
+  // Calculate discount percentage if original price exists and is higher
+  const discount = originalPrice && originalPrice > price 
+    ? Math.round((1 - price / originalPrice) * 100) 
+    : 0;
+
+  // Calculate savings amount
+  const savings = originalPrice && originalPrice > price 
+    ? originalPrice - price 
+    : 0;
 
   return (
     <div
@@ -42,10 +50,17 @@ export const ProductCard = ({
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
         />
         
-        {/* Discount Badge */}
+        {/* Discount Badge - показуємо тільки якщо є реальна знижка */}
         {discount > 0 && (
           <div className="absolute top-3 left-3 bg-live text-live-foreground text-xs font-bold px-2.5 py-1 rounded-full shadow-lg">
             -{discount}%
+          </div>
+        )}
+
+        {/* Savings Badge - додатковий бейдж з економією */}
+        {savings > 100 && (
+          <div className="absolute top-12 left-3 bg-accent text-accent-foreground text-[10px] font-medium px-2 py-0.5 rounded-full shadow-md">
+            -{savings.toLocaleString()} ₴
           </div>
         )}
 
@@ -108,14 +123,29 @@ export const ProductCard = ({
           {name}
         </h3>
         
-        <div className="mt-3 flex items-baseline gap-2">
-          <span className="text-lg font-bold text-primary">
-            {price.toLocaleString()} ₴
-          </span>
-          {originalPrice && (
-            <span className="text-sm text-muted-foreground line-through">
-              {originalPrice.toLocaleString()} ₴
+        <div className="mt-3 flex flex-col gap-1">
+          {/* Нова ціна (наша з націнкою) */}
+          <div className="flex items-baseline gap-2">
+            <span className="text-lg font-bold text-primary">
+              {price.toLocaleString()} ₴
             </span>
+            {discount > 0 && (
+              <span className="text-xs font-medium text-live bg-live/10 px-1.5 py-0.5 rounded">
+                Вигода!
+              </span>
+            )}
+          </div>
+          
+          {/* Стара ціна (оптова/закупівельна) - перекреслена */}
+          {originalPrice && originalPrice > price && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground line-through">
+                {originalPrice.toLocaleString()} ₴
+              </span>
+              <span className="text-[10px] text-muted-foreground/70">
+                опт. ціна
+              </span>
+            </div>
           )}
         </div>
       </div>

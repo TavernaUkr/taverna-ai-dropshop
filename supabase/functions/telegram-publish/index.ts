@@ -17,6 +17,15 @@ interface ProductData {
   vendor_code?: string;
   sizes?: string[];
   colors?: string[];
+  category?: { name: string };
+}
+
+// Calculate savings for display
+function calculateSavings(originalPrice: number | undefined, newPrice: number): string {
+  if (!originalPrice || originalPrice <= newPrice) return "";
+  const savings = originalPrice - newPrice;
+  const percent = Math.round((1 - newPrice / originalPrice) * 100);
+  return `🏷️ Економія: ${savings.toLocaleString()} ₴ (-${percent}%)`;
 }
 
 serve(async (req) => {
@@ -49,10 +58,10 @@ serve(async (req) => {
     // Initialize Supabase client
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Fetch product data
+    // Fetch product data with category
     const { data: product, error: productError } = await supabase
       .from("products")
-      .select("*")
+      .select("*, category:categories(name)")
       .eq("id", product_id)
       .single();
 
@@ -60,7 +69,10 @@ serve(async (req) => {
       throw new Error(`Product not found: ${productError?.message || "No data"}`);
     }
 
-    console.log("Product fetched:", product.name);
+    console.log("Product fetched:", product.name, "Price:", product.price, "Original:", product.original_price);
+
+    // Calculate savings text
+    const savingsText = calculateSavings(product.original_price, product.price);
 
     // Generate AI description using Lovable AI (Gemini)
     let aiDescription = "";
@@ -76,35 +88,37 @@ serve(async (req) => {
           messages: [
             {
               role: "system",
-              content: `Ти - досвідчений копірайтер для e-commerce магазину Taverna. 
-Твоя задача - створювати привабливі, продаючі описи товарів для Telegram каналу.
+              content: `Ти - досвідчений копірайтер для тактичного e-commerce магазину Taverna Group.
+Створи привабливий, продаючий опис товару для Telegram каналу.
 
-ПРАВИЛА:
-- Пиши українською мовою
-- Використовуй емодзі для привернення уваги
-- Опис має бути коротким (до 500 символів)
-- Включи ключові характеристики товару
-- Додай заклик до дії
-- Формат: 
-  🔥 [Назва товару]
-  
-  [Короткий опис переваг]
-  
-  💰 Ціна: [ціна] ₴
-  [Якщо є знижка: 🏷️ Стара ціна: [стара ціна] ₴]
-  
-  ✅ [Ключові характеристики]
-  
-  👇 Замовляйте прямо зараз!`
+ОБОВ'ЯЗКОВІ ПРАВИЛА:
+- Пиши ТІЛЬКИ українською мовою
+- Використовуй емодзі для привернення уваги (🔥💪🎯⚡✅🛡️)
+- Опис має бути коротким (до 400 символів без ціни)
+- Включи 2-3 ключові переваги товару
+- НЕ вигадуй характеристики
+
+ФОРМАТ (дотримуйся строго):
+🔥 [Назва товару]
+
+[2-3 речення про переваги товару]
+
+💰 Ціна: ${product.price.toLocaleString()} ₴
+${savingsText}
+
+✅ [2-3 характеристики через | ]
+
+👇 Тисни кнопку нижче, щоб замовити в один клік!`
             },
             {
               role: "user",
               content: `Створи опис для товару:
 Назва: ${product.name}
-Ціна: ${product.price} ₴
-${product.original_price ? `Стара ціна: ${product.original_price} ₴` : ""}
+Ціна для клієнта: ${product.price} ₴
+${product.original_price ? `Оптова ціна: ${product.original_price} ₴` : ""}
 Бренд: ${product.brand || "Не вказано"}
-Опис: ${product.description || "Немає опису"}
+Опис: ${product.description || product.ai_description || "Немає опису"}
+Категорія: ${product.category?.name || "Тактика"}
 Розміри: ${product.sizes?.join(", ") || "Не вказано"}
 Кольори: ${product.colors?.join(", ") || "Не вказано"}
 Артикул: ${product.vendor_code || "Не вказано"}`
@@ -124,29 +138,27 @@ ${product.original_price ? `Стара ціна: ${product.original_price} ₴` 
       console.error("AI generation error:", aiError);
     }
 
-    // Use custom text, AI description, or fallback to basic text
+    // Use custom text, AI description, or fallback to formatted basic text
     const messageText = custom_text || aiDescription || `
 🔥 ${product.name}
 
 💰 Ціна: ${product.price.toLocaleString()} ₴
-${product.original_price ? `🏷️ Стара ціна: ${product.original_price.toLocaleString()} ₴` : ""}
+${savingsText}
 
 ${product.description ? product.description.slice(0, 200) + "..." : ""}
 
-👇 Замовляйте прямо зараз!
+👇 Тисни кнопку нижче, щоб замовити в один клік!
     `.trim();
 
     // Get Mini App URL
-    const miniAppUrl = Deno.env.get("VITE_SUPABASE_URL") 
-      ? `https://taverna-ai-dropshop.lovable.app/product/${product_id}`
-      : `https://taverna-ai-dropshop.lovable.app/product/${product_id}`;
+    const miniAppUrl = `https://taverna-ai-dropshop.lovable.app/product/${product_id}`;
 
     // Prepare inline keyboard with order button
     const inlineKeyboard = {
       inline_keyboard: [
         [
           {
-            text: "🛒 Замовити",
+            text: "🛒 Замовити зараз",
             url: miniAppUrl,
           },
         ],
@@ -228,6 +240,8 @@ ${product.description ? product.description.slice(0, 200) + "..." : ""}
         message_id: telegramResult.result.message_id,
         ai_description: aiDescription,
         channel: channel_id,
+        price: product.price,
+        original_price: product.original_price,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
