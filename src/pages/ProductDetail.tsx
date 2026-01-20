@@ -27,6 +27,7 @@ import { ProductVariantSelector } from "@/components/product/ProductVariantSelec
 import { ShareButton } from "@/components/product/ShareButton";
 import { AIVerdict } from "@/components/product/AIVerdict";
 import { LowStockBadge } from "@/components/product/LowStockBadge";
+import { ProductSpecs } from "@/components/product/ProductSpecs";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -666,44 +667,24 @@ const ProductDetail = () => {
           </TabsContent>
 
           <TabsContent value="specs" className="mt-4">
-            <div className="space-y-3">
-              {product.brand && (
-                <div className="flex justify-between py-2 border-b border-border">
-                  <span className="text-sm text-muted-foreground">Бренд</span>
-                  <span className="text-sm font-medium">{product.brand}</span>
-                </div>
-              )}
-              {product.model && (
-                <div className="flex justify-between py-2 border-b border-border">
-                  <span className="text-sm text-muted-foreground">Модель</span>
-                  <span className="text-sm font-medium">{product.model}</span>
-                </div>
-              )}
-              {product.vendor_code && (
-                <div className="flex justify-between py-2 border-b border-border">
+            <ProductSpecs
+              attributes={product.attributes}
+              categoryName={product.category?.name}
+              sizes={product.sizes}
+              colors={product.colors}
+              brand={product.brand}
+              model={product.model}
+            />
+            
+            {/* Vendor code always shown */}
+            {product.vendor_code && (
+              <div className="mt-4 pt-4 border-t border-border">
+                <div className="flex justify-between py-2">
                   <span className="text-sm text-muted-foreground">Артикул</span>
-                  <span className="text-sm font-medium">{product.vendor_code}</span>
+                  <span className="text-sm font-medium font-mono">{product.vendor_code}</span>
                 </div>
-              )}
-              {product.sizes && product.sizes.length > 0 && (
-                <div className="flex justify-between py-2 border-b border-border">
-                  <span className="text-sm text-muted-foreground">Розміри</span>
-                  <span className="text-sm font-medium">{product.sizes.join(", ")}</span>
-                </div>
-              )}
-              {product.colors && product.colors.length > 0 && (
-                <div className="flex justify-between py-2 border-b border-border">
-                  <span className="text-sm text-muted-foreground">Кольори</span>
-                  <span className="text-sm font-medium">{product.colors.join(", ")}</span>
-                </div>
-              )}
-              {product.attributes && Object.entries(product.attributes).map(([key, value]) => (
-                <div key={key} className="flex justify-between py-2 border-b border-border">
-                  <span className="text-sm text-muted-foreground">{key}</span>
-                  <span className="text-sm font-medium">{String(value)}</span>
-                </div>
-              ))}
-            </div>
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="reviews" className="mt-4 space-y-6">
