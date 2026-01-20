@@ -516,7 +516,11 @@ export type Database = {
           first_name: string | null
           id: string
           is_active: boolean | null
+          last_city: string | null
+          last_city_ref: string | null
           last_name: string | null
+          last_warehouse: string | null
+          last_warehouse_ref: string | null
           phone: string | null
           telegram_id: number | null
           telegram_username: string | null
@@ -530,7 +534,11 @@ export type Database = {
           first_name?: string | null
           id?: string
           is_active?: boolean | null
+          last_city?: string | null
+          last_city_ref?: string | null
           last_name?: string | null
+          last_warehouse?: string | null
+          last_warehouse_ref?: string | null
           phone?: string | null
           telegram_id?: number | null
           telegram_username?: string | null
@@ -544,7 +552,11 @@ export type Database = {
           first_name?: string | null
           id?: string
           is_active?: boolean | null
+          last_city?: string | null
+          last_city_ref?: string | null
           last_name?: string | null
+          last_warehouse?: string | null
+          last_warehouse_ref?: string | null
           phone?: string | null
           telegram_id?: number | null
           telegram_username?: string | null
