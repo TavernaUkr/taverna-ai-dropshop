@@ -125,7 +125,7 @@ export const AdvancedFiltersSheet = ({
 
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="h-[85vh] rounded-t-3xl">
+      <SheetContent side="bottom" className="h-[85vh] rounded-t-3xl bg-card/95 backdrop-blur-xl border-t border-border/50 shadow-2xl">
         <SheetHeader className="text-left pb-4 border-b border-border">
           <div className="flex items-center justify-between">
             <SheetTitle className="flex items-center gap-2 text-lg">
@@ -319,17 +319,28 @@ export const AdvancedFiltersSheet = ({
           </div>
         </ScrollArea>
 
-        <SheetFooter className="absolute bottom-0 left-0 right-0 p-4 bg-card border-t border-border">
-          <Button
-            onClick={() => {
-              onApply?.();
-              onOpenChange(false);
-            }}
-            className="w-full h-12 text-base font-semibold"
-          >
-            Застосувати фільтри
-            {activeFiltersCount > 0 && ` (${activeFiltersCount})`}
-          </Button>
+        <SheetFooter className="absolute bottom-0 left-0 right-0 p-4 bg-card/95 backdrop-blur-xl border-t border-border safe-area-pb">
+          <div className="flex gap-3 w-full">
+            {activeFiltersCount > 0 && (
+              <Button
+                variant="outline"
+                onClick={clearFilters}
+                className="flex-shrink-0"
+              >
+                Скинути
+              </Button>
+            )}
+            <Button
+              onClick={() => {
+                onApply?.();
+                onOpenChange(false);
+              }}
+              className="flex-1 h-12 text-base font-semibold"
+            >
+              Показати результати
+              {activeFiltersCount > 0 && ` (${activeFiltersCount})`}
+            </Button>
+          </div>
         </SheetFooter>
       </SheetContent>
     </Sheet>
