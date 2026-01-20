@@ -25,6 +25,8 @@ import {
 } from "@/components/ui/dialog";
 import { ProductVariantSelector } from "@/components/product/ProductVariantSelector";
 import { ShareButton } from "@/components/product/ShareButton";
+import { AIVerdict } from "@/components/product/AIVerdict";
+import { LowStockBadge } from "@/components/product/LowStockBadge";
 
 interface Product {
   id: string;
@@ -468,6 +470,10 @@ const ProductDetail = () => {
                 <span className="text-muted-foreground">
                   ({product.stock_quantity > 99 ? "99+" : product.stock_quantity} шт)
                 </span>
+                {/* Low Stock FOMO Badge */}
+                {product.stock_quantity <= 5 && (
+                  <LowStockBadge quantity={product.stock_quantity} />
+                )}
               </div>
             )}
             {!product.in_stock && (
@@ -565,10 +571,18 @@ const ProductDetail = () => {
 
           <TabsContent value="description" className="mt-4">
             <div className="space-y-4">
+              {/* AI Verdict - Quick Summary */}
+              {product.ai_description && (
+                <AIVerdict 
+                  aiDescription={product.ai_description} 
+                  productName={product.name} 
+                />
+              )}
+              
               {/* AI Generated Description if available */}
               {product.ai_description && (
                 <div className="bg-gradient-to-r from-primary/5 to-accent/5 rounded-xl p-4 border border-primary/10">
-                  <p className="text-sm font-medium text-primary mb-2">✨ Рекомендація AI</p>
+                  <p className="text-sm font-medium text-primary mb-2">✨ Повний опис від AI</p>
                   <p className="text-sm text-foreground whitespace-pre-line leading-relaxed">
                     {product.ai_description}
                   </p>

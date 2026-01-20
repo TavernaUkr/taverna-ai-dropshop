@@ -1,6 +1,7 @@
-import { X, Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
+import { X, Minus, Plus, Trash2, ShoppingBag, Package, Truck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MultiSupplierWarning } from "./cart/MultiSupplierWarning";
+import { useMemo } from "react";
 
 export interface CartItem {
   id: string;
@@ -12,6 +13,7 @@ export interface CartItem {
   color?: string;
   quantity: number;
   supplierId?: string;
+  supplierName?: string;
 }
 
 interface CartModalProps {
@@ -33,6 +35,23 @@ export const CartModal = ({
 }: CartModalProps) => {
   const totalPrice = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
+  
+  // Group items by supplier
+  const groupedItems = useMemo(() => {
+    const groups: Record<string, { supplierName: string; items: CartItem[] }> = {};
+    
+    items.forEach(item => {
+      const supplierId = item.supplierId || 'unknown';
+      const supplierName = item.supplierName || 'Невідомий постачальник';
+      
+      if (!groups[supplierId]) {
+        groups[supplierId] = { supplierName, items: [] };
+      }
+      groups[supplierId].items.push(item);
+    });
+    
+    return Object.entries(groups);
+  }, [items]);
   
   // Count unique suppliers
   const uniqueSuppliers = new Set(items.map(item => item.supplierId).filter(Boolean));
@@ -85,60 +104,93 @@ export const CartModal = ({
                 hasFulfillmentOption={true}
               />
               
-              {items.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex gap-3 p-3 bg-card rounded-xl border border-border"
-                >
-                  {/* Image */}
-                  <img
-                    src={item.image}
-                    alt={item.name}
-                    className="w-20 h-20 rounded-lg object-cover bg-muted"
-                  />
-
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-medium text-sm text-foreground line-clamp-2">
-                      {item.name}
-                    </h4>
-                    {(item.size || item.color) && (
-                      <div className="flex gap-2 text-xs text-muted-foreground">
-                        {item.size && <span>Розмір: {item.size}</span>}
-                        {item.color && <span>Колір: {item.color}</span>}
-                      </div>
-                    )}
-                    <div className="mt-2 flex items-center justify-between">
-                      <span className="font-bold text-primary">
-                        {(item.price * item.quantity).toLocaleString()} ₴
+              {/* Grouped by Supplier */}
+              {groupedItems.map(([supplierId, group]) => (
+                <div key={supplierId} className="space-y-3">
+                  {/* Supplier Header */}
+                  {groupedItems.length > 1 && (
+                    <div className="flex items-center gap-2 px-1">
+                      <Package className="h-4 w-4 text-primary" />
+                      <span className="text-sm font-medium text-foreground">
+                        {group.supplierName}
                       </span>
+                      <span className="text-xs text-muted-foreground">
+                        ({group.items.length} {group.items.length === 1 ? 'товар' : 'товарів'})
+                      </span>
+                      <div className="flex-1 h-px bg-border ml-2" />
+                    </div>
+                  )}
+                  
+                  {/* Supplier Items */}
+                  {group.items.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex gap-3 p-3 bg-card rounded-xl border border-border"
+                    >
+                      {/* Image */}
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                        className="w-20 h-20 rounded-lg object-cover bg-muted"
+                      />
 
-                      {/* Quantity Controls */}
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => onUpdateQuantity(item.id, Math.max(1, item.quantity - 1))}
-                          className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center hover:bg-muted/80"
-                        >
-                          <Minus className="h-4 w-4" />
-                        </button>
-                        <span className="w-8 text-center text-sm font-medium">
-                          {item.quantity}
-                        </span>
-                        <button
-                          onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}
-                          className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center hover:bg-muted/80"
-                        >
-                          <Plus className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => onRemoveItem(item.id)}
-                          className="w-8 h-8 rounded-lg bg-destructive/10 flex items-center justify-center text-destructive hover:bg-destructive/20 ml-2"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-sm text-foreground line-clamp-2">
+                          {item.name}
+                        </h4>
+                        {(item.size || item.color) && (
+                          <div className="flex gap-2 text-xs text-muted-foreground">
+                            {item.size && <span>Розмір: {item.size}</span>}
+                            {item.color && <span>Колір: {item.color}</span>}
+                          </div>
+                        )}
+                        <div className="mt-2 flex items-center justify-between">
+                          <span className="font-bold text-primary">
+                            {(item.price * item.quantity).toLocaleString()} ₴
+                          </span>
+
+                          {/* Quantity Controls */}
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => onUpdateQuantity(item.id, Math.max(1, item.quantity - 1))}
+                              className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center hover:bg-muted/80"
+                            >
+                              <Minus className="h-4 w-4" />
+                            </button>
+                            <span className="w-8 text-center text-sm font-medium">
+                              {item.quantity}
+                            </span>
+                            <button
+                              onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}
+                              className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center hover:bg-muted/80"
+                            >
+                              <Plus className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => onRemoveItem(item.id)}
+                              className="w-8 h-8 rounded-lg bg-destructive/10 flex items-center justify-center text-destructive hover:bg-destructive/20 ml-2"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  ))}
+                  
+                  {/* Supplier Subtotal (if multiple suppliers) */}
+                  {groupedItems.length > 1 && (
+                    <div className="flex items-center justify-between px-3 py-2 bg-muted/50 rounded-lg text-sm">
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Truck className="h-4 w-4" />
+                        <span>Окрема доставка</span>
+                      </div>
+                      <span className="font-medium">
+                        {group.items.reduce((sum, item) => sum + item.price * item.quantity, 0).toLocaleString()} ₴
+                      </span>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
