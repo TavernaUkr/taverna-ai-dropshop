@@ -22,6 +22,7 @@ import {
   DeliveryService, 
   DeliveryType 
 } from './checkout/DeliveryServiceSelect';
+import { DeliveryEstimate } from './checkout/DeliveryEstimate';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -419,6 +420,15 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
         onCourierAddressChange={(addr) => setDeliveryData(prev => ({ ...prev, courierAddress: addr }))}
         errors={errors}
       />
+
+      {/* Delivery Estimate */}
+      {deliveryData.cityRef && (
+        <DeliveryEstimate
+          service={deliveryData.service}
+          type={deliveryData.deliveryType === 'warehouse' ? 'branch' : deliveryData.deliveryType === 'postomat' ? 'postomat' : deliveryData.deliveryType}
+          city={deliveryData.city}
+        />
+      )}
 
       <div className="flex gap-3">
         <Button variant="outline" onClick={() => goToStep('contact')} className="flex-1">

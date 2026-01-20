@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Shield, Shirt, Watch, Footprints, ChevronRight, LogOut, Loader2 } from "lucide-react";
+import { AIChatAssistant } from "@/components/AIChatAssistant";
 import { Header } from "@/components/Header";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { ProductCard } from "@/components/ProductCard";
@@ -428,11 +429,14 @@ const Index = () => {
       <WishlistModal
         isOpen={isWishlistOpen}
         onClose={() => setIsWishlistOpen(false)}
-        onProductClick={(id) => {
+        onProductClick={(id: string) => {
           setIsWishlistOpen(false);
           navigate(`/product/${id}`);
         }}
       />
+
+      {/* AI Chat Assistant - Floating Button */}
+      <AIChatAssistant />
     </div>
   );
 };
