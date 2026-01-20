@@ -1,4 +1,4 @@
-import { ShoppingCart, Heart } from "lucide-react";
+import { ShoppingCart, Heart, Package } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ProductCardProps {
@@ -9,31 +9,47 @@ interface ProductCardProps {
   image: string;
   category?: string;
   inStock?: boolean;
+  stockQuantity?: number;
+  sizes?: string[];
+  colors?: string[];
   isFavorite?: boolean;
   onClick?: () => void;
   onAddToCart?: () => void;
   onToggleFavorite?: () => void;
 }
 
-// Generate marketing "old price" - 15-20% higher than retail for discount perception
-function getMarketingOldPrice(retailPrice: number): number {
-  // Random multiplier between 1.15 and 1.25 for variety
-  const multiplier = 1.15 + (Math.random() * 0.10);
-  const oldPrice = retailPrice * multiplier;
-  
-  // Round to nice numbers
-  if (oldPrice < 100) {
-    return Math.ceil(oldPrice / 5) * 5;
-  } else if (oldPrice < 500) {
-    return Math.ceil(oldPrice / 10) * 10;
-  } else if (oldPrice < 1000) {
-    return Math.ceil(oldPrice / 50) * 50;
-  } else if (oldPrice < 5000) {
-    return Math.ceil(oldPrice / 100) * 100;
-  } else {
-    return Math.ceil(oldPrice / 500) * 500;
-  }
-}
+// Color abbreviation mapping
+const colorMap: Record<string, { abbr: string; color: string }> = {
+  "чорний": { abbr: "Чрн", color: "#000000" },
+  "black": { abbr: "Чрн", color: "#000000" },
+  "білий": { abbr: "Біл", color: "#ffffff" },
+  "white": { abbr: "Біл", color: "#ffffff" },
+  "олива": { abbr: "Олв", color: "#556b2f" },
+  "olive": { abbr: "Олв", color: "#556b2f" },
+  "хакі": { abbr: "Хкі", color: "#c3b091" },
+  "khaki": { abbr: "Хкі", color: "#c3b091" },
+  "сірий": { abbr: "Сір", color: "#808080" },
+  "gray": { abbr: "Сір", color: "#808080" },
+  "зелений": { abbr: "Злн", color: "#228b22" },
+  "green": { abbr: "Злн", color: "#228b22" },
+  "синій": { abbr: "Снй", color: "#0000cd" },
+  "blue": { abbr: "Снй", color: "#0000cd" },
+  "коричневий": { abbr: "Крч", color: "#8b4513" },
+  "brown": { abbr: "Крч", color: "#8b4513" },
+  "бежевий": { abbr: "Бжв", color: "#f5f5dc" },
+  "beige": { abbr: "Бжв", color: "#f5f5dc" },
+  "червоний": { abbr: "Чрв", color: "#dc143c" },
+  "red": { abbr: "Чрв", color: "#dc143c" },
+  "мультикам": { abbr: "Мкм", color: "#6b8e23" },
+  "multicam": { abbr: "Мкм", color: "#6b8e23" },
+  "песочний": { abbr: "Псч", color: "#c2b280" },
+  "sand": { abbr: "Псч", color: "#c2b280" },
+};
+
+const getColorInfo = (colorName: string) => {
+  const normalized = colorName.toLowerCase().trim();
+  return colorMap[normalized] || { abbr: colorName.slice(0, 3), color: "#888888" };
+};
 
 export const ProductCard = ({
   name,
@@ -42,20 +58,30 @@ export const ProductCard = ({
   image,
   category,
   inStock = true,
+  stockQuantity,
+  sizes,
+  colors,
   isFavorite = false,
   onClick,
   onAddToCart,
   onToggleFavorite,
 }: ProductCardProps) => {
   // Generate marketing "old price" for discount perception (15-20% higher than retail)
-  // Use a seeded approach based on price to keep it consistent
-  const marketingOldPrice = Math.ceil(price * 1.18 / 50) * 50; // ~18% higher, rounded nicely
+  const marketingOldPrice = Math.ceil(price * 1.18 / 50) * 50;
   
   // Calculate discount percentage based on marketing price
   const discount = Math.round((1 - price / marketingOldPrice) * 100);
   
   // Calculate savings amount for customer
   const savings = marketingOldPrice - price;
+
+  // Format sizes for display (show first 3-4)
+  const displaySizes = sizes?.slice(0, 4) || [];
+  const hasMoreSizes = sizes && sizes.length > 4;
+
+  // Format colors for display (show first 3-4)
+  const displayColors = colors?.slice(0, 4) || [];
+  const hasMoreColors = colors && colors.length > 4;
 
   return (
     <div
@@ -71,14 +97,14 @@ export const ProductCard = ({
         />
         
         {/* Discount Badge */}
-        {discount > 0 && (
+        {discount > 0 && inStock && (
           <div className="absolute top-3 left-3 bg-live text-live-foreground text-xs font-bold px-2.5 py-1 rounded-full shadow-lg">
             -{discount}%
           </div>
         )}
 
         {/* Savings Badge */}
-        {savings >= 100 && (
+        {savings >= 100 && inStock && (
           <div className="absolute top-12 left-3 bg-accent text-accent-foreground text-[10px] font-medium px-2 py-0.5 rounded-full shadow-md">
             Економія {savings.toLocaleString()} ₴
           </div>
@@ -138,26 +164,81 @@ export const ProductCard = ({
       </div>
 
       {/* Info */}
-      <div className="p-4">
+      <div className="p-3">
         <h3 className="text-sm font-medium text-card-foreground line-clamp-2 min-h-[40px] leading-snug">
           {name}
         </h3>
         
-        <div className="mt-3 flex flex-col gap-1">
-          {/* Retail price (what customer pays - includes our markup) */}
-          <div className="flex items-baseline gap-2">
-            <span className="text-lg font-bold text-primary">
-              {price.toLocaleString()} ₴
-            </span>
-            <span className="text-xs font-medium text-live bg-live/10 px-1.5 py-0.5 rounded">
-              Акція!
-            </span>
+        {/* Price and Variants Row */}
+        <div className="mt-2 flex items-start justify-between gap-2">
+          {/* Price Column */}
+          <div className="flex flex-col gap-0.5">
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-lg font-bold text-primary">
+                {price.toLocaleString()} ₴
+              </span>
+              {inStock && (
+                <span className="text-[10px] font-medium text-live bg-live/10 px-1 py-0.5 rounded">
+                  Акція
+                </span>
+              )}
+            </div>
+            
+            {/* Marketing "old price" */}
+            {inStock && (
+              <span className="text-xs text-muted-foreground line-through">
+                {marketingOldPrice.toLocaleString()} ₴
+              </span>
+            )}
           </div>
-          
-          {/* Marketing "old price" - shows perceived savings */}
-          <span className="text-sm text-muted-foreground line-through">
-            {marketingOldPrice.toLocaleString()} ₴
-          </span>
+
+          {/* Variants Column */}
+          <div className="flex flex-col items-end gap-1 text-right shrink-0">
+            {/* Stock Quantity */}
+            {inStock && stockQuantity !== undefined && stockQuantity > 0 && (
+              <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                <Package className="h-3 w-3" />
+                <span>{stockQuantity > 99 ? "99+" : stockQuantity} шт</span>
+              </div>
+            )}
+
+            {/* Sizes */}
+            {displaySizes.length > 0 && (
+              <div className="flex items-center gap-0.5 flex-wrap justify-end">
+                {displaySizes.map((size, idx) => (
+                  <span 
+                    key={idx}
+                    className="text-[9px] bg-muted px-1 py-0.5 rounded font-medium"
+                  >
+                    {size}
+                  </span>
+                ))}
+                {hasMoreSizes && (
+                  <span className="text-[9px] text-muted-foreground">+{sizes!.length - 4}</span>
+                )}
+              </div>
+            )}
+
+            {/* Colors */}
+            {displayColors.length > 0 && (
+              <div className="flex items-center gap-0.5 flex-wrap justify-end">
+                {displayColors.map((color, idx) => {
+                  const info = getColorInfo(color);
+                  return (
+                    <span 
+                      key={idx}
+                      className="w-4 h-4 rounded-full border border-border shadow-sm"
+                      style={{ backgroundColor: info.color }}
+                      title={color}
+                    />
+                  );
+                })}
+                {hasMoreColors && (
+                  <span className="text-[9px] text-muted-foreground">+{colors!.length - 4}</span>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

@@ -40,6 +40,7 @@ interface Product {
   sizes?: string[];
   colors?: string[];
   in_stock: boolean;
+  stock_quantity?: number;
   vendor_code?: string;
   ai_tags?: string[];
 }
@@ -77,6 +78,7 @@ export default function SearchResults() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const query = searchParams.get("q") || "";
+  const showAll = searchParams.get("all") === "true";
   
   const [searchInput, setSearchInput] = useState(query);
   const [products, setProducts] = useState<Product[]>([]);
@@ -116,13 +118,13 @@ export default function SearchResults() {
         .from("products")
         .select(`
           id, name, price, original_price, images, brand, model, 
-          sizes, colors, in_stock, vendor_code, ai_tags,
+          sizes, colors, in_stock, stock_quantity, vendor_code, ai_tags,
           category:categories(id, name, slug)
         `)
         .eq("in_stock", true);
 
-      // Text search
-      if (query) {
+      // Text search (skip if showing all products)
+      if (query && !showAll) {
         queryBuilder = queryBuilder.or(
           `name.ilike.%${query}%,description.ilike.%${query}%,brand.ilike.%${query}%,model.ilike.%${query}%,vendor_code.ilike.%${query}%`
         );
@@ -205,7 +207,7 @@ export default function SearchResults() {
     } finally {
       setIsLoading(false);
     }
-  }, [query, filters]);
+  }, [query, filters, showAll]);
 
   useEffect(() => {
     fetchProducts();
@@ -545,11 +547,15 @@ export default function SearchResults() {
 
       {/* Results */}
       <div className="p-4">
-        {query && (
-          <p className="text-sm text-muted-foreground mb-4">
-            Результати для "{query}": {products.length} товарів
-          </p>
-        )}
+        <p className="text-sm text-muted-foreground mb-4">
+          {showAll ? (
+            <>Всі товари: {products.length}</>
+          ) : query ? (
+            <>Результати для "{query}": {products.length} товарів</>
+          ) : (
+            <>Товарів: {products.length}</>
+          )}
+        </p>
 
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
@@ -582,6 +588,9 @@ export default function SearchResults() {
                 image={product.images?.[0]}
                 category={product.category?.name}
                 inStock={product.in_stock}
+                stockQuantity={product.stock_quantity}
+                sizes={product.sizes}
+                colors={product.colors}
                 isFavorite={isFavorite(product.id)}
                 onClick={() => navigate(`/product/${product.id}`)}
                 onAddToCart={() => handleAddToCart(product)}
