@@ -23,6 +23,7 @@ interface CartModalProps {
   onUpdateQuantity: (id: string, quantity: number) => void;
   onRemoveItem: (id: string) => void;
   onCheckout: () => void;
+  onPartialCheckout?: (supplierId: string) => void;
 }
 
 export const CartModal = ({
@@ -32,6 +33,7 @@ export const CartModal = ({
   onUpdateQuantity,
   onRemoveItem,
   onCheckout,
+  onPartialCheckout,
 }: CartModalProps) => {
   const totalPrice = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
@@ -179,16 +181,29 @@ export const CartModal = ({
                     </div>
                   ))}
                   
-                  {/* Supplier Subtotal (if multiple suppliers) */}
+                  {/* Supplier Subtotal & Partial Checkout (if multiple suppliers) */}
                   {groupedItems.length > 1 && (
-                    <div className="flex items-center justify-between px-3 py-2 bg-muted/50 rounded-lg text-sm">
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <Truck className="h-4 w-4" />
-                        <span>Окрема доставка</span>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between px-3 py-2 bg-muted/50 rounded-lg text-sm">
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <Truck className="h-4 w-4" />
+                          <span>Окрема доставка</span>
+                        </div>
+                        <span className="font-medium">
+                          {group.items.reduce((sum, item) => sum + item.price * item.quantity, 0).toLocaleString()} ₴
+                        </span>
                       </div>
-                      <span className="font-medium">
-                        {group.items.reduce((sum, item) => sum + item.price * item.quantity, 0).toLocaleString()} ₴
-                      </span>
+                      {/* Partial Checkout Button */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onPartialCheckout?.(supplierId);
+                        }}
+                        className="w-full py-2.5 px-3 rounded-lg text-sm font-medium text-primary border border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors flex items-center justify-center gap-2"
+                      >
+                        <ShoppingBag className="h-4 w-4" />
+                        Оформити лише від {group.supplierName}
+                      </button>
                     </div>
                   )}
                 </div>

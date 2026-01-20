@@ -8,6 +8,7 @@ interface ProductCardProps {
   price: number;
   originalPrice?: number; // This is supplier's wholesale price - NEVER show to customer
   image: string;
+  videoUrl?: string;
   category?: string;
   inStock?: boolean;
   stockQuantity?: number;
@@ -57,6 +58,7 @@ export const ProductCard = ({
   price,
   originalPrice, // Supplier price - hidden from customer
   image,
+  videoUrl,
   category,
   inStock = true,
   stockQuantity,
@@ -89,12 +91,30 @@ export const ProductCard = ({
       className="group relative bg-card rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 animate-fade-in border border-border/50"
       onClick={onClick}
     >
-      {/* Image */}
+      {/* Image with Video Preview on Hover */}
       <div className="relative aspect-square overflow-hidden bg-muted">
+        {/* Video Preview (shows on hover if video exists) */}
+        {videoUrl && (
+          <video
+            src={videoUrl}
+            muted
+            loop
+            playsInline
+            className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10"
+            onMouseEnter={(e) => e.currentTarget.play()}
+            onMouseLeave={(e) => {
+              e.currentTarget.pause();
+              e.currentTarget.currentTime = 0;
+            }}
+          />
+        )}
         <img
           src={image}
           alt={name}
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+          className={cn(
+            "w-full h-full object-cover transition-all duration-500",
+            videoUrl ? "group-hover:opacity-0 group-hover:scale-110" : "group-hover:scale-110"
+          )}
         />
         
         {/* Discount Badge */}
