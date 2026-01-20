@@ -230,7 +230,7 @@ const AccountTab = () => {
       <ProfileDashboard />
       
       {/* Partner Banner */}
-      <PartnerBanner onClick={() => navigate("/supplier-registration")} />
+      <PartnerBanner onClick={() => navigate("/partner")} />
       
       {/* Dev/Manager Access (hidden link) */}
       <div className="mt-4">
