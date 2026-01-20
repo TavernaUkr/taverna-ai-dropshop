@@ -28,6 +28,7 @@ interface WarehouseSelectProps {
   required?: boolean;
   error?: string;
   type?: "branch" | "postomat" | "all";
+  disabled?: boolean;
 }
 
 export const WarehouseSelect = ({
@@ -39,6 +40,7 @@ export const WarehouseSelect = ({
   required = true,
   error,
   type = "all",
+  disabled = false,
 }: WarehouseSelectProps) => {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [isLoading, setIsLoading] = useState(false);

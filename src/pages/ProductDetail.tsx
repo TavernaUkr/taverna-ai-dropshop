@@ -23,6 +23,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { ProductVariantSelector } from "@/components/product/ProductVariantSelector";
+import { ShareButton } from "@/components/product/ShareButton";
 
 interface Product {
   id: string;
@@ -413,7 +415,11 @@ const ProductDetail = () => {
               </span>
             )}
           </div>
-          <h1 className="text-xl font-bold text-foreground">{product.name}</h1>
+          {/* Title with Share Button */}
+          <div className="flex items-start justify-between gap-2">
+            <h1 className="text-xl font-bold text-foreground flex-1">{product.name}</h1>
+            <ShareButton productId={product.id} productName={product.name} />
+          </div>
           
           {/* Rating Summary */}
           {reviews.length > 0 && (
@@ -446,55 +452,34 @@ const ProductDetail = () => {
           </div>
         </div>
 
-        {/* Size Selection */}
+        {/* Variant Selectors using new components */}
         {product.sizes && product.sizes.length > 0 && (
-          <div>
-            <h3 className="text-sm font-semibold text-foreground mb-3">
-              Розмір: <span className="text-muted-foreground font-normal">{selectedSize || "Не обрано"}</span>
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              {product.sizes.map((size) => (
-                <button
-                  key={size}
-                  onClick={() => setSelectedSize(size)}
-                  className={cn(
-                    "min-w-[48px] h-10 px-4 rounded-lg border text-sm font-medium transition-all",
-                    selectedSize === size
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border bg-card text-foreground hover:border-primary/50"
-                  )}
-                >
-                  {size}
-                </button>
-              ))}
-            </div>
-          </div>
+          <ProductVariantSelector
+            label="Розмір"
+            options={product.sizes}
+            selected={selectedSize}
+            onSelect={setSelectedSize}
+            type="button"
+          />
         )}
 
-        {/* Color Selection */}
         {product.colors && product.colors.length > 0 && (
-          <div>
-            <h3 className="text-sm font-semibold text-foreground mb-3">
-              Колір: <span className="text-muted-foreground font-normal">{selectedColor || "Не обрано"}</span>
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              {product.colors.map((color) => (
-                <button
-                  key={color}
-                  onClick={() => setSelectedColor(color)}
-                  className={cn(
-                    "px-4 h-10 rounded-lg border text-sm font-medium transition-all flex items-center gap-2",
-                    selectedColor === color
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border bg-card text-foreground hover:border-primary/50"
-                  )}
-                >
-                  {selectedColor === color && <Check className="h-4 w-4" />}
-                  {color}
-                </button>
-              ))}
-            </div>
-          </div>
+          <ProductVariantSelector
+            label="Колір"
+            options={product.colors}
+            selected={selectedColor}
+            onSelect={setSelectedColor}
+            type="color"
+          />
+        )}
+
+        {/* Validation message */}
+        {((product.sizes?.length && !selectedSize) || (product.colors?.length && !selectedColor)) && (
+          <p className="text-sm text-warning bg-warning/10 rounded-lg px-3 py-2">
+            ⚠️ {!selectedSize && product.sizes?.length ? "Оберіть розмір" : ""} 
+            {!selectedSize && product.sizes?.length && !selectedColor && product.colors?.length ? " та " : ""}
+            {!selectedColor && product.colors?.length ? "Оберіть колір" : ""}
+          </p>
         )}
 
         {/* Quantity */}
@@ -726,7 +711,6 @@ const ProductDetail = () => {
         </Tabs>
       </div>
 
-      {/* Fixed Bottom Bar */}
       <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border p-4 safe-area-pb z-50">
         <div className="flex items-center gap-3">
           <div className="flex-1">
@@ -737,14 +721,23 @@ const ProductDetail = () => {
           </div>
           <Button
             onClick={handleAddToCart}
-            disabled={!product.in_stock}
+            disabled={
+              !product.in_stock || 
+              (product.sizes?.length && !selectedSize) || 
+              (product.colors?.length && !selectedColor)
+            }
             className={cn(
               "flex-1 py-6 rounded-xl font-semibold text-base",
               "flex items-center justify-center gap-2"
             )}
           >
             <ShoppingCart className="h-5 w-5" />
-            {product.in_stock ? "Додати до кошика" : "Немає в наявності"}
+            {!product.in_stock 
+              ? "Немає в наявності" 
+              : (product.sizes?.length && !selectedSize) || (product.colors?.length && !selectedColor)
+                ? "Оберіть варіант"
+                : "Додати до кошика"
+            }
           </Button>
         </div>
       </div>

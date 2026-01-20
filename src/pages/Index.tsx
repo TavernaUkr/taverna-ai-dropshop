@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Shield, Shirt, Watch, Footprints, ChevronRight, LogOut, Loader2 } from "lucide-react";
 import { Header } from "@/components/Header";
 import { BottomNavigation } from "@/components/BottomNavigation";
@@ -14,6 +14,7 @@ import { CheckoutModal } from "@/components/CheckoutModal";
 import { AllCategoriesModal } from "@/components/AllCategoriesModal";
 import { WishlistModal } from "@/components/WishlistModal";
 import { OrdersHistory } from "@/components/OrdersHistory";
+import { ProfileDashboard } from "@/components/profile/ProfileDashboard";
 import { useTelegramAuthContext } from "@/components/TelegramAuthProvider";
 import { useCartContext } from "@/contexts/CartContext";
 import { useFavoritesContext } from "@/components/FavoritesContext";
@@ -278,97 +279,24 @@ const PromoTab = () => (
 );
 
 const AccountTab = () => {
-  const { isAuthenticated, profile, logout } = useTelegramAuthContext();
-
-  const handleLogout = async () => {
-    await logout();
-    toast.success("Ви вийшли з акаунту");
-  };
-
-  const getUserInitials = () => {
-    if (profile) {
-      const first = profile.first_name?.[0] || '';
-      const last = profile.last_name?.[0] || '';
-      return (first + last).toUpperCase() || 'U';
-    }
-    return 'Г';
-  };
-
-  const getDisplayName = () => {
-    if (profile) {
-      const parts = [profile.first_name, profile.last_name].filter(Boolean);
-      return parts.join(' ') || profile.telegram_username || 'Користувач';
-    }
-    return 'Гість';
-  };
-
+  const navigate = useNavigate();
+  
   return (
     <div className="space-y-4 pb-28 animate-fade-in">
-      <h2 className="text-lg font-bold text-foreground">Акаунт</h2>
+      {/* Profile Dashboard with full functionality */}
+      <ProfileDashboard />
       
-      {/* User Card */}
-      <div className="bg-card rounded-xl p-4 shadow-sm border border-border">
-        <div className="flex items-center gap-3">
-          <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
-            {profile?.avatar_url ? (
-              <img 
-                src={profile.avatar_url} 
-                alt="Avatar" 
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <span className="text-xl font-bold text-primary">{getUserInitials()}</span>
-            )}
-          </div>
-          <div className="flex-1">
-            <h3 className="font-semibold text-foreground">{getDisplayName()}</h3>
-            {isAuthenticated ? (
-              <p className="text-sm text-muted-foreground">
-                {profile?.telegram_username ? `@${profile.telegram_username}` : profile?.phone || 'Авторизовано'}
-              </p>
-            ) : (
-              <p className="text-sm text-muted-foreground">Увійдіть для повного доступу</p>
-            )}
-          </div>
-        </div>
-        
-        {isAuthenticated ? (
-          <button 
-            onClick={handleLogout}
-            className="w-full mt-4 py-3 bg-destructive/10 text-destructive rounded-lg font-medium hover:bg-destructive/20 transition-colors flex items-center justify-center gap-2"
-          >
-            <LogOut className="h-4 w-4" />
-            Вийти
-          </button>
-        ) : (
-          <p className="w-full mt-4 py-3 text-center text-sm text-muted-foreground">
-            Відкрийте додаток у Telegram для авторизації
-          </p>
-        )}
-      </div>
-
       {/* Partner Banner */}
-      <PartnerBanner onClick={() => window.location.href = "/partner"} />
-
-      {/* Menu Items */}
-      <div className="bg-card rounded-xl overflow-hidden border border-border">
-        {[
-          { label: "Мої дані", icon: "👤" },
-          { label: "Адреси доставки", icon: "📍" },
-          { label: "Історія замовлень", icon: "📦" },
-          { label: "Налаштування", icon: "⚙️" },
-          { label: "Підтримка", icon: "💬" },
-        ].map((item, idx) => (
-          <button
-            key={idx}
-            onClick={() => toast.info(item.label)}
-            className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-muted transition-colors border-b border-border last:border-b-0"
-          >
-            <span className="text-lg">{item.icon}</span>
-            <span className="text-sm font-medium text-foreground">{item.label}</span>
-            <ChevronRight className="h-4 w-4 text-muted-foreground ml-auto" />
-          </button>
-        ))}
+      <PartnerBanner onClick={() => navigate("/supplier-registration")} />
+      
+      {/* Dev/Manager Access (hidden link) */}
+      <div className="mt-4">
+        <Link 
+          to="/manager" 
+          className="text-xs text-muted-foreground hover:text-primary transition-colors block text-center py-2"
+        >
+          🔧 Панель партнера
+        </Link>
       </div>
     </div>
   );
