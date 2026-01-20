@@ -24,6 +24,9 @@ interface Product {
   ai_category?: string;
   ai_tags?: string[];
   source_url?: string;
+  video_url?: string;
+  views_count?: number;
+  is_boosted?: boolean;
   created_at: string;
   updated_at: string;
   category?: {
@@ -59,6 +62,7 @@ export function useProducts() {
     maxPrice?: number;
     inStock?: boolean;
     limit?: number;
+    sortBy?: 'newest' | 'trending' | 'price_asc' | 'price_desc';
   }) => {
     try {
       setIsLoading(true);
@@ -68,8 +72,23 @@ export function useProducts() {
           *,
           category:categories(id, name, slug, parent_id)
         `)
-        .eq('in_stock', true)
-        .order('created_at', { ascending: false });
+        .eq('in_stock', true);
+      
+      // Apply sorting - boosted items always first
+      if (filters?.sortBy === 'trending') {
+        query = query.order('is_boosted', { ascending: false })
+                     .order('views_count', { ascending: false, nullsFirst: false });
+      } else if (filters?.sortBy === 'price_asc') {
+        query = query.order('is_boosted', { ascending: false })
+                     .order('price', { ascending: true });
+      } else if (filters?.sortBy === 'price_desc') {
+        query = query.order('is_boosted', { ascending: false })
+                     .order('price', { ascending: false });
+      } else {
+        // Default: newest, but boosted first
+        query = query.order('is_boosted', { ascending: false })
+                     .order('created_at', { ascending: false });
+      }
 
       if (filters?.categoryId) {
         query = query.eq('category_id', filters.categoryId);
