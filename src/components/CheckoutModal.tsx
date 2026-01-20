@@ -16,6 +16,12 @@ import { CitySearch } from './checkout/CitySearch';
 import { WarehouseSelect } from './checkout/WarehouseSelect';
 import { PaymentMethodSelect, PaymentMethod } from './checkout/PaymentMethodSelect';
 import { OrderSummary } from './checkout/OrderSummary';
+import { 
+  DeliveryServiceSelect, 
+  DeliveryFields, 
+  DeliveryService, 
+  DeliveryType 
+} from './checkout/DeliveryServiceSelect';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -31,10 +37,15 @@ interface ContactData {
 }
 
 interface DeliveryData {
+  service: DeliveryService;
+  deliveryType: DeliveryType;
   city: string;
   cityRef: string;
   warehouse: string;
   warehouseRef: string;
+  postalCode: string;
+  pickupPoint: string;
+  courierAddress: string;
 }
 
 export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: CheckoutModalProps) {
@@ -53,10 +64,15 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
   
   // Delivery data
   const [deliveryData, setDeliveryData] = useState<DeliveryData>({
+    service: 'nova_poshta',
+    deliveryType: 'warehouse',
     city: '',
     cityRef: '',
     warehouse: '',
     warehouseRef: '',
+    postalCode: '',
+    pickupPoint: '',
+    courierAddress: '',
   });
   
   // Payment
@@ -95,13 +111,28 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
       // Pre-fill delivery data from saved profile if available
       if (isAuthenticated && profile) {
         setDeliveryData({
+          service: 'nova_poshta',
+          deliveryType: 'warehouse',
           city: profile.last_city || '',
           cityRef: profile.last_city_ref || '',
           warehouse: profile.last_warehouse || '',
           warehouseRef: profile.last_warehouse_ref || '',
+          postalCode: '',
+          pickupPoint: '',
+          courierAddress: '',
         });
       } else {
-        setDeliveryData({ city: '', cityRef: '', warehouse: '', warehouseRef: '' });
+        setDeliveryData({ 
+          service: 'nova_poshta',
+          deliveryType: 'warehouse',
+          city: '', 
+          cityRef: '', 
+          warehouse: '', 
+          warehouseRef: '',
+          postalCode: '',
+          pickupPoint: '',
+          courierAddress: '',
+        });
       }
       setPaymentMethod('cash');
       setOrderNotes('');
@@ -131,11 +162,34 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
   const validateDelivery = (): boolean => {
     const newErrors: Record<string, string> = {};
     
-    if (!deliveryData.cityRef) {
-      newErrors.city = "Оберіть місто";
-    }
-    if (!deliveryData.warehouseRef) {
-      newErrors.warehouse = "Оберіть відділення";
+    // Common validation for all services
+    if (deliveryData.service === 'nova_poshta') {
+      if (!deliveryData.cityRef) {
+        newErrors.city = "Оберіть місто";
+      }
+      if ((deliveryData.deliveryType === 'warehouse' || 
+           deliveryData.deliveryType === 'postomat' || 
+           deliveryData.deliveryType === 'fulfillment') && 
+          !deliveryData.warehouseRef) {
+        newErrors.warehouse = "Оберіть відділення";
+      }
+      if (deliveryData.deliveryType === 'courier' && !deliveryData.courierAddress.trim()) {
+        newErrors.courierAddress = "Введіть адресу доставки";
+      }
+    } else if (deliveryData.service === 'ukrposhta') {
+      if (!deliveryData.postalCode || deliveryData.postalCode.length < 5) {
+        newErrors.postalCode = "Введіть поштовий індекс";
+      }
+    } else if (deliveryData.service === 'rozetka' || deliveryData.service === 'meest') {
+      if (!deliveryData.cityRef) {
+        newErrors.city = "Оберіть місто";
+      }
+      if (deliveryData.deliveryType === 'warehouse' && !deliveryData.pickupPoint.trim()) {
+        newErrors.pickupPoint = "Введіть точку видачі";
+      }
+      if (deliveryData.deliveryType === 'courier' && !deliveryData.courierAddress.trim()) {
+        newErrors.courierAddress = "Введіть адресу доставки";
+      }
     }
     
     setErrors(newErrors);
@@ -311,38 +365,59 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
       <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-xl">
         <Truck className="h-6 w-6 text-muted-foreground" />
         <div>
-          <h3 className="font-medium text-foreground">Доставка Nova Poshta</h3>
-          <p className="text-xs text-muted-foreground">Оберіть місто та відділення</p>
+          <h3 className="font-medium text-foreground">Доставка</h3>
+          <p className="text-xs text-muted-foreground">Оберіть службу та спосіб отримання</p>
         </div>
       </div>
 
-      <CitySearch
-        value={deliveryData.city}
+      <DeliveryServiceSelect
+        value={deliveryData.service}
+        onChange={(service) => setDeliveryData(prev => ({ 
+          ...prev, 
+          service,
+          warehouse: '',
+          warehouseRef: '',
+          pickupPoint: '',
+        }))}
+        deliveryType={deliveryData.deliveryType}
+        onDeliveryTypeChange={(deliveryType) => setDeliveryData(prev => ({ 
+          ...prev, 
+          deliveryType,
+          warehouse: '',
+          warehouseRef: '',
+        }))}
+      />
+
+      <DeliveryFields
+        service={deliveryData.service}
+        deliveryType={deliveryData.deliveryType}
         cityRef={deliveryData.cityRef}
-        onSelect={(city) => {
-          setDeliveryData({
+        city={deliveryData.city}
+        onCitySelect={(city) => {
+          setDeliveryData(prev => ({
+            ...prev,
             city: city.Description,
             cityRef: city.Ref,
             warehouse: '',
             warehouseRef: '',
-          });
+          }));
         }}
-        error={errors.city}
-      />
-
-      <WarehouseSelect
-        cityRef={deliveryData.cityRef}
-        value={deliveryData.warehouseRef}
+        warehouseRef={deliveryData.warehouseRef}
         warehouseNumber={deliveryData.warehouse}
-        onSelect={(warehouse) => {
+        onWarehouseSelect={(warehouse) => {
           setDeliveryData(prev => ({
             ...prev,
             warehouse: warehouse.Number,
             warehouseRef: warehouse.Ref,
           }));
         }}
-        error={errors.warehouse}
-        disabled={!deliveryData.cityRef}
+        postalCode={deliveryData.postalCode}
+        onPostalCodeChange={(code) => setDeliveryData(prev => ({ ...prev, postalCode: code }))}
+        pickupPoint={deliveryData.pickupPoint}
+        onPickupPointChange={(point) => setDeliveryData(prev => ({ ...prev, pickupPoint: point }))}
+        courierAddress={deliveryData.courierAddress}
+        onCourierAddressChange={(addr) => setDeliveryData(prev => ({ ...prev, courierAddress: addr }))}
+        errors={errors}
       />
 
       <div className="flex gap-3">

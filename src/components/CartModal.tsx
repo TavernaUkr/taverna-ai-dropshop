@@ -1,5 +1,6 @@
 import { X, Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { MultiSupplierWarning } from "./cart/MultiSupplierWarning";
 
 export interface CartItem {
   id: string;
@@ -10,6 +11,7 @@ export interface CartItem {
   size?: string;
   color?: string;
   quantity: number;
+  supplierId?: string;
 }
 
 interface CartModalProps {
@@ -31,6 +33,10 @@ export const CartModal = ({
 }: CartModalProps) => {
   const totalPrice = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
+  
+  // Count unique suppliers
+  const uniqueSuppliers = new Set(items.map(item => item.supplierId).filter(Boolean));
+  const supplierCount = uniqueSuppliers.size || 1;
 
   if (!isOpen) return null;
 
@@ -73,6 +79,12 @@ export const CartModal = ({
             </div>
           ) : (
             <div className="space-y-4">
+              {/* Multi-supplier warning */}
+              <MultiSupplierWarning 
+                supplierCount={supplierCount}
+                hasFulfillmentOption={true}
+              />
+              
               {items.map((item) => (
                 <div
                   key={item.id}
