@@ -3,6 +3,8 @@ import { Bot, X, Send, Loader2, Package, HelpCircle, Sparkles, MapPin, Paperclip
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useTelegramAuthContext } from "@/components/TelegramAuthProvider";
 
 interface Message {
   id: string;
@@ -20,6 +22,7 @@ const quickActions = [
 ];
 
 export const AIChatAssistant = () => {
+  const { sessionToken, profile } = useTelegramAuthContext();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -50,6 +53,18 @@ export const AIChatAssistant = () => {
       inputRef.current.focus();
     }
   }, [isOpen]);
+  
+  // Personalized welcome message when user authenticates
+  useEffect(() => {
+    if (profile?.first_name && messages.length === 1) {
+      setMessages([{
+        id: "welcome",
+        role: "assistant",
+        content: `Вітаю, ${profile.first_name}! 👋 Я ваш AI-асистент Taverna. Чим можу допомогти? Можу знайти товари, перевірити ваші замовлення, підібрати розмір або допомогти з поверненням.`,
+        timestamp: new Date(),
+      }]);
+    }
+  }, [profile?.first_name]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -89,35 +104,60 @@ export const AIChatAssistant = () => {
 
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
-    const hadImage = !!selectedImage;
+    const imageToSend = selectedImage;
     clearSelectedImage();
     setIsTyping(true);
 
-    // Simulate AI response (replace with actual API call)
-    setTimeout(() => {
-      const responses: Record<string, string> = {
-        "Де моє замовлення?": "Перевіряю статус вашого замовлення... 📦\n\nВаше останнє замовлення #TV-2847 вже в дорозі! Очікувана дата доставки: завтра до 18:00.\n\nНомер ТТН: 20450123456789",
-        "Допоможи обрати правильний розмір": "Звичайно! 📏\n\nДля правильного вибору розміру виміряйте:\n• Обхват грудей\n• Обхват талії\n• Довжину рукава\n\nМожете скинути фото товару або свої заміри — підберу ідеальний розмір!",
-        "Які зараз є акції та знижки?": "🔥 Актуальні акції:\n\n• -20% на перше замовлення\n• Flash Sale: до -50% на тактичне взуття\n• Безкоштовна доставка від 2000₴\n• Бонуси за відгуки з фото!",
-        "Як повернути або обміняти товар?": "🔄 Повернення та обмін:\n\n1. Натисніть на замовлення у розділі 'Мої замовлення'\n2. Виберіть 'Повернути товар'\n3. Додайте фото товару\n4. Ми згенеруємо ТТН для повернення\n\nПовернення безкоштовне протягом 14 днів!",
-      };
+    try {
+      // Prepare context from recent messages
+      const context = messages.slice(-6).map(m => ({
+        role: m.role,
+        content: m.content,
+      }));
 
-      let aiContent = responses[messageText] || `Дякую за ваше питання! 🤖\n\nЯ зараз аналізую запит "${messageText}".\n\nНаразі я працюю в демо-режимі. У повній версії зможу:\n• Шукати товари за параметрами\n• Відстежувати замовлення\n• Консультувати по розмірах\n• Автоматизувати повернення`;
-      
-      if (hadImage) {
-        aiContent = "📸 Дякую за фото!\n\nАналізую зображення...\n\nУ повній версії я зможу:\n• Визначити товар на фото\n• Порівняти з каталогом\n• Підібрати розмір за вашими замірами\n• Оформити повернення/обмін\n\nНаразі функція в розробці.";
+      // Extract base64 from data URL if image is present
+      let imageBase64: string | undefined;
+      if (imageToSend) {
+        const base64Match = imageToSend.match(/^data:image\/\w+;base64,(.+)$/);
+        if (base64Match) {
+          imageBase64 = base64Match[1];
+        }
       }
+
+      // Call AI Assistant Edge Function
+      const { data, error } = await supabase.functions.invoke('ai-assistant', {
+        body: {
+          message: messageText,
+          session_token: sessionToken,
+          context,
+          image_base64: imageBase64,
+        },
+      });
+
+      if (error) throw error;
 
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: aiContent,
+        content: data?.message || "Вибачте, виникла помилка. Спробуйте ще раз.",
         timestamp: new Date(),
       };
 
       setMessages((prev) => [...prev, aiMessage]);
+    } catch (error) {
+      console.error('AI Assistant error:', error);
+      
+      // Fallback response
+      const fallbackMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: "Вибачте, AI-асистент тимчасово недоступний. Спробуйте пізніше або зверніться до підтримки.",
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, fallbackMessage]);
+    } finally {
       setIsTyping(false);
-    }, 1500);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
