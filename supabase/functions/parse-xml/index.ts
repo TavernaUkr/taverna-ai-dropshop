@@ -81,9 +81,9 @@ function validateUrl(urlString: string): URL {
   return url;
 }
 
-// Price markup function: +33% with aggressive rounding
-function calculateDropPrice(originalPrice: number): number {
-  const markup = originalPrice * 1.33;
+// Price markup function with configurable percentage
+function calculateDropPrice(originalPrice: number, markupPercent: number = 33): number {
+  const markup = originalPrice * (1 + markupPercent / 100);
   
   if (markup < 100) {
     return Math.ceil(markup / 5) * 5;
@@ -172,16 +172,12 @@ function parseXML(xmlText: string) {
       return m ? m[1] : null;
     };
     
-    const originalPrice = getPrice(offerContent);
-    const dropPrice = calculateDropPrice(originalPrice);
-    
     products.push({
       external_id: offerId,
       group_id: groupId,
       name: getName(offerContent),
       description: getDescription(offerContent),
-      price: dropPrice,
-      original_price: originalPrice,
+      original_price: getPrice(offerContent),
       category_external_id: getCategoryId(offerContent),
       images: getPictures(offerContent),
       vendor_code: getVendorCode(offerContent),
@@ -212,17 +208,148 @@ function createSlug(name: string): string {
     .replace(/^-|-$/g, '');
 }
 
+// Generate AI description for product
+async function generateAIDescription(product: any, apiKey: string): Promise<string | null> {
+  try {
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-3-flash-preview',
+        messages: [
+          {
+            role: 'system',
+            content: `Ти копірайтер для тактичного інтернет-магазину Taverna Group.
+Переписуй описи товарів, роблячи їх:
+- Привабливими та продаючими
+- Українською мовою
+- Короткими (до 300 символів)
+- З ключовими характеристиками
+- БЕЗ вигаданих характеристик
+
+Повертай ТІЛЬКИ переписаний опис, нічого більше.`
+          },
+          {
+            role: 'user',
+            content: `Перепиши опис для товару:
+Назва: ${product.name}
+Оригінальний опис: ${product.description || 'Немає опису'}`
+          }
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      console.error('AI description generation failed:', response.status);
+      return null;
+    }
+
+    const aiData = await response.json();
+    return aiData.choices?.[0]?.message?.content || null;
+  } catch (error) {
+    console.error('AI description error:', error);
+    return null;
+  }
+}
+
+// Auto-categorize products using AI
+async function autoCategorizeProducts(products: any[], existingCategories: string[], apiKey: string): Promise<Map<string, string>> {
+  const categoryMap = new Map<string, string>();
+  
+  if (products.length === 0) return categoryMap;
+
+  try {
+    // Take sample of products for categorization
+    const sampleProducts = products.slice(0, 30).map(p => ({
+      id: p.external_id,
+      name: p.name,
+      desc: (p.description || '').substring(0, 100)
+    }));
+
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        messages: [
+          {
+            role: 'system',
+            content: `Ти AI для категоризації товарів тактичного магазину.
+Існуючі категорії: ${existingCategories.join(', ') || 'Мілітарі, Одяг, Взуття, Аксесуари, Спорядження'}
+
+Для кожного товару визнач найкращу категорію. Якщо потрібна нова категорія - створи її (українською).`
+          },
+          {
+            role: 'user',
+            content: `Категоризуй ці товари:\n${JSON.stringify(sampleProducts)}`
+          }
+        ],
+        tools: [
+          {
+            type: 'function',
+            function: {
+              name: 'categorize_products',
+              description: 'Присвоює категорії товарам',
+              parameters: {
+                type: 'object',
+                properties: {
+                  results: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        id: { type: 'string' },
+                        category: { type: 'string' }
+                      },
+                      required: ['id', 'category']
+                    }
+                  }
+                },
+                required: ['results']
+              }
+            }
+          }
+        ],
+        tool_choice: { type: 'function', function: { name: 'categorize_products' } }
+      }),
+    });
+
+    if (response.ok) {
+      const aiResult = await response.json();
+      const toolCall = aiResult.choices?.[0]?.message?.tool_calls?.[0];
+      if (toolCall?.function?.arguments) {
+        const categorized = JSON.parse(toolCall.function.arguments);
+        for (const item of categorized.results || []) {
+          categoryMap.set(item.id, item.category);
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Auto-categorization error:', error);
+  }
+
+  return categoryMap;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { xml_url, supplier_id, session_token } = await req.json();
+    const { xml_url, supplier_id, session_token, markup_percentage = 33, enable_ai = true } = await req.json();
     
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     
     // Validate session token
     if (!session_token) {
@@ -245,7 +372,7 @@ serve(async (req) => {
       );
     }
     
-    console.log(`User ${session.profile.id} (${session.profile.user_type}) initiating XML import`);
+    console.log(`User ${session.profile.id} (${session.profile.user_type}) initiating XML import with ${markup_percentage}% markup`);
     
     if (!xml_url) {
       throw new Error('XML URL is required');
@@ -305,9 +432,46 @@ serve(async (req) => {
       console.error('Import log error:', logError);
     }
     
-    // Insert/update categories
+    // Get existing categories for AI context
+    const { data: existingCats } = await supabase
+      .from('categories')
+      .select('id, name, slug, external_id');
+    
+    const existingCategoryNames = existingCats?.map(c => c.name) || [];
+    
+    // Auto-categorize if AI enabled
+    let aiCategoryMap = new Map<string, string>();
+    if (enable_ai && LOVABLE_API_KEY) {
+      console.log('Running AI auto-categorization...');
+      aiCategoryMap = await autoCategorizeProducts(products, existingCategoryNames, LOVABLE_API_KEY);
+      console.log(`AI categorized ${aiCategoryMap.size} products`);
+    }
+    
+    // Insert/update categories (including AI-suggested ones)
     const categoryIdMap = new Map<string, string>();
     
+    // Create AI-suggested categories if they don't exist
+    const aiCategories = new Set(aiCategoryMap.values());
+    for (const catName of aiCategories) {
+      if (!existingCategoryNames.includes(catName)) {
+        const slug = createSlug(catName);
+        const { data } = await supabase
+          .from('categories')
+          .upsert({
+            name: catName,
+            slug,
+            is_active: true,
+          }, { onConflict: 'slug' })
+          .select()
+          .single();
+        
+        if (data) {
+          categoryIdMap.set(catName, data.id);
+        }
+      }
+    }
+    
+    // Insert XML categories
     for (const cat of categories.filter(c => !c.parentId)) {
       const slug = createSlug(cat.name) + '-' + cat.id;
       const { data, error } = await supabase
@@ -323,6 +487,7 @@ serve(async (req) => {
       
       if (data) {
         categoryIdMap.set(cat.id, data.id);
+        categoryIdMap.set(cat.name, data.id);
       }
       if (error) console.error('Category insert error:', error);
     }
@@ -344,19 +509,20 @@ serve(async (req) => {
       
       if (data) {
         categoryIdMap.set(cat.id, data.id);
+        categoryIdMap.set(cat.name, data.id);
       }
       if (error) console.error('Child category insert error:', error);
     }
     
+    // Refresh category map
     const { data: allCategories } = await supabase
       .from('categories')
-      .select('id, external_id');
+      .select('id, external_id, name');
     
     if (allCategories) {
       for (const cat of allCategories) {
-        if (cat.external_id) {
-          categoryIdMap.set(cat.external_id, cat.id);
-        }
+        if (cat.external_id) categoryIdMap.set(cat.external_id, cat.id);
+        categoryIdMap.set(cat.name, cat.id);
       }
     }
     
@@ -371,6 +537,7 @@ serve(async (req) => {
     
     let importedCount = 0;
     let failedCount = 0;
+    let aiDescriptionsGenerated = 0;
     
     for (const [groupKey, groupProducts] of productGroups) {
       const firstProduct = groupProducts[0];
@@ -378,9 +545,25 @@ serve(async (req) => {
       const totalStock = groupProducts.reduce((sum, p) => sum + (p.stock_quantity || 0), 0);
       const inStock = groupProducts.some(p => p.in_stock);
       
-      const categoryId = firstProduct.category_external_id 
-        ? categoryIdMap.get(firstProduct.category_external_id) 
-        : null;
+      // Calculate price with markup
+      const dropPrice = calculateDropPrice(firstProduct.original_price, markup_percentage);
+      
+      // Determine category (AI-suggested or from XML)
+      let categoryId = null;
+      const aiCategory = aiCategoryMap.get(firstProduct.external_id);
+      if (aiCategory) {
+        categoryId = categoryIdMap.get(aiCategory);
+      }
+      if (!categoryId && firstProduct.category_external_id) {
+        categoryId = categoryIdMap.get(firstProduct.category_external_id);
+      }
+      
+      // Generate AI description (for first 50 products to avoid rate limits)
+      let aiDescription = null;
+      if (enable_ai && LOVABLE_API_KEY && importedCount < 50) {
+        aiDescription = await generateAIDescription(firstProduct, LOVABLE_API_KEY);
+        if (aiDescription) aiDescriptionsGenerated++;
+      }
       
       const { error } = await supabase
         .from('products')
@@ -390,8 +573,11 @@ serve(async (req) => {
           supplier_id,
           category_id: categoryId,
           name: firstProduct.name,
-          description: firstProduct.description,
-          price: firstProduct.price,
+          description: aiDescription || firstProduct.description,
+          original_description: firstProduct.description,
+          ai_description: aiDescription,
+          ai_category: aiCategory,
+          price: dropPrice,
           original_price: firstProduct.original_price,
           currency: 'UAH',
           vendor_code: firstProduct.vendor_code,
@@ -424,9 +610,11 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        categories_count: categories.length,
+        categories_count: categories.length + aiCategories.size,
         products_count: importedCount,
         failed_count: failedCount,
+        ai_descriptions_generated: aiDescriptionsGenerated,
+        markup_applied: `${markup_percentage}%`,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

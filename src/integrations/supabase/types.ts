@@ -402,6 +402,7 @@ export type Database = {
       products: {
         Row: {
           ai_category: string | null
+          ai_description: string | null
           ai_tags: string[] | null
           attributes: Json | null
           brand: string | null
@@ -417,6 +418,7 @@ export type Database = {
           in_stock: boolean | null
           model: string | null
           name: string
+          original_description: string | null
           original_price: number | null
           price: number
           sizes: string[] | null
@@ -428,6 +430,7 @@ export type Database = {
         }
         Insert: {
           ai_category?: string | null
+          ai_description?: string | null
           ai_tags?: string[] | null
           attributes?: Json | null
           brand?: string | null
@@ -443,6 +446,7 @@ export type Database = {
           in_stock?: boolean | null
           model?: string | null
           name: string
+          original_description?: string | null
           original_price?: number | null
           price: number
           sizes?: string[] | null
@@ -454,6 +458,7 @@ export type Database = {
         }
         Update: {
           ai_category?: string | null
+          ai_description?: string | null
           ai_tags?: string[] | null
           attributes?: Json | null
           brand?: string | null
@@ -469,6 +474,7 @@ export type Database = {
           in_stock?: boolean | null
           model?: string | null
           name?: string
+          original_description?: string | null
           original_price?: number | null
           price?: number
           sizes?: string[] | null
@@ -760,6 +766,98 @@ export type Database = {
           },
         ]
       }
+      supplier_applications: {
+        Row: {
+          ai_analysis: Json | null
+          company_name: string | null
+          created_at: string
+          description: string | null
+          email: string
+          full_name: string
+          id: string
+          phone: string
+          plagiarism_score: number | null
+          profile_id: string | null
+          rejection_reason: string | null
+          reseller_probability: number | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          shop_name: string
+          similar_suppliers: Json | null
+          status: string
+          suggested_categories: string[] | null
+          supplier_type: string
+          tax_id: string
+          telegram_channel: string | null
+          telegram_id: number | null
+          telegram_username: string | null
+          updated_at: string
+          xml_url: string | null
+        }
+        Insert: {
+          ai_analysis?: Json | null
+          company_name?: string | null
+          created_at?: string
+          description?: string | null
+          email: string
+          full_name: string
+          id?: string
+          phone: string
+          plagiarism_score?: number | null
+          profile_id?: string | null
+          rejection_reason?: string | null
+          reseller_probability?: number | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          shop_name: string
+          similar_suppliers?: Json | null
+          status?: string
+          suggested_categories?: string[] | null
+          supplier_type: string
+          tax_id: string
+          telegram_channel?: string | null
+          telegram_id?: number | null
+          telegram_username?: string | null
+          updated_at?: string
+          xml_url?: string | null
+        }
+        Update: {
+          ai_analysis?: Json | null
+          company_name?: string | null
+          created_at?: string
+          description?: string | null
+          email?: string
+          full_name?: string
+          id?: string
+          phone?: string
+          plagiarism_score?: number | null
+          profile_id?: string | null
+          rejection_reason?: string | null
+          reseller_probability?: number | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          shop_name?: string
+          similar_suppliers?: Json | null
+          status?: string
+          suggested_categories?: string[] | null
+          supplier_type?: string
+          tax_id?: string
+          telegram_channel?: string | null
+          telegram_id?: number | null
+          telegram_username?: string | null
+          updated_at?: string
+          xml_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_applications_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       suppliers: {
         Row: {
           company_name: string
@@ -770,6 +868,7 @@ export type Database = {
           id: string
           is_active: boolean | null
           legal_type: string
+          markup_percentage: number | null
           shop_name: string
           tax_code: string | null
           telegram_channel_url: string | null
@@ -786,6 +885,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           legal_type: string
+          markup_percentage?: number | null
           shop_name: string
           tax_code?: string | null
           telegram_channel_url?: string | null
@@ -802,6 +902,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           legal_type?: string
+          markup_percentage?: number | null
           shop_name?: string
           tax_code?: string | null
           telegram_channel_url?: string | null
