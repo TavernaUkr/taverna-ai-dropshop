@@ -1,20 +1,22 @@
 import { useState, useRef, useEffect } from "react";
-import { Bot, X, Send, Loader2, Package, HelpCircle, Sparkles, MapPin } from "lucide-react";
+import { Bot, X, Send, Loader2, Package, HelpCircle, Sparkles, MapPin, Paperclip, Image as ImageIcon, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
+  image?: string;
 }
 
 const quickActions = [
   { icon: Package, label: "Де моє замовлення?", prompt: "Де моє замовлення?" },
   { icon: HelpCircle, label: "Допоможи обрати розмір", prompt: "Допоможи обрати правильний розмір" },
   { icon: Sparkles, label: "Акції дня", prompt: "Які зараз є акції та знижки?" },
-  { icon: MapPin, label: "Знайти магазин", prompt: "Знайти найближче відділення Нової Пошти" },
+  { icon: RotateCcw, label: "Повернення товару", prompt: "Як повернути або обміняти товар?" },
 ];
 
 export const AIChatAssistant = () => {
@@ -23,14 +25,17 @@ export const AIChatAssistant = () => {
     {
       id: "welcome",
       role: "assistant",
-      content: "Вітаю! 👋 Я ваш AI-асистент Taverna. Чим можу допомогти? Можу знайти товари, перевірити статус замовлення або підібрати розмір.",
+      content: "Вітаю! 👋 Я ваш AI-асистент Taverna. Чим можу допомогти? Можу знайти товари, перевірити статус замовлення, підібрати розмір або допомогти з поверненням.",
       timestamp: new Date(),
     },
   ]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -46,34 +51,67 @@ export const AIChatAssistant = () => {
     }
   }, [isOpen]);
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Файл занадто великий (макс. 5MB)');
+        return;
+      }
+      
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSelectedImage(reader.result as string);
+        setSelectedFileName(file.name);
+        toast.success('Фото додано');
+      };
+      reader.readAsDataURL(file);
+    }
+    e.target.value = '';
+  };
+
+  const clearSelectedImage = () => {
+    setSelectedImage(null);
+    setSelectedFileName(null);
+  };
+
   const handleSend = async (text?: string) => {
     const messageText = text || input.trim();
-    if (!messageText) return;
+    if (!messageText && !selectedImage) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
       role: "user",
-      content: messageText,
+      content: messageText || (selectedImage ? "📷 Фото для аналізу" : ""),
       timestamp: new Date(),
+      image: selectedImage || undefined,
     };
 
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
+    const hadImage = !!selectedImage;
+    clearSelectedImage();
     setIsTyping(true);
 
     // Simulate AI response (replace with actual API call)
     setTimeout(() => {
       const responses: Record<string, string> = {
         "Де моє замовлення?": "Перевіряю статус вашого замовлення... 📦\n\nВаше останнє замовлення #TV-2847 вже в дорозі! Очікувана дата доставки: завтра до 18:00.\n\nНомер ТТН: 20450123456789",
-        "Допоможи обрати правильний розмір": "Звичайно! 📏\n\nДля правильного вибору розміру виміряйте:\n• Обхват грудей\n• Обхват талії\n• Довжину рукава\n\nМожете скинути фото або назву товару — підберу ідеальний розмір!",
+        "Допоможи обрати правильний розмір": "Звичайно! 📏\n\nДля правильного вибору розміру виміряйте:\n• Обхват грудей\n• Обхват талії\n• Довжину рукава\n\nМожете скинути фото товару або свої заміри — підберу ідеальний розмір!",
         "Які зараз є акції та знижки?": "🔥 Актуальні акції:\n\n• -20% на перше замовлення\n• Flash Sale: до -50% на тактичне взуття\n• Безкоштовна доставка від 2000₴\n• Бонуси за відгуки з фото!",
-        "Знайти найближче відділення Нової Пошти": "📍 Для пошуку відділення перейдіть в оформлення замовлення — там є зручний вибір міста та відділення з картою!\n\nАбо скажіть назву вашого міста, і я допоможу знайти.",
+        "Як повернути або обміняти товар?": "🔄 Повернення та обмін:\n\n1. Натисніть на замовлення у розділі 'Мої замовлення'\n2. Виберіть 'Повернути товар'\n3. Додайте фото товару\n4. Ми згенеруємо ТТН для повернення\n\nПовернення безкоштовне протягом 14 днів!",
       };
+
+      let aiContent = responses[messageText] || `Дякую за ваше питання! 🤖\n\nЯ зараз аналізую запит "${messageText}".\n\nНаразі я працюю в демо-режимі. У повній версії зможу:\n• Шукати товари за параметрами\n• Відстежувати замовлення\n• Консультувати по розмірах\n• Автоматизувати повернення`;
+      
+      if (hadImage) {
+        aiContent = "📸 Дякую за фото!\n\nАналізую зображення...\n\nУ повній версії я зможу:\n• Визначити товар на фото\n• Порівняти з каталогом\n• Підібрати розмір за вашими замірами\n• Оформити повернення/обмін\n\nНаразі функція в розробці.";
+      }
 
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: responses[messageText] || `Дякую за ваше питання! 🤖\n\nЯ зараз аналізую запит "${messageText}".\n\nНаразі я працюю в демо-режимі. У повній версії зможу:\n• Шукати товари за параметрами\n• Відстежувати замовлення\n• Консультувати по розмірах\n• Надавати персоналізовані рекомендації`,
+        content: aiContent,
         timestamp: new Date(),
       };
 
@@ -158,6 +196,13 @@ export const AIChatAssistant = () => {
                       : "bg-muted text-foreground rounded-bl-sm"
                   )}
                 >
+                  {message.image && (
+                    <img 
+                      src={message.image} 
+                      alt="Завантажене фото" 
+                      className="max-w-full rounded-lg mb-2 max-h-40 object-cover"
+                    />
+                  )}
                   <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                   <p
                     className={cn(
@@ -213,15 +258,54 @@ export const AIChatAssistant = () => {
             </div>
           )}
 
+          {/* Selected Image Preview */}
+          {selectedImage && (
+            <div className="px-4 pb-2">
+              <div className="relative inline-block">
+                <img 
+                  src={selectedImage} 
+                  alt="Preview" 
+                  className="h-16 rounded-lg object-cover"
+                />
+                <button
+                  onClick={clearSelectedImage}
+                  className="absolute -top-2 -right-2 w-5 h-5 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+                <p className="text-xs text-muted-foreground mt-1 truncate max-w-[100px]">
+                  {selectedFileName}
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Input */}
           <form onSubmit={handleSubmit} className="p-4 border-t border-border">
             <div className="flex items-center gap-2">
+              {/* File Upload Button */}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="h-11 w-11 rounded-xl flex items-center justify-center bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors"
+                disabled={isTyping}
+              >
+                <Paperclip className="h-5 w-5" />
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+              
               <input
                 ref={inputRef}
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Напишіть повідомлення..."
+                placeholder={selectedImage ? "Опишіть фото..." : "Напишіть повідомлення..."}
                 className={cn(
                   "flex-1 h-11 px-4 rounded-xl",
                   "bg-muted border border-border",
@@ -234,7 +318,7 @@ export const AIChatAssistant = () => {
               <Button
                 type="submit"
                 size="icon"
-                disabled={!input.trim() || isTyping}
+                disabled={(!input.trim() && !selectedImage) || isTyping}
                 className="h-11 w-11 rounded-xl"
               >
                 {isTyping ? (
@@ -244,6 +328,11 @@ export const AIChatAssistant = () => {
                 )}
               </Button>
             </div>
+            
+            {/* Disclaimer */}
+            <p className="text-[10px] text-center text-muted-foreground mt-3">
+              Працює на базі Google Gemini AI • Дані захищені
+            </p>
           </form>
         </div>
       )}

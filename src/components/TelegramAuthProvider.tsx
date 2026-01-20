@@ -50,7 +50,7 @@ export function TelegramAuthProvider({ children }: TelegramAuthProviderProps) {
     const tg = (window as any).Telegram?.WebApp;
     
     if (tg?.initDataUnsafe?.user) {
-      // We have Telegram user data, show confirmation dialog
+      // We have Telegram user data, store it
       setTelegramData(tg.initDataUnsafe.user);
       
       // If already authenticated, don't show dialog
@@ -68,6 +68,20 @@ export function TelegramAuthProvider({ children }: TelegramAuthProviderProps) {
       tg.ready();
     }
   }, [auth.isAuthenticated, auth.isLoading]);
+
+  // Listen for manual auth request from profile
+  useEffect(() => {
+    const handleAuthRequest = () => {
+      const tg = (window as any).Telegram?.WebApp;
+      if (tg?.initDataUnsafe?.user && !auth.isAuthenticated) {
+        setTelegramData(tg.initDataUnsafe.user);
+        setShowConfirmDialog(true);
+      }
+    };
+
+    window.addEventListener('taverna:request-auth', handleAuthRequest);
+    return () => window.removeEventListener('taverna:request-auth', handleAuthRequest);
+  }, [auth.isAuthenticated]);
 
   const handleConfirmAuth = async () => {
     setPendingAuth(true);
@@ -137,10 +151,14 @@ export function TelegramAuthProvider({ children }: TelegramAuthProviderProps) {
             </div>
           </div>
 
-          <p className="text-sm text-muted-foreground text-center">
-            Натисніть «Підтвердити» для входу у ваш акаунт Taverna. 
-            Ваші дані Telegram будуть використані для створення профілю.
-          </p>
+          <div className="text-sm text-muted-foreground space-y-2 p-3 bg-muted/50 rounded-lg">
+            <p className="font-medium text-foreground">При авторизації ви надаєте згоду на:</p>
+            <ul className="list-disc list-inside space-y-1 text-xs">
+              <li>Обробку вашого імені та аватару з Telegram</li>
+              <li>Збереження історії замовлень</li>
+              <li>Отримання сповіщень про статус замовлень</li>
+            </ul>
+          </div>
 
           <DialogFooter className="flex gap-2 sm:gap-2 mt-4">
             <Button 
