@@ -30,6 +30,7 @@ interface Product {
   id: string;
   name: string;
   description?: string;
+  ai_description?: string;
   price: number;
   original_price?: number;
   images?: string[];
@@ -41,6 +42,7 @@ interface Product {
   in_stock?: boolean;
   stock_quantity?: number;
   attributes?: Record<string, unknown>;
+  supplier_id?: string;
   category?: {
     id: string;
     name: string;
@@ -97,7 +99,14 @@ const ProductDetail = () => {
         .single();
 
       if (error) throw error;
-      setProduct(data as unknown as Product);
+      
+      const productData = data as unknown as Product;
+      setProduct(productData);
+      
+      // Auto-select first color if available
+      if (productData.colors?.length) {
+        setSelectedColor(productData.colors[0]);
+      }
     } catch (err) {
       console.error("Error fetching product:", err);
       toast.error("Товар не знайдено");
@@ -440,14 +449,29 @@ const ProductDetail = () => {
             </div>
           )}
           
-          <div className="mt-3 flex items-baseline gap-3">
-            <span className="text-2xl font-bold text-primary">
-              {product.price.toLocaleString()} ₴
-            </span>
-            {product.original_price && (
-              <span className="text-base text-muted-foreground line-through">
-                {product.original_price.toLocaleString()} ₴
+          <div className="mt-3 space-y-1">
+            <div className="flex items-baseline gap-3">
+              <span className="text-2xl font-bold text-primary">
+                {product.price.toLocaleString()} ₴
               </span>
+              {product.original_price && (
+                <span className="text-base text-muted-foreground line-through">
+                  {product.original_price.toLocaleString()} ₴
+                </span>
+              )}
+            </div>
+            
+            {/* Stock Quantity Info */}
+            {product.in_stock && product.stock_quantity !== undefined && product.stock_quantity > 0 && (
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-success">✓ В наявності</span>
+                <span className="text-muted-foreground">
+                  ({product.stock_quantity > 99 ? "99+" : product.stock_quantity} шт)
+                </span>
+              </div>
+            )}
+            {!product.in_stock && (
+              <div className="text-sm text-destructive">✗ Немає в наявності</div>
             )}
           </div>
         </div>
@@ -468,7 +492,17 @@ const ProductDetail = () => {
             label="Колір"
             options={product.colors}
             selected={selectedColor}
-            onSelect={setSelectedColor}
+            onSelect={(color) => {
+              setSelectedColor(color);
+              // Auto-change image based on color index (if multiple images exist)
+              if (product.images && product.images.length > 1) {
+                const colorIndex = product.colors?.indexOf(color) || 0;
+                // Map color to image if we have enough images
+                if (colorIndex < product.images.length) {
+                  setSelectedImage(colorIndex);
+                }
+              }
+            }}
             type="color"
           />
         )}
@@ -530,9 +564,22 @@ const ProductDetail = () => {
           </TabsList>
 
           <TabsContent value="description" className="mt-4">
-            <p className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">
-              {product.description || "Опис товару відсутній"}
-            </p>
+            <div className="space-y-4">
+              {/* AI Generated Description if available */}
+              {product.ai_description && (
+                <div className="bg-gradient-to-r from-primary/5 to-accent/5 rounded-xl p-4 border border-primary/10">
+                  <p className="text-sm font-medium text-primary mb-2">✨ Рекомендація AI</p>
+                  <p className="text-sm text-foreground whitespace-pre-line leading-relaxed">
+                    {product.ai_description}
+                  </p>
+                </div>
+              )}
+              
+              {/* Original Description */}
+              <p className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">
+                {product.description || "Опис товару відсутній"}
+              </p>
+            </div>
           </TabsContent>
 
           <TabsContent value="specs" className="mt-4">

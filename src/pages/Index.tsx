@@ -122,6 +122,7 @@ const CatalogTab = ({
   products,
   categories,
   isLoading,
+  onViewAllProducts,
 }: { 
   onOpenAllCategories: () => void; 
   onProductClick: (id: string) => void;
@@ -131,6 +132,7 @@ const CatalogTab = ({
   products: any[];
   categories: any[];
   isLoading: boolean;
+  onViewAllProducts: () => void;
 }) => {
   const displayProducts = products.length > 0 ? products : fallbackProducts;
   
@@ -172,7 +174,10 @@ const CatalogTab = ({
       <section>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-bold text-foreground">Популярні товари</h2>
-          <button className="text-sm text-primary flex items-center gap-1 hover:underline">
+          <button 
+            onClick={onViewAllProducts}
+            className="text-sm text-primary flex items-center gap-1 hover:underline"
+          >
             Всі товари <ChevronRight className="h-4 w-4" />
           </button>
         </div>
@@ -193,6 +198,9 @@ const CatalogTab = ({
                 image={product.images?.[0] || tacticalGloves}
                 category={product.category?.name}
                 inStock={product.in_stock !== false}
+                stockQuantity={product.stock_quantity}
+                sizes={product.sizes}
+                colors={product.colors}
                 isFavorite={isFavorite(product.id)}
                 onClick={() => onProductClick(product.id)}
                 onAddToCart={() => onAddToCart(product)}
@@ -341,6 +349,10 @@ const Index = () => {
     }
   };
 
+  const handleViewAllProducts = () => {
+    navigate('/search?all=true');
+  };
+
   const renderTabContent = () => {
     switch (activeTab) {
       case "catalog":
@@ -354,6 +366,7 @@ const Index = () => {
             products={products}
             categories={categories}
             isLoading={isLoading}
+            onViewAllProducts={handleViewAllProducts}
           />
         );
       case "live":
@@ -371,6 +384,7 @@ const Index = () => {
             products={products}
             categories={categories}
             isLoading={isLoading}
+            onViewAllProducts={handleViewAllProducts}
           />
         );
     }
