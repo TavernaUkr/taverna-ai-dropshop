@@ -1,4 +1,4 @@
-import { Store, Package, Radio, Newspaper, Gift, User } from "lucide-react";
+import { Store, Users, Radio, HelpCircle, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface NavItem {
@@ -16,11 +16,10 @@ interface BottomNavigationProps {
 
 const navItems: NavItem[] = [
   { id: "catalog", label: "Каталог", icon: <Store className="h-5 w-5" /> },
-  { id: "orders", label: "Замовлення", icon: <Package className="h-5 w-5" /> },
-  { id: "news", label: "Новини", icon: <Newspaper className="h-5 w-5" />, isCenter: true },
+  { id: "suppliers", label: "Продавці", icon: <Users className="h-5 w-5" /> },
   { id: "live", label: "Live", icon: <Radio className="h-5 w-5" />, isCenter: true, isLive: true },
-  { id: "promo", label: "Акції", icon: <Gift className="h-5 w-5" /> },
-  { id: "account", label: "Акаунт", icon: <User className="h-5 w-5" /> },
+  { id: "support", label: "Підтримка", icon: <HelpCircle className="h-5 w-5" /> },
+  { id: "account", label: "Профіль", icon: <User className="h-5 w-5" /> },
 ];
 
 export const BottomNavigation = ({ activeTab, onTabChange }: BottomNavigationProps) => {
@@ -41,12 +40,8 @@ export const BottomNavigation = ({ activeTab, onTabChange }: BottomNavigationPro
                   className={cn(
                     "w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200 shadow-lg",
                     isActive
-                      ? item.isLive 
-                        ? "bg-live text-live-foreground scale-110"
-                        : "bg-accent text-accent-foreground scale-110"
-                      : item.isLive
-                        ? "bg-live/80 text-live-foreground group-hover:scale-105"
-                        : "bg-primary text-primary-foreground group-hover:scale-105"
+                      ? "bg-live text-live-foreground scale-110"
+                      : "bg-live/80 text-live-foreground group-hover:scale-105"
                   )}
                 >
                   {item.icon}
@@ -57,9 +52,7 @@ export const BottomNavigation = ({ activeTab, onTabChange }: BottomNavigationPro
                 <span
                   className={cn(
                     "text-[10px] font-medium transition-colors",
-                    isActive 
-                      ? item.isLive ? "text-live" : "text-accent"
-                      : "text-muted-foreground"
+                    isActive ? "text-live" : "text-muted-foreground"
                   )}
                 >
                   {item.label}

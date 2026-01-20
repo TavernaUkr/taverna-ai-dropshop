@@ -68,6 +68,17 @@ export default function Manager() {
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(["telegram"]);
   const [isAutoAds, setIsAutoAds] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
+
+  // Generate invite link for new suppliers
+  const generateInviteLink = () => {
+    const baseUrl = window.location.origin;
+    const inviteCode = Math.random().toString(36).substring(2, 10).toUpperCase();
+    const link = `${baseUrl}/partner?ref=${inviteCode}`;
+    setInviteLink(link);
+    navigator.clipboard.writeText(link);
+    toast.success("Посилання скопійовано!");
+  };
 
   // Mock data for promotional posts
   const [promotionalPosts] = useState<PromotionalPost[]>([
@@ -202,8 +213,19 @@ export default function Manager() {
               <p className="text-xs text-muted-foreground">Управління рекламою</p>
             </div>
           </div>
-          <Megaphone className="h-6 w-6 text-primary" />
+          <Button variant="outline" size="sm" onClick={generateInviteLink}>
+            <Plus className="h-4 w-4 mr-1" />
+            Запросити
+          </Button>
         </div>
+        {inviteLink && (
+          <div className="px-4 pb-3">
+            <div className="bg-primary/10 rounded-lg p-2 text-xs text-center">
+              <span className="text-muted-foreground">Посилання: </span>
+              <span className="text-primary font-mono">{inviteLink}</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Content */}
