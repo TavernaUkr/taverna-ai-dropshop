@@ -101,6 +101,14 @@ async function validateSession(supabase: any, sessionToken: string): Promise<any
     .update({ last_used_at: new Date().toISOString() })
     .eq('id', session.id);
   
+  // Fetch user roles from secure table
+  const { data: roles } = await supabase
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', session.profile.id);
+  
+  session.profile.roles = roles?.map((r: any) => r.role) || ['customer'];
+  
   return session;
 }
 
@@ -504,6 +512,14 @@ serve(async (req) => {
       }
       
       profile = newProfile;
+      
+      // Create default customer role for new user
+      await supabase
+        .from('user_roles')
+        .insert({
+          user_id: profile.id,
+          role: 'customer',
+        });
     } else {
       // Update profile with latest Telegram data
       const { data: updatedProfile, error: updateError } = await supabase
@@ -522,6 +538,14 @@ serve(async (req) => {
         profile = updatedProfile;
       }
     }
+    
+    // Fetch user roles from secure table
+    const { data: userRoles } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', profile.id);
+    
+    profile.roles = userRoles?.map((r: any) => r.role) || ['customer'];
     
     // Create session token
     const sessionToken = generateSessionToken();
