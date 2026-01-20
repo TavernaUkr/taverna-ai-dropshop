@@ -196,11 +196,16 @@ const CatalogTab = ({
                 price={product.price}
                 originalPrice={product.original_price}
                 image={product.images?.[0] || tacticalGloves}
+                videoUrl={product.video_url}
                 category={product.category?.name}
                 inStock={product.in_stock !== false}
                 stockQuantity={product.stock_quantity}
                 sizes={product.sizes}
                 colors={product.colors}
+                rating={product.rating}
+                reviewCount={product.review_count}
+                isBoosted={product.is_boosted}
+                viewsCount={product.views_count}
                 isFavorite={isFavorite(product.id)}
                 onClick={() => onProductClick(product.id)}
                 onAddToCart={() => onAddToCart(product)}
@@ -269,8 +274,13 @@ const Index = () => {
   // Use favorites context
   const { isFavorite, toggleFavorite, totalFavorites } = useFavoritesContext();
   
-  // Use products hook for real database products
-  const { products, categories, isLoading } = useProducts();
+  // Use products hook for real database products with Trending sort
+  const { products, categories, isLoading, fetchProducts } = useProducts();
+  
+  // Fetch products sorted by trending on mount
+  useEffect(() => {
+    fetchProducts({ sortBy: 'trending', limit: 20 });
+  }, [fetchProducts]);
 
   const handleSearch = (query: string) => {
     setIsSearchOpen(false);

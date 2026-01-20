@@ -1,4 +1,4 @@
-import { ShoppingCart, Heart, Package, Star } from "lucide-react";
+import { ShoppingCart, Heart, Package, Star, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LowStockBadge } from "./product/LowStockBadge";
 import { useState, useEffect } from "react";
@@ -18,6 +18,8 @@ interface ProductCardProps {
   rating?: number;
   reviewCount?: number;
   isFavorite?: boolean;
+  isBoosted?: boolean;
+  viewsCount?: number;
   onClick?: () => void;
   onAddToCart?: () => void;
   onToggleFavorite?: () => void;
@@ -70,6 +72,8 @@ export const ProductCard = ({
   rating,
   reviewCount,
   isFavorite = false,
+  isBoosted = false,
+  viewsCount,
   onClick,
   onAddToCart,
   onToggleFavorite,
@@ -93,9 +97,19 @@ export const ProductCard = ({
 
   return (
     <div
-      className="group relative bg-card rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 animate-fade-in border border-border/50"
+      className={cn(
+        "group relative bg-card rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 animate-fade-in border border-border/50",
+        isBoosted && "ring-2 ring-primary/50 shadow-primary/20 shadow-lg"
+      )}
       onClick={onClick}
     >
+      {/* Boosted Badge */}
+      {isBoosted && (
+        <div className="absolute top-0 left-0 right-0 z-20 bg-gradient-to-r from-primary via-primary/80 to-accent text-primary-foreground text-[10px] font-bold py-1 text-center flex items-center justify-center gap-1">
+          <TrendingUp className="h-3 w-3" />
+          ТОП ПРОПОЗИЦІЯ
+        </div>
+      )}
       {/* Image with Video Preview on Hover */}
       <div className="relative aspect-square overflow-hidden bg-muted">
         {/* Video Preview (shows on hover if video exists) */}
