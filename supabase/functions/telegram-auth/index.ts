@@ -319,7 +319,7 @@ serve(async (req) => {
         );
       }
       
-      const { order } = body;
+      const { order, guest_info } = body;
       const orderNumber = `TAV-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
       
       const { data: newOrder, error: orderError } = await supabase
@@ -356,6 +356,21 @@ serve(async (req) => {
       
       await supabase.from('order_items').insert(orderItems);
       await supabase.from('cart_items').delete().eq('profile_id', session.profile.id);
+      
+      // Save last used city and warehouse to profile for future auto-fill
+      if (guest_info?.city && guest_info?.city_ref) {
+        await supabase
+          .from('profiles')
+          .update({
+            last_city: guest_info.city,
+            last_city_ref: guest_info.city_ref,
+            last_warehouse: guest_info.warehouse_number || null,
+            last_warehouse_ref: guest_info.warehouse_ref || null,
+          })
+          .eq('id', session.profile.id);
+        
+        console.log('Saved delivery address to profile:', session.profile.id);
+      }
       
       return new Response(
         JSON.stringify({ success: true, order: newOrder }),

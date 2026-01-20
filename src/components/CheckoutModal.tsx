@@ -83,7 +83,7 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
     }
   }, [isAuthenticated, profile]);
 
-  // Reset state when modal opens
+  // Reset state when modal opens and pre-fill delivery from profile
   useEffect(() => {
     if (isOpen) {
       setCurrentStep('contact');
@@ -92,11 +92,21 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
       if (!isAuthenticated) {
         setContactData({ firstName: '', lastName: '', phone: '' });
       }
-      setDeliveryData({ city: '', cityRef: '', warehouse: '', warehouseRef: '' });
+      // Pre-fill delivery data from saved profile if available
+      if (isAuthenticated && profile) {
+        setDeliveryData({
+          city: profile.last_city || '',
+          cityRef: profile.last_city_ref || '',
+          warehouse: profile.last_warehouse || '',
+          warehouseRef: profile.last_warehouse_ref || '',
+        });
+      } else {
+        setDeliveryData({ city: '', cityRef: '', warehouse: '', warehouseRef: '' });
+      }
       setPaymentMethod('cash');
       setOrderNotes('');
     }
-  }, [isOpen, isAuthenticated]);
+  }, [isOpen, isAuthenticated, profile]);
 
   if (!isOpen) return null;
 
