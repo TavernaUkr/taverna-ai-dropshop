@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { 
   ArrowLeft, ShoppingCart, Heart, Share2, Minus, Plus, Check, 
   Star, ChevronLeft, ChevronRight, Package, Truck, Shield, 
-  MessageCircle, ThumbsUp, User, Loader2, Home
+  MessageCircle, ThumbsUp, User, Loader2, Home, Flag
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -28,6 +28,8 @@ import { ShareButton } from "@/components/product/ShareButton";
 import { AIVerdict } from "@/components/product/AIVerdict";
 import { LowStockBadge } from "@/components/product/LowStockBadge";
 import { ProductSpecs } from "@/components/product/ProductSpecs";
+import { ReportProductModal } from "@/components/product/ReportProductModal";
+import { hapticImpact } from "@/lib/haptics";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -94,6 +96,7 @@ const ProductDetail = () => {
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState("description");
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
+  const [isReportOpen, setIsReportOpen] = useState(false);
   const [newReview, setNewReview] = useState({ rating: 5, title: "", content: "" });
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
@@ -150,6 +153,8 @@ const ProductDetail = () => {
 
   const handleAddToCart = () => {
     if (!product) return;
+    
+    hapticImpact("light");
     
     if (product.sizes?.length && !selectedSize) {
       toast.error("Оберіть розмір");
@@ -284,6 +289,16 @@ const ProductDetail = () => {
               <Heart className={cn("h-5 w-5", productIsFavorite && "fill-current")} />
             </button>
             <button
+              onClick={() => {
+                hapticImpact("light");
+                setIsReportOpen(true);
+              }}
+              className="w-10 h-10 rounded-xl flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"
+              title="Поскаржитись"
+            >
+              <Flag className="h-5 w-5" />
+            </button>
+            <button
               onClick={handleShare}
               className="w-10 h-10 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
             >
@@ -292,6 +307,16 @@ const ProductDetail = () => {
           </div>
         </div>
       </header>
+
+      {/* Report Product Modal */}
+      {product && (
+        <ReportProductModal
+          isOpen={isReportOpen}
+          onClose={() => setIsReportOpen(false)}
+          productId={product.id}
+          productName={product.name}
+        />
+      )}
 
       {/* Breadcrumbs Navigation */}
       <div className="px-4 py-2 bg-muted/30 border-b border-border">

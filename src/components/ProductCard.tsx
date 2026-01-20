@@ -1,7 +1,10 @@
 import { ShoppingCart, Heart, Package, Star, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LowStockBadge } from "./product/LowStockBadge";
+import { VerifiedBadge } from "./ui/verified-badge";
 import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { hapticImpact } from "@/lib/haptics";
 
 interface ProductCardProps {
   id: string;
@@ -20,6 +23,8 @@ interface ProductCardProps {
   isFavorite?: boolean;
   isBoosted?: boolean;
   viewsCount?: number;
+  supplierRating?: number;
+  supplierVerified?: boolean;
   onClick?: () => void;
   onAddToCart?: () => void;
   onToggleFavorite?: () => void;
@@ -74,6 +79,8 @@ export const ProductCard = ({
   isFavorite = false,
   isBoosted = false,
   viewsCount,
+  supplierRating,
+  supplierVerified = false,
   onClick,
   onAddToCart,
   onToggleFavorite,
@@ -95,10 +102,30 @@ export const ProductCard = ({
   const displayColors = colors?.slice(0, 4) || [];
   const hasMoreColors = colors && colors.length > 4;
 
+  // Show verified badge for high-rated suppliers
+  const isVerifiedSupplier = supplierVerified || (supplierRating !== undefined && supplierRating >= 4.5);
+
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    hapticImpact("medium");
+    onAddToCart?.();
+  };
+
+  const handleToggleFavorite = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    hapticImpact("light");
+    onToggleFavorite?.();
+  };
+
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
+      transition={{ duration: 0.3 }}
       className={cn(
-        "group relative bg-card rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 animate-fade-in border border-border/50",
+        "group relative bg-card rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 border border-border/50",
         isBoosted && "ring-2 ring-primary/50 shadow-primary/20 shadow-lg"
       )}
       onClick={onClick}
@@ -159,10 +186,7 @@ export const ProductCard = ({
 
         {/* Favorite Button */}
         <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleFavorite?.();
-          }}
+          onClick={handleToggleFavorite}
           className={cn(
             "absolute top-3 right-3 w-9 h-9 rounded-full flex items-center justify-center transition-all shadow-lg backdrop-blur-sm",
             isFavorite 
@@ -172,6 +196,13 @@ export const ProductCard = ({
         >
           <Heart className={cn("h-4 w-4", isFavorite && "fill-current")} />
         </button>
+
+        {/* Verified Supplier Badge */}
+        {isVerifiedSupplier && (
+          <div className="absolute top-3 right-14">
+            <VerifiedBadge size="sm" showTooltip />
+          </div>
+        )}
 
         {/* Category Badge */}
         {category && (
@@ -191,22 +222,21 @@ export const ProductCard = ({
 
         {/* Quick Add Button */}
         {inStock && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onAddToCart?.();
-            }}
+          <motion.button
+            onClick={handleAddToCart}
+            initial={{ opacity: 0, y: 10 }}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
             className={cn(
               "absolute bottom-3 right-3 w-11 h-11 rounded-full",
               "bg-accent text-accent-foreground shadow-lg",
               "flex items-center justify-center",
-              "opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0",
-              "transition-all duration-300",
-              "hover:scale-110 active:scale-95"
+              "opacity-0 group-hover:opacity-100",
+              "transition-opacity duration-300"
             )}
           >
             <ShoppingCart className="h-5 w-5" />
-          </button>
+          </motion.button>
         )}
       </div>
 
@@ -310,6 +340,6 @@ export const ProductCard = ({
           </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };

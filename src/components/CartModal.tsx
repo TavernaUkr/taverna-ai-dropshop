@@ -1,7 +1,11 @@
 import { X, Minus, Plus, Trash2, ShoppingBag, Package, Truck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MultiSupplierWarning } from "./cart/MultiSupplierWarning";
-import { useMemo } from "react";
+import { CartItemEditor } from "./cart/CartItemEditor";
+import { useMemo, useState } from "react";
+import { hapticImpact } from "@/lib/haptics";
+import { toast } from "sonner";
+import { EmptyState } from "./ui/empty-state";
 
 export interface CartItem {
   id: string;
@@ -24,6 +28,7 @@ interface CartModalProps {
   onRemoveItem: (id: string) => void;
   onCheckout: () => void;
   onPartialCheckout?: (supplierId: string) => void;
+  onUpdateVariant?: (id: string, size?: string, color?: string) => void;
 }
 
 export const CartModal = ({
@@ -34,7 +39,10 @@ export const CartModal = ({
   onRemoveItem,
   onCheckout,
   onPartialCheckout,
+  onUpdateVariant,
 }: CartModalProps) => {
+  const [localVariants, setLocalVariants] = useState<Record<string, { size?: string; color?: string }>>({});
+  
   const totalPrice = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
   
@@ -58,6 +66,26 @@ export const CartModal = ({
   // Count unique suppliers
   const uniqueSuppliers = new Set(items.map(item => item.supplierId).filter(Boolean));
   const supplierCount = uniqueSuppliers.size || 1;
+
+  const handleVariantChange = (itemId: string, productId: string, type: 'size' | 'color', value: string) => {
+    setLocalVariants(prev => ({
+      ...prev,
+      [itemId]: {
+        ...prev[itemId],
+        [type]: value,
+      },
+    }));
+    
+    if (onUpdateVariant) {
+      const current = localVariants[itemId] || {};
+      const size = type === 'size' ? value : (current.size || items.find(i => i.id === itemId)?.size);
+      const color = type === 'color' ? value : (current.color || items.find(i => i.id === itemId)?.color);
+      onUpdateVariant(itemId, size, color);
+    }
+    
+    hapticImpact("light");
+    toast.success(`${type === 'size' ? 'Розмір' : 'Колір'} змінено`);
+  };
 
   if (!isOpen) return null;
 
@@ -89,15 +117,11 @@ export const CartModal = ({
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4">
           {items.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mb-4">
-                <ShoppingBag className="h-10 w-10 text-muted-foreground" />
-              </div>
-              <h3 className="font-medium text-foreground mb-1">Кошик порожній</h3>
-              <p className="text-sm text-muted-foreground">
-                Додайте товари з каталогу
-              </p>
-            </div>
+            <EmptyState
+              type="cart"
+              title="Кошик порожній"
+              description="Додайте товари з каталогу, щоб оформити замовлення"
+            />
           ) : (
             <div className="space-y-4">
               {/* Multi-supplier warning */}
@@ -141,8 +165,19 @@ export const CartModal = ({
                         <h4 className="font-medium text-sm text-foreground line-clamp-2">
                           {item.name}
                         </h4>
-                        {(item.size || item.color) && (
-                          <div className="flex gap-2 text-xs text-muted-foreground">
+                        {/* Editable Variant Selectors */}
+                        {item.productId && (
+                          <CartItemEditor
+                            productId={item.productId}
+                            currentSize={localVariants[item.id]?.size || item.size}
+                            currentColor={localVariants[item.id]?.color || item.color}
+                            onSizeChange={(size) => handleVariantChange(item.id, item.productId!, 'size', size)}
+                            onColorChange={(color) => handleVariantChange(item.id, item.productId!, 'color', color)}
+                          />
+                        )}
+                        {/* Fallback for items without productId */}
+                        {!item.productId && (item.size || item.color) && (
+                          <div className="flex gap-2 text-xs text-muted-foreground mt-1">
                             {item.size && <span>Розмір: {item.size}</span>}
                             {item.color && <span>Колір: {item.color}</span>}
                           </div>
