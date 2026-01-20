@@ -19,7 +19,9 @@ const supplierSchema = z.object({
     .regex(/^[а-яА-ЯіІїЇєЄґҐa-zA-Z\s'-]+$/, "ПІБ може містити лише літери"),
   companyName: z.string().optional(),
   taxId: z.string()
-    .min(1, "Обов'язкове поле"),
+    .min(8, "ЄДРПОУ має містити 8 цифр")
+    .max(8, "ЄДРПОУ має містити 8 цифр")
+    .regex(/^\d{8}$/, "ЄДРПОУ має містити рівно 8 цифр"),
   email: z.string()
     .min(1, "Обов'язкове поле")
     .email("Невірний формат email")
@@ -380,15 +382,15 @@ const SupplierRegistration = () => {
 
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">
-                  {supplierType === "individual" ? "ІПН (10 цифр)" : "Код ЄДРПОУ (8 цифр)"} *
+                  Код ЄДРПОУ (8 цифр) *
                 </label>
                 <div className="relative">
                   <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                   <input
                     {...register("taxId")}
                     type="text"
-                    maxLength={supplierType === "individual" ? 10 : 8}
-                    placeholder={supplierType === "individual" ? "1234567890" : "12345678"}
+                    maxLength={8}
+                    placeholder="12345678"
                     className="w-full pl-10 pr-4 py-3 bg-muted border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                     onChange={(e) => {
                       // Allow only digits
@@ -397,6 +399,11 @@ const SupplierRegistration = () => {
                     }}
                   />
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  {supplierType === "individual" 
+                    ? "Для ФОП використовуйте ЄДРПОУ як юридична категорія платника податків" 
+                    : "Код компанії з Єдиного державного реєстру"}
+                </p>
                 {errors.taxId && (
                   <p className="text-xs text-destructive">{errors.taxId.message}</p>
                 )}
