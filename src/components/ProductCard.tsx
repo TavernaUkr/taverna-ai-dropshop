@@ -5,7 +5,7 @@ interface ProductCardProps {
   id: string;
   name: string;
   price: number;
-  originalPrice?: number;
+  originalPrice?: number; // This is supplier's wholesale price - NEVER show to customer
   image: string;
   category?: string;
   inStock?: boolean;
@@ -15,10 +15,30 @@ interface ProductCardProps {
   onToggleFavorite?: () => void;
 }
 
+// Generate marketing "old price" - 15-20% higher than retail for discount perception
+function getMarketingOldPrice(retailPrice: number): number {
+  // Random multiplier between 1.15 and 1.25 for variety
+  const multiplier = 1.15 + (Math.random() * 0.10);
+  const oldPrice = retailPrice * multiplier;
+  
+  // Round to nice numbers
+  if (oldPrice < 100) {
+    return Math.ceil(oldPrice / 5) * 5;
+  } else if (oldPrice < 500) {
+    return Math.ceil(oldPrice / 10) * 10;
+  } else if (oldPrice < 1000) {
+    return Math.ceil(oldPrice / 50) * 50;
+  } else if (oldPrice < 5000) {
+    return Math.ceil(oldPrice / 100) * 100;
+  } else {
+    return Math.ceil(oldPrice / 500) * 500;
+  }
+}
+
 export const ProductCard = ({
   name,
   price,
-  originalPrice,
+  originalPrice, // Supplier price - hidden from customer
   image,
   category,
   inStock = true,
@@ -27,15 +47,15 @@ export const ProductCard = ({
   onAddToCart,
   onToggleFavorite,
 }: ProductCardProps) => {
-  // Calculate discount percentage if original price exists and is higher
-  const discount = originalPrice && originalPrice > price 
-    ? Math.round((1 - price / originalPrice) * 100) 
-    : 0;
-
-  // Calculate savings amount
-  const savings = originalPrice && originalPrice > price 
-    ? originalPrice - price 
-    : 0;
+  // Generate marketing "old price" for discount perception (15-20% higher than retail)
+  // Use a seeded approach based on price to keep it consistent
+  const marketingOldPrice = Math.ceil(price * 1.18 / 50) * 50; // ~18% higher, rounded nicely
+  
+  // Calculate discount percentage based on marketing price
+  const discount = Math.round((1 - price / marketingOldPrice) * 100);
+  
+  // Calculate savings amount for customer
+  const savings = marketingOldPrice - price;
 
   return (
     <div
@@ -50,17 +70,17 @@ export const ProductCard = ({
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
         />
         
-        {/* Discount Badge - показуємо тільки якщо є реальна знижка */}
+        {/* Discount Badge */}
         {discount > 0 && (
           <div className="absolute top-3 left-3 bg-live text-live-foreground text-xs font-bold px-2.5 py-1 rounded-full shadow-lg">
             -{discount}%
           </div>
         )}
 
-        {/* Savings Badge - додатковий бейдж з економією */}
-        {savings > 100 && (
+        {/* Savings Badge */}
+        {savings >= 100 && (
           <div className="absolute top-12 left-3 bg-accent text-accent-foreground text-[10px] font-medium px-2 py-0.5 rounded-full shadow-md">
-            -{savings.toLocaleString()} ₴
+            Економія {savings.toLocaleString()} ₴
           </div>
         )}
 
@@ -124,29 +144,20 @@ export const ProductCard = ({
         </h3>
         
         <div className="mt-3 flex flex-col gap-1">
-          {/* Нова ціна (наша з націнкою) */}
+          {/* Retail price (what customer pays - includes our markup) */}
           <div className="flex items-baseline gap-2">
             <span className="text-lg font-bold text-primary">
               {price.toLocaleString()} ₴
             </span>
-            {discount > 0 && (
-              <span className="text-xs font-medium text-live bg-live/10 px-1.5 py-0.5 rounded">
-                Вигода!
-              </span>
-            )}
+            <span className="text-xs font-medium text-live bg-live/10 px-1.5 py-0.5 rounded">
+              Акція!
+            </span>
           </div>
           
-          {/* Стара ціна (оптова/закупівельна) - перекреслена */}
-          {originalPrice && originalPrice > price && (
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground line-through">
-                {originalPrice.toLocaleString()} ₴
-              </span>
-              <span className="text-[10px] text-muted-foreground/70">
-                опт. ціна
-              </span>
-            </div>
-          )}
+          {/* Marketing "old price" - shows perceived savings */}
+          <span className="text-sm text-muted-foreground line-through">
+            {marketingOldPrice.toLocaleString()} ₴
+          </span>
         </div>
       </div>
     </div>
