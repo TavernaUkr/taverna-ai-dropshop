@@ -1,37 +1,55 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Building, User, Mail, Phone, FileText, Globe, ChevronRight, Send, Loader2, CheckCircle, AlertCircle } from "lucide-react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { ArrowLeft, Building, User, Mail, Phone, FileText, Globe, ChevronRight, Send, Loader2, CheckCircle, AlertCircle, LogIn } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useTelegramAuth } from "@/hooks/useTelegramAuth";
+import { Button } from "@/components/ui/button";
 
 type SupplierType = "individual" | "company";
 
-interface SupplierFormData {
-  type: SupplierType;
-  fullName: string;
-  companyName?: string;
-  taxId: string;
-  email: string;
-  phone: string;
-  shopName: string;
-  xmlUrl?: string;
-  telegramChannel?: string;
-  telegram?: string;
-  description?: string;
-  agreeToTerms: boolean;
-}
+// Zod schema for robust validation
+const supplierSchema = z.object({
+  fullName: z.string()
+    .min(5, "ПІБ має містити мінімум 5 символів")
+    .max(100, "ПІБ не може перевищувати 100 символів")
+    .regex(/^[а-яА-ЯіІїЇєЄґҐa-zA-Z\s'-]+$/, "ПІБ може містити лише літери"),
+  companyName: z.string().optional(),
+  taxId: z.string()
+    .min(1, "Обов'язкове поле"),
+  email: z.string()
+    .min(1, "Обов'язкове поле")
+    .email("Невірний формат email")
+    .max(255, "Email занадто довгий"),
+  phone: z.string()
+    .min(1, "Обов'язкове поле")
+    .regex(/^\+?[\d\s()-]{10,20}$/, "Невірний формат телефону"),
+  shopName: z.string()
+    .min(2, "Назва магазину має містити мінімум 2 символи")
+    .max(100, "Назва магазину не може перевищувати 100 символів"),
+  xmlUrl: z.string().url("Невірний формат URL").optional().or(z.literal('')),
+  telegramChannel: z.string().optional(),
+  telegram: z.string().optional(),
+  description: z.string().max(1000, "Опис не може перевищувати 1000 символів").optional(),
+  agreeToTerms: z.literal(true, { errorMap: () => ({ message: "Необхідно прийняти умови" }) }),
+});
+
+type SupplierFormData = z.infer<typeof supplierSchema>;
 
 const SupplierRegistration = () => {
   const navigate = useNavigate();
-  const { isAuthenticated, profile, sessionToken } = useTelegramAuth();
+  const { isAuthenticated, isLoading: authLoading, profile, sessionToken, authenticate } = useTelegramAuth();
   const [step, setStep] = useState(1);
   const [supplierType, setSupplierType] = useState<SupplierType | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
   
-  const { register, handleSubmit, watch, formState: { errors }, setValue } = useForm<SupplierFormData>({
+  const { register, handleSubmit, trigger, formState: { errors }, setValue, getValues } = useForm<SupplierFormData>({
+    resolver: zodResolver(supplierSchema),
+    mode: "onBlur",
     defaultValues: {
       fullName: profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : '',
       email: profile?.email || '',
@@ -41,14 +59,14 @@ const SupplierRegistration = () => {
   });
 
   // Pre-fill form when profile loads
-  useState(() => {
+  useEffect(() => {
     if (profile) {
       setValue('fullName', `${profile.first_name || ''} ${profile.last_name || ''}`.trim());
       if (profile.email) setValue('email', profile.email);
       if (profile.phone) setValue('phone', profile.phone);
       if (profile.telegram_username) setValue('telegram', profile.telegram_username);
     }
-  });
+  }, [profile, setValue]);
   
   const onSubmit = async (data: SupplierFormData) => {
     setIsSubmitting(true);
@@ -137,13 +155,79 @@ const SupplierRegistration = () => {
     );
   }
 
+  // Loading state
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
+          <p className="text-muted-foreground">Завантаження...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Authorization required screen
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        {/* Header */}
+        <header className="sticky top-0 z-40 bg-card/95 backdrop-blur-md border-b border-border">
+          <div className="flex items-center h-14 px-4">
+            <button 
+              onClick={() => navigate('/')}
+              className="w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors mr-2"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+            <h1 className="font-semibold text-foreground">Стати партнером Taverna Group</h1>
+          </div>
+        </header>
+
+        <main className="flex-1 flex items-center justify-center p-4">
+          <div className="text-center space-y-6 max-w-sm mx-auto animate-fade-in">
+            <div className="w-20 h-20 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
+              <LogIn className="h-10 w-10 text-primary" />
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-xl font-bold text-foreground">Потрібна авторизація</h2>
+              <p className="text-muted-foreground">
+                Для подачі заявки на партнерство спочатку авторизуйтеся через Telegram
+              </p>
+            </div>
+            
+            <Button
+              onClick={authenticate}
+              size="lg"
+              className="w-full gap-2"
+            >
+              <Send className="h-5 w-5" />
+              Авторизуватись через Telegram
+            </Button>
+            
+            <p className="text-xs text-muted-foreground">
+              Це безпечно. Ми отримаємо лише ваше ім'я та ID для ідентифікації заявки.
+            </p>
+            
+            <button
+              onClick={() => navigate('/')}
+              className="text-sm text-primary hover:underline"
+            >
+              Повернутись на головну
+            </button>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-card/95 backdrop-blur-md border-b border-border">
         <div className="flex items-center h-14 px-4">
           <button 
-            onClick={() => step > 1 ? setStep(step - 1) : navigate(-1)}
+            onClick={() => step > 1 ? setStep(step - 1) : navigate('/')}
             className="w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors mr-2"
           >
             <ArrowLeft className="h-5 w-5" />
@@ -301,16 +385,16 @@ const SupplierRegistration = () => {
                 <div className="relative">
                   <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                   <input
-                    {...register("taxId", { 
-                      required: "Обов'язкове поле",
-                      pattern: {
-                        value: supplierType === "individual" ? /^\d{10}$/ : /^\d{8}$/,
-                        message: supplierType === "individual" ? "Введіть 10 цифр" : "Введіть 8 цифр"
-                      }
-                    })}
+                    {...register("taxId")}
                     type="text"
+                    maxLength={supplierType === "individual" ? 10 : 8}
                     placeholder={supplierType === "individual" ? "1234567890" : "12345678"}
                     className="w-full pl-10 pr-4 py-3 bg-muted border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    onChange={(e) => {
+                      // Allow only digits
+                      const value = e.target.value.replace(/\D/g, '');
+                      e.target.value = value;
+                    }}
                   />
                 </div>
                 {errors.taxId && (
@@ -323,13 +407,7 @@ const SupplierRegistration = () => {
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                   <input
-                    {...register("email", { 
-                      required: "Обов'язкове поле", 
-                      pattern: {
-                        value: /^\S+@\S+$/i,
-                        message: "Невірний формат email"
-                      }
-                    })}
+                    {...register("email")}
                     type="email"
                     placeholder="partner@example.com"
                     className="w-full pl-10 pr-4 py-3 bg-muted border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
@@ -345,7 +423,7 @@ const SupplierRegistration = () => {
                 <div className="relative">
                   <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                   <input
-                    {...register("phone", { required: "Обов'язкове поле" })}
+                    {...register("phone")}
                     type="tel"
                     placeholder="+380 XX XXX XX XX"
                     className="w-full pl-10 pr-4 py-3 bg-muted border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
@@ -377,7 +455,21 @@ const SupplierRegistration = () => {
               </button>
               <button
                 type="button"
-                onClick={() => setStep(3)}
+                onClick={async () => {
+                  // Validate step 2 fields before proceeding
+                  const fieldsToValidate: Array<keyof SupplierFormData> = ['fullName', 'taxId', 'email', 'phone'];
+                  if (supplierType === 'company') {
+                    fieldsToValidate.push('companyName');
+                  }
+                  const isValid = await trigger(fieldsToValidate);
+                  if (isValid) {
+                    setStep(3);
+                  } else {
+                    toast.error('Виправте помилки у формі', {
+                      description: 'Перевірте правильність заповнення всіх обов\'язкових полів',
+                    });
+                  }
+                }}
                 className="flex-1 py-3 bg-primary text-primary-foreground rounded-xl font-medium hover:bg-primary/90 transition-colors"
               >
                 Далі
