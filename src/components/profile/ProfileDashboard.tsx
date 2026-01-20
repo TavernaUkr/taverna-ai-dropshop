@@ -83,6 +83,16 @@ export const ProfileDashboard = () => {
     return "Гість";
   };
 
+  const handleAuthClick = () => {
+    const tg = (window as any).Telegram?.WebApp;
+    if (tg?.initDataUnsafe?.user) {
+      // Trigger the auth confirmation dialog
+      window.dispatchEvent(new CustomEvent('taverna:request-auth'));
+    } else {
+      toast.error('Відкрийте додаток через Telegram');
+    }
+  };
+
   return (
     <div className="space-y-4 pb-28 animate-fade-in">
       {/* User Card */}
@@ -126,6 +136,28 @@ export const ProfileDashboard = () => {
         </div>
       </div>
 
+      {/* Authorization Button for Guests */}
+      {!isAuthenticated && (
+        <button
+          onClick={handleAuthClick}
+          className="w-full py-4 px-6 bg-gradient-to-r from-primary to-accent text-primary-foreground rounded-xl font-semibold shadow-lg hover:shadow-xl active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+        >
+          <User className="h-5 w-5" />
+          <span>
+            Авторизувати мене
+            {(() => {
+              const tg = (window as any).Telegram?.WebApp;
+              if (tg?.initDataUnsafe?.user) {
+                const user = tg.initDataUnsafe.user;
+                const name = [user.first_name, user.last_name].filter(Boolean).join(' ');
+                return ` — "${name || user.username || 'Telegram'}"`;
+              }
+              return ' через Telegram';
+            })()}
+          </span>
+        </button>
+      )}
+
       {/* Partner Panel Button - Only for authenticated Telegram users */}
       {isAuthenticated && (
         <button
@@ -164,135 +196,135 @@ export const ProfileDashboard = () => {
         </button>
       )}
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="w-full grid grid-cols-3 h-12">
-          <TabsTrigger value="orders" className="flex items-center gap-2">
-            <Package className="h-4 w-4" />
-            <span className="hidden sm:inline">Замовлення</span>
-          </TabsTrigger>
-          <TabsTrigger value="affiliate" className="flex items-center gap-2">
-            <Gift className="h-4 w-4" />
-            <span className="hidden sm:inline">Бонуси</span>
-          </TabsTrigger>
-          <TabsTrigger value="settings" className="flex items-center gap-2">
-            <Settings className="h-4 w-4" />
-            <span className="hidden sm:inline">Налаштування</span>
-          </TabsTrigger>
-        </TabsList>
+      {/* Tabs - Only show full tabs when authenticated */}
+      {isAuthenticated ? (
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="w-full grid grid-cols-3 h-12">
+            <TabsTrigger value="orders" className="flex items-center gap-2">
+              <Package className="h-4 w-4" />
+              <span className="hidden sm:inline">Замовлення</span>
+            </TabsTrigger>
+            <TabsTrigger value="affiliate" className="flex items-center gap-2">
+              <Gift className="h-4 w-4" />
+              <span className="hidden sm:inline">Бонуси</span>
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              <span className="hidden sm:inline">Налаштування</span>
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Orders Tab */}
-        <TabsContent value="orders" className="mt-4">
-          <OrdersHistory />
-        </TabsContent>
+          {/* Orders Tab */}
+          <TabsContent value="orders" className="mt-4">
+            <OrdersHistory />
+          </TabsContent>
 
-        {/* Affiliate Tab */}
-        <TabsContent value="affiliate" className="mt-4 space-y-4">
-          {/* Balance Card */}
-          <div className="bg-gradient-to-br from-primary/20 to-accent/20 rounded-xl p-5 border border-primary/20">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-sm text-muted-foreground">Мій бонусний баланс</span>
-              <Gift className="h-5 w-5 text-primary" />
-            </div>
-            <div className="text-3xl font-bold text-foreground">
-              {affiliateData.balance} ₴
-            </div>
-            <p className="text-sm text-muted-foreground mt-1">
-              Можна використати при наступному замовленні
-            </p>
-          </div>
-
-          {/* Stats */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-card rounded-xl p-4 border border-border text-center">
-              <div className="text-2xl font-bold text-primary">
-                {affiliateData.referralCount}
+          {/* Affiliate Tab */}
+          <TabsContent value="affiliate" className="mt-4 space-y-4">
+            {/* Balance Card */}
+            <div className="bg-gradient-to-br from-primary/20 to-accent/20 rounded-xl p-5 border border-primary/20">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-sm text-muted-foreground">Мій бонусний баланс</span>
+                <Gift className="h-5 w-5 text-primary" />
               </div>
-              <p className="text-sm text-muted-foreground">Запрошених друзів</p>
-            </div>
-            <div className="bg-card rounded-xl p-4 border border-border text-center">
-              <div className="text-2xl font-bold text-primary">100 ₴</div>
-              <p className="text-sm text-muted-foreground">За кожного друга</p>
-            </div>
-          </div>
-
-          {/* Referral Link */}
-          <div className="bg-card rounded-xl p-4 border border-border space-y-3">
-            <h4 className="font-medium text-foreground">Реферальне посилання</h4>
-            <div className="flex items-center gap-2">
-              <div className="flex-1 p-3 bg-muted rounded-lg text-sm font-mono text-muted-foreground truncate">
-                {affiliateData.referralLink}
+              <div className="text-3xl font-bold text-foreground">
+                {affiliateData.balance} ₴
               </div>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={handleCopyReferralLink}
-                className="flex-shrink-0"
-              >
-                {copied ? (
-                  <Check className="h-4 w-4 text-primary" />
-                ) : (
-                  <Copy className="h-4 w-4" />
-                )}
-              </Button>
+              <p className="text-sm text-muted-foreground mt-1">
+                Можна використати при наступному замовленні
+              </p>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Поділіться посиланням з друзями та отримуйте бонуси за кожну їх покупку
-            </p>
-          </div>
-        </TabsContent>
 
-        {/* Settings Tab */}
-        <TabsContent value="settings" className="mt-4 space-y-4">
-          <div className="bg-card rounded-xl border border-border overflow-hidden">
-            {/* Notifications */}
-            <div className="flex items-center justify-between p-4 border-b border-border">
-              <div className="flex items-center gap-3">
-                <Bell className="h-5 w-5 text-muted-foreground" />
-                <div>
-                  <p className="font-medium text-foreground">Сповіщення</p>
-                  <p className="text-sm text-muted-foreground">
-                    Отримувати сповіщення про замовлення
-                  </p>
+            {/* Stats */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-card rounded-xl p-4 border border-border text-center">
+                <div className="text-2xl font-bold text-primary">
+                  {affiliateData.referralCount}
                 </div>
+                <p className="text-sm text-muted-foreground">Запрошених друзів</p>
               </div>
-              <Switch
-                checked={notificationsEnabled}
-                onCheckedChange={setNotificationsEnabled}
-              />
+              <div className="bg-card rounded-xl p-4 border border-border text-center">
+                <div className="text-2xl font-bold text-primary">100 ₴</div>
+                <p className="text-sm text-muted-foreground">За кожного друга</p>
+              </div>
             </div>
 
-            {/* Profile */}
-            <button className="w-full flex items-center justify-between p-4 border-b border-border hover:bg-muted/50 transition-colors">
-              <div className="flex items-center gap-3">
-                <User className="h-5 w-5 text-muted-foreground" />
-                <div className="text-left">
-                  <p className="font-medium text-foreground">Мої дані</p>
-                  <p className="text-sm text-muted-foreground">
-                    Редагувати особисту інформацію
-                  </p>
+            {/* Referral Link */}
+            <div className="bg-card rounded-xl p-4 border border-border space-y-3">
+              <h4 className="font-medium text-foreground">Реферальне посилання</h4>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 p-3 bg-muted rounded-lg text-sm font-mono text-muted-foreground truncate">
+                  {affiliateData.referralLink}
                 </div>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleCopyReferralLink}
+                  className="flex-shrink-0"
+                >
+                  {copied ? (
+                    <Check className="h-4 w-4 text-primary" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
+                </Button>
               </div>
-              <ChevronRight className="h-5 w-5 text-muted-foreground" />
-            </button>
+              <p className="text-xs text-muted-foreground">
+                Поділіться посиланням з друзями та отримуйте бонуси за кожну їх покупку
+              </p>
+            </div>
+          </TabsContent>
 
-            {/* Addresses */}
-            <button className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors">
-              <div className="flex items-center gap-3">
-                <Package className="h-5 w-5 text-muted-foreground" />
-                <div className="text-left">
-                  <p className="font-medium text-foreground">Адреси доставки</p>
-                  <p className="text-sm text-muted-foreground">
-                    Керування адресами
-                  </p>
+          {/* Settings Tab */}
+          <TabsContent value="settings" className="mt-4 space-y-4">
+            <div className="bg-card rounded-xl border border-border overflow-hidden">
+              {/* Notifications */}
+              <div className="flex items-center justify-between p-4 border-b border-border">
+                <div className="flex items-center gap-3">
+                  <Bell className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="font-medium text-foreground">Сповіщення</p>
+                    <p className="text-sm text-muted-foreground">
+                      Отримувати сповіщення про замовлення
+                    </p>
+                  </div>
                 </div>
+                <Switch
+                  checked={notificationsEnabled}
+                  onCheckedChange={setNotificationsEnabled}
+                />
               </div>
-              <ChevronRight className="h-5 w-5 text-muted-foreground" />
-            </button>
-          </div>
 
-          {/* Logout */}
-          {isAuthenticated && (
+              {/* Profile */}
+              <button className="w-full flex items-center justify-between p-4 border-b border-border hover:bg-muted/50 transition-colors">
+                <div className="flex items-center gap-3">
+                  <User className="h-5 w-5 text-muted-foreground" />
+                  <div className="text-left">
+                    <p className="font-medium text-foreground">Мої дані</p>
+                    <p className="text-sm text-muted-foreground">
+                      Редагувати особисту інформацію
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className="h-5 w-5 text-muted-foreground" />
+              </button>
+
+              {/* Addresses */}
+              <button className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors">
+                <div className="flex items-center gap-3">
+                  <Package className="h-5 w-5 text-muted-foreground" />
+                  <div className="text-left">
+                    <p className="font-medium text-foreground">Адреси доставки</p>
+                    <p className="text-sm text-muted-foreground">
+                      Керування адресами
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className="h-5 w-5 text-muted-foreground" />
+              </button>
+            </div>
+
+            {/* Logout */}
             <Button
               variant="destructive"
               className="w-full"
@@ -301,9 +333,36 @@ export const ProfileDashboard = () => {
               <LogOut className="h-4 w-4 mr-2" />
               Вийти з акаунту
             </Button>
-          )}
-        </TabsContent>
-      </Tabs>
+          </TabsContent>
+        </Tabs>
+      ) : (
+        /* Guest View - Limited info */
+        <div className="bg-card rounded-xl p-6 border border-border text-center space-y-4">
+          <div className="w-16 h-16 rounded-full bg-muted mx-auto flex items-center justify-center">
+            <Package className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <div>
+            <h4 className="font-semibold text-foreground">Авторизуйтесь для доступу</h4>
+            <p className="text-sm text-muted-foreground mt-1">
+              Переглядайте історію замовлень, керуйте адресами доставки та отримуйте бонуси
+            </p>
+          </div>
+          <div className="grid grid-cols-3 gap-2 pt-2">
+            <div className="p-3 bg-muted rounded-lg">
+              <Package className="h-5 w-5 mx-auto text-muted-foreground mb-1" />
+              <p className="text-xs text-muted-foreground">Замовлення</p>
+            </div>
+            <div className="p-3 bg-muted rounded-lg">
+              <Gift className="h-5 w-5 mx-auto text-muted-foreground mb-1" />
+              <p className="text-xs text-muted-foreground">Бонуси</p>
+            </div>
+            <div className="p-3 bg-muted rounded-lg">
+              <Settings className="h-5 w-5 mx-auto text-muted-foreground mb-1" />
+              <p className="text-xs text-muted-foreground">Налаштування</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
