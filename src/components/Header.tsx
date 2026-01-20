@@ -1,4 +1,4 @@
-import { ShoppingCart, Search, Bell, Heart } from "lucide-react";
+import { ShoppingCart, Search, Bell, Heart, Gift } from "lucide-react";
 import { cn } from "@/lib/utils";
 import tavernaLogo from "@/assets/taverna-logo.png";
 
@@ -9,6 +9,7 @@ interface HeaderProps {
   onSearchClick?: () => void;
   onNotificationsClick?: () => void;
   onFavoritesClick?: () => void;
+  onPromoClick?: () => void;
 }
 
 export const Header = ({
@@ -18,6 +19,7 @@ export const Header = ({
   onSearchClick,
   onNotificationsClick,
   onFavoritesClick,
+  onPromoClick,
 }: HeaderProps) => {
   return (
     <header className="sticky top-0 z-40 bg-card/95 backdrop-blur-md border-b border-border shadow-sm">
@@ -35,18 +37,27 @@ export const Header = ({
           </div>
         </div>
 
+        {/* Center - Promo Button */}
+        <button
+          onClick={onPromoClick}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-live to-warning text-live-foreground font-semibold text-sm shadow-md hover:shadow-lg active:scale-95 transition-all animate-pulse-slow"
+        >
+          <Gift className="h-4 w-4" />
+          <span>Акції</span>
+        </button>
+
         {/* Actions */}
         <div className="flex items-center gap-1">
           <button
             onClick={onSearchClick}
-            className="w-11 h-11 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all"
+            className="w-10 h-10 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all"
           >
             <Search className="h-5 w-5" />
           </button>
 
           <button
             onClick={onFavoritesClick}
-            className="relative w-11 h-11 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all"
+            className="relative w-10 h-10 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all"
           >
             <Heart className="h-5 w-5" />
             {favoritesCount > 0 && (
@@ -63,24 +74,17 @@ export const Header = ({
           </button>
 
           <button
-            onClick={onNotificationsClick}
-            className="w-11 h-11 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all"
-          >
-            <Bell className="h-5 w-5" />
-          </button>
-
-          <button
             onClick={onCartClick}
-            className="relative w-11 h-11 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all"
+            className="relative w-10 h-10 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all"
           >
             <ShoppingCart className="h-5 w-5" />
             {cartCount > 0 && (
               <span className={cn(
                 "absolute -top-0.5 -right-0.5",
-                "min-w-[22px] h-[22px] px-1.5",
+                "min-w-[20px] h-[20px] px-1",
                 "flex items-center justify-center",
                 "bg-live text-live-foreground",
-                "text-[11px] font-bold rounded-full shadow-md"
+                "text-[10px] font-bold rounded-full shadow-md"
               )}>
                 {cartCount > 99 ? "99+" : cartCount}
               </span>

@@ -384,6 +384,7 @@ const Index = () => {
         onSearchClick={() => setIsSearchOpen(true)}
         onNotificationsClick={() => toast.info("Сповіщення")}
         onFavoritesClick={() => setIsWishlistOpen(true)}
+        onPromoClick={() => navigate("/promos")}
       />
       
       <main className="px-4 py-4">
