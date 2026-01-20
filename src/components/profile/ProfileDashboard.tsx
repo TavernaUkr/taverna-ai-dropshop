@@ -29,9 +29,11 @@ export const ProfileDashboard = () => {
   const [copied, setCopied] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
-  // Check if user is a supplier based on user_type
-  const isSupplier = profile?.user_type === "supplier" || profile?.user_type === "admin";
-  const isAdmin = profile?.user_type === "admin";
+  // Check roles from secure user_roles table (not from profile.user_type to prevent privilege escalation)
+  const userRoles = profile?.roles || [];
+  const isSupplier = userRoles.includes('supplier') || userRoles.includes('admin');
+  const isAdmin = userRoles.includes('admin');
+  const isModerator = userRoles.includes('moderator');
 
   // Affiliate data (mock)
   const affiliateData = {

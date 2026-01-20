@@ -22,6 +22,7 @@ interface Profile {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  roles?: string[]; // Roles from secure user_roles table
 }
 
 interface DeliveryAddress {
