@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Package,
@@ -10,6 +11,8 @@ import {
   LogOut,
   Copy,
   Check,
+  Briefcase,
+  Store,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -17,12 +20,18 @@ import { Separator } from "@/components/ui/separator";
 import { useTelegramAuthContext } from "@/components/TelegramAuthProvider";
 import { OrdersHistory } from "@/components/OrdersHistory";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 export const ProfileDashboard = () => {
+  const navigate = useNavigate();
   const { isAuthenticated, profile, logout } = useTelegramAuthContext();
   const [activeTab, setActiveTab] = useState("orders");
   const [copied, setCopied] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+
+  // Check if user is a supplier based on user_type
+  const isSupplier = profile?.user_type === "supplier" || profile?.user_type === "admin";
+  const isAdmin = profile?.user_type === "admin";
 
   // Affiliate data (mock)
   const affiliateData = {
@@ -45,6 +54,16 @@ export const ProfileDashboard = () => {
   const handleLogout = async () => {
     await logout();
     toast.success("Ви вийшли з акаунту");
+  };
+
+  const handlePartnerClick = () => {
+    if (isSupplier || isAdmin) {
+      // User is already a supplier/admin - go to manager dashboard
+      navigate("/manager");
+    } else {
+      // User is not a supplier - go to registration
+      navigate("/partner");
+    }
   };
 
   const getUserInitials = () => {
@@ -83,17 +102,67 @@ export const ProfileDashboard = () => {
           <div className="flex-1">
             <h3 className="font-semibold text-foreground">{getDisplayName()}</h3>
             {isAuthenticated ? (
-              <p className="text-sm text-muted-foreground">
-                {profile?.telegram_username
-                  ? `@${profile.telegram_username}`
-                  : profile?.phone || "Авторизовано"}
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm text-muted-foreground">
+                  {profile?.telegram_username
+                    ? `@${profile.telegram_username}`
+                    : profile?.phone || "Авторизовано"}
+                </p>
+                {isSupplier && (
+                  <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">
+                    Партнер
+                  </span>
+                )}
+                {isAdmin && (
+                  <span className="text-xs bg-warning/10 text-warning px-2 py-0.5 rounded-full font-medium">
+                    Адмін
+                  </span>
+                )}
+              </div>
             ) : (
               <p className="text-sm text-muted-foreground">Увійдіть для повного доступу</p>
             )}
           </div>
         </div>
       </div>
+
+      {/* Partner Panel Button - Only for authenticated Telegram users */}
+      {isAuthenticated && (
+        <button
+          onClick={handlePartnerClick}
+          className={cn(
+            "w-full flex items-center gap-4 p-4 rounded-xl border transition-all",
+            isSupplier || isAdmin
+              ? "bg-gradient-to-r from-primary/10 to-accent/10 border-primary/30 hover:border-primary"
+              : "bg-card border-border hover:border-primary hover:bg-primary/5"
+          )}
+        >
+          <div className={cn(
+            "w-12 h-12 rounded-full flex items-center justify-center",
+            isSupplier || isAdmin ? "bg-primary/20" : "bg-muted"
+          )}>
+            {isSupplier || isAdmin ? (
+              <Store className="h-6 w-6 text-primary" />
+            ) : (
+              <Briefcase className="h-6 w-6 text-muted-foreground" />
+            )}
+          </div>
+          <div className="flex-1 text-left">
+            <h4 className="font-semibold text-foreground">
+              {isSupplier || isAdmin ? "Панель партнера" : "Стати партнером"}
+            </h4>
+            <p className="text-xs text-muted-foreground">
+              {isSupplier || isAdmin
+                ? "Керуйте товарами та замовленнями"
+                : "Продавайте товари через Taverna"}
+            </p>
+          </div>
+          <ChevronRight className={cn(
+            "h-5 w-5",
+            isSupplier || isAdmin ? "text-primary" : "text-muted-foreground"
+          )} />
+        </button>
+      )}
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
