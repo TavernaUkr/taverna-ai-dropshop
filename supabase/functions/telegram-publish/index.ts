@@ -10,8 +10,9 @@ interface ProductData {
   id: string;
   name: string;
   description?: string;
+  ai_description?: string;
   price: number;
-  original_price?: number;
+  original_price?: number; // Wholesale - NEVER show to customer
   images?: string[];
   brand?: string;
   vendor_code?: string;
@@ -20,12 +21,21 @@ interface ProductData {
   category?: { name: string };
 }
 
-// Calculate savings for display
-function calculateSavings(originalPrice: number | undefined, newPrice: number): string {
-  if (!originalPrice || originalPrice <= newPrice) return "";
-  const savings = originalPrice - newPrice;
-  const percent = Math.round((1 - newPrice / originalPrice) * 100);
-  return `🏷️ Економія: ${savings.toLocaleString()} ₴ (-${percent}%)`;
+// Generate marketing "old price" - 18% higher than retail for discount perception
+function getMarketingOldPrice(retailPrice: number): number {
+  const oldPrice = retailPrice * 1.18;
+  
+  if (oldPrice < 100) {
+    return Math.ceil(oldPrice / 5) * 5;
+  } else if (oldPrice < 500) {
+    return Math.ceil(oldPrice / 10) * 10;
+  } else if (oldPrice < 1000) {
+    return Math.ceil(oldPrice / 50) * 50;
+  } else if (oldPrice < 5000) {
+    return Math.ceil(oldPrice / 100) * 100;
+  } else {
+    return Math.ceil(oldPrice / 500) * 500;
+  }
 }
 
 serve(async (req) => {
@@ -55,7 +65,6 @@ serve(async (req) => {
 
     console.log(`Publishing product ${product_id} to channel ${channel_id}`);
 
-    // Initialize Supabase client
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     // Fetch product data with category
@@ -69,12 +78,15 @@ serve(async (req) => {
       throw new Error(`Product not found: ${productError?.message || "No data"}`);
     }
 
-    console.log("Product fetched:", product.name, "Price:", product.price, "Original:", product.original_price);
+    // Calculate marketing prices (NEVER expose wholesale/original_price)
+    const retailPrice = product.price; // This already includes our markup
+    const marketingOldPrice = getMarketingOldPrice(retailPrice);
+    const discount = Math.round((1 - retailPrice / marketingOldPrice) * 100);
+    const savings = marketingOldPrice - retailPrice;
 
-    // Calculate savings text
-    const savingsText = calculateSavings(product.original_price, product.price);
+    console.log("Product:", product.name, "Retail:", retailPrice, "Marketing old:", marketingOldPrice);
 
-    // Generate AI description using Lovable AI (Gemini)
+    // Generate AI description
     let aiDescription = "";
     try {
       const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -88,40 +100,38 @@ serve(async (req) => {
           messages: [
             {
               role: "system",
-              content: `Ти - досвідчений копірайтер для тактичного e-commerce магазину Taverna Group.
-Створи привабливий, продаючий опис товару для Telegram каналу.
+              content: `Ти - досвідчений копірайтер для тактичного магазину Taverna Group.
+Створи привабливий опис товару для Telegram.
 
-ОБОВ'ЯЗКОВІ ПРАВИЛА:
-- Пиши ТІЛЬКИ українською мовою
-- Використовуй емодзі для привернення уваги (🔥💪🎯⚡✅🛡️)
-- Опис має бути коротким (до 400 символів без ціни)
-- Включи 2-3 ключові переваги товару
+ПРАВИЛА:
+- Пиши українською
+- Використовуй емодзі (🔥💪🎯⚡✅🛡️)
+- До 400 символів
 - НЕ вигадуй характеристики
+- НІКОЛИ не згадуй оптові/закупівельні ціни
 
-ФОРМАТ (дотримуйся строго):
+ФОРМАТ:
 🔥 [Назва товару]
 
-[2-3 речення про переваги товару]
+[2-3 речення про переваги]
 
-💰 Ціна: ${product.price.toLocaleString()} ₴
-${savingsText}
+💰 Ціна: ${retailPrice.toLocaleString()} ₴
+🏷️ Звичайна ціна: ${marketingOldPrice.toLocaleString()} ₴
+✨ Економія: ${savings.toLocaleString()} ₴ (-${discount}%)
 
-✅ [2-3 характеристики через | ]
+✅ [2-3 характеристики]
 
-👇 Тисни кнопку нижче, щоб замовити в один клік!`
+👇 Тисни кнопку нижче, щоб замовити!`
             },
             {
               role: "user",
-              content: `Створи опис для товару:
-Назва: ${product.name}
-Ціна для клієнта: ${product.price} ₴
-${product.original_price ? `Оптова ціна: ${product.original_price} ₴` : ""}
+              content: `Товар: ${product.name}
+Ціна: ${retailPrice} ₴
 Бренд: ${product.brand || "Не вказано"}
-Опис: ${product.description || product.ai_description || "Немає опису"}
+Опис: ${product.description || product.ai_description || ""}
 Категорія: ${product.category?.name || "Тактика"}
-Розміри: ${product.sizes?.join(", ") || "Не вказано"}
-Кольори: ${product.colors?.join(", ") || "Не вказано"}
-Артикул: ${product.vendor_code || "Не вказано"}`
+Розміри: ${product.sizes?.join(", ") || "Універсальний"}
+Кольори: ${product.colors?.join(", ") || "Стандарт"}`
             }
           ],
         }),
@@ -130,53 +140,38 @@ ${product.original_price ? `Оптова ціна: ${product.original_price} ₴
       if (aiResponse.ok) {
         const aiData = await aiResponse.json();
         aiDescription = aiData.choices?.[0]?.message?.content || "";
-        console.log("AI description generated successfully");
-      } else {
-        console.error("AI generation failed:", await aiResponse.text());
+        console.log("AI description generated");
       }
     } catch (aiError) {
-      console.error("AI generation error:", aiError);
+      console.error("AI error:", aiError);
     }
 
-    // Use custom text, AI description, or fallback to formatted basic text
+    // Fallback text (also hides wholesale price)
     const messageText = custom_text || aiDescription || `
 🔥 ${product.name}
 
-💰 Ціна: ${product.price.toLocaleString()} ₴
-${savingsText}
+💰 Ціна: ${retailPrice.toLocaleString()} ₴
+🏷️ Звичайна ціна: ${marketingOldPrice.toLocaleString()} ₴
+✨ Економія: ${savings.toLocaleString()} ₴
 
-${product.description ? product.description.slice(0, 200) + "..." : ""}
+${product.description ? product.description.slice(0, 150) + "..." : ""}
 
-👇 Тисни кнопку нижче, щоб замовити в один клік!
+👇 Тисни кнопку нижче, щоб замовити!
     `.trim();
 
-    // Get Mini App URL
     const miniAppUrl = `https://taverna-ai-dropshop.lovable.app/product/${product_id}`;
 
-    // Prepare inline keyboard with order button
     const inlineKeyboard = {
       inline_keyboard: [
-        [
-          {
-            text: "🛒 Замовити зараз",
-            url: miniAppUrl,
-          },
-        ],
-        [
-          {
-            text: "📱 Відкрити в додатку",
-            url: `https://t.me/TavernaShopBot/app?startapp=product_${product_id}`,
-          },
-        ],
+        [{ text: "🛒 Замовити зараз", url: miniAppUrl }],
+        [{ text: "📱 Відкрити в додатку", url: `https://t.me/TavernaShopBot/app?startapp=product_${product_id}` }],
       ],
     };
 
-    // Send photo with caption if image exists
     const imageUrl = product.images?.[0];
     let telegramResponse;
 
     if (imageUrl) {
-      // Send photo with caption
       telegramResponse = await fetch(
         `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`,
         {
@@ -185,14 +180,13 @@ ${product.description ? product.description.slice(0, 200) + "..." : ""}
           body: JSON.stringify({
             chat_id: channel_id,
             photo: imageUrl,
-            caption: messageText.slice(0, 1024), // Telegram caption limit
+            caption: messageText.slice(0, 1024),
             parse_mode: "HTML",
             reply_markup: inlineKeyboard,
           }),
         }
       );
     } else {
-      // Send text message
       telegramResponse = await fetch(
         `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
         {
@@ -211,14 +205,13 @@ ${product.description ? product.description.slice(0, 200) + "..." : ""}
     const telegramResult = await telegramResponse.json();
 
     if (!telegramResult.ok) {
-      console.error("Telegram API error:", telegramResult);
-      throw new Error(`Telegram API error: ${telegramResult.description}`);
+      throw new Error(`Telegram error: ${telegramResult.description}`);
     }
 
-    console.log("Message sent successfully:", telegramResult.result.message_id);
+    console.log("Posted to Telegram:", telegramResult.result.message_id);
 
-    // Update promotion record with telegram message id
-    const { error: updateError } = await supabase
+    // Update promotion record
+    await supabase
       .from("promotions")
       .update({
         telegram_message_id: telegramResult.result.message_id,
@@ -230,33 +223,22 @@ ${product.description ? product.description.slice(0, 200) + "..." : ""}
       .eq("product_id", product_id)
       .eq("status", "pending");
 
-    if (updateError) {
-      console.warn("Failed to update promotion:", updateError);
-    }
-
     return new Response(
       JSON.stringify({
         success: true,
         message_id: telegramResult.result.message_id,
-        ai_description: aiDescription,
         channel: channel_id,
-        price: product.price,
-        original_price: product.original_price,
+        retail_price: retailPrice,
+        marketing_old_price: marketingOldPrice,
+        discount_percent: discount,
       }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
     console.error("telegram-publish error:", error);
     return new Response(
-      JSON.stringify({
-        error: error instanceof Error ? error.message : "Unknown error",
-      }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });

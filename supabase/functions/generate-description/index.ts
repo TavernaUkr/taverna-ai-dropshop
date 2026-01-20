@@ -5,13 +5,21 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Calculate savings percentage
-function calculateSavings(originalPrice: number, newPrice: number): { amount: number; percent: number } | null {
-  if (!originalPrice || originalPrice <= newPrice) return null;
-  return {
-    amount: originalPrice - newPrice,
-    percent: Math.round((1 - newPrice / originalPrice) * 100)
-  };
+// Generate marketing "old price" - 18% higher than retail for discount perception
+function getMarketingOldPrice(retailPrice: number): number {
+  const oldPrice = retailPrice * 1.18;
+  
+  if (oldPrice < 100) {
+    return Math.ceil(oldPrice / 5) * 5;
+  } else if (oldPrice < 500) {
+    return Math.ceil(oldPrice / 10) * 10;
+  } else if (oldPrice < 1000) {
+    return Math.ceil(oldPrice / 50) * 50;
+  } else if (oldPrice < 5000) {
+    return Math.ceil(oldPrice / 100) * 100;
+  } else {
+    return Math.ceil(oldPrice / 500) * 500;
+  }
 }
 
 serve(async (req) => {
@@ -34,82 +42,52 @@ serve(async (req) => {
 
     console.log(`Generating ${type} description for:`, product.name);
 
-    // Calculate savings for display
-    const savings = calculateSavings(product.original_price, product.price);
-    const savingsText = savings 
-      ? `\n🏷️ Економія: ${savings.amount.toLocaleString()} ₴ (-${savings.percent}%)`
-      : "";
+    // Calculate marketing prices (NEVER use original_price - that's wholesale)
+    const retailPrice = product.price; // Already includes markup
+    const marketingOldPrice = getMarketingOldPrice(retailPrice);
+    const discount = Math.round((1 - retailPrice / marketingOldPrice) * 100);
+    const savings = marketingOldPrice - retailPrice;
 
     let systemPrompt = "";
     
     if (type === "telegram") {
-      systemPrompt = `Ти - досвідчений копірайтер для тактичного e-commerce магазину Taverna Group.
-Створи привабливий, продаючий опис товару для Telegram каналу.
+      systemPrompt = `Ти - копірайтер для тактичного магазину Taverna Group.
+Створи опис для Telegram каналу.
 
-ОБОВ'ЯЗКОВІ ПРАВИЛА:
-- Пиши ТІЛЬКИ українською мовою
-- Використовуй емодзі для привернення уваги (🔥💪🎯⚡✅🛡️)
-- Опис має бути коротким (до 400 символів без ціни)
-- Включи 2-3 ключові переваги товару
-- НЕ вигадуй характеристики, яких немає в даних
-- ОБОВ'ЯЗКОВО включи ціну та заклик до дії в кінці
+КРИТИЧНО ВАЖЛИВО:
+- НІКОЛИ не згадуй оптові/закупівельні ціни
+- Показуй ТІЛЬКИ роздрібну ціну та маркетингову "звичайну" ціну
 
-ФОРМАТ (дотримуйся строго):
-🔥 [Назва товару]
+ФОРМАТ:
+🔥 [Назва]
 
-[2-3 речення про переваги товару - чому це крутий вибір]
+[2-3 речення про переваги]
 
-💰 Ціна: ${product.price?.toLocaleString() || '???'} ₴${savingsText}
+💰 Ціна: ${retailPrice.toLocaleString()} ₴
+🏷️ Звичайна ціна: ${marketingOldPrice.toLocaleString()} ₴
+✨ Економія: ${savings.toLocaleString()} ₴ (-${discount}%)
 
-✅ [2-3 ключові характеристики через | ]
+✅ [Характеристики]
 
-👇 Тисни кнопку нижче, щоб замовити в один клік!`;
+👇 Тисни кнопку нижче, щоб замовити!`;
     } else if (type === "marketplace") {
-      systemPrompt = `Ти - SEO-оптимізований копірайтер для маркетплейсів (OLX, Prom).
-Створи професійний опис товару для маркетплейсу.
-
-ПРАВИЛА:
-- Пиши українською мовою
-- Використовуй ключові слова для пошуку
-- Опис структурований та інформативний
-- Включи всі характеристики товару
-- НЕ використовуй емодзі
-- Довжина: 400-800 символів
-- Включи ціну: ${product.price?.toLocaleString() || '???'} ₴`;
+      systemPrompt = `SEO-опис для маркетплейсу (OLX, Prom).
+Ціна: ${retailPrice.toLocaleString()} ₴
+Без емодзі. 400-800 символів. Ключові слова для пошуку.`;
     } else if (type === "social") {
-      systemPrompt = `Ти - SMM-спеціаліст для соціальних мереж (Instagram, Facebook, TikTok).
-Створи вірусний пост для соціальних мереж.
-
-ПРАВИЛА:
-- Пиши українською мовою
-- Використовуй емодзі та хештеги
-- Короткий, захоплюючий текст (до 280 символів)
-- Включи заклик до дії
-- Ціна: ${product.price?.toLocaleString() || '???'} ₴
-- Додай 5-8 релевантних хештегів (#тактика #мілітарі #україна тощо)`;
-    } else if (type === "catalog") {
-      systemPrompt = `Ти - копірайтер для каталогу інтернет-магазину.
-Створи короткий, інформативний опис товару.
-
-ПРАВИЛА:
-- Пиши українською мовою
-- Короткий опис (до 200 символів)
-- Включи тільки найважливіші характеристики
-- Ніяких емодзі та CTA`;
+      systemPrompt = `SMM пост для Instagram/Facebook.
+Ціна: ${retailPrice.toLocaleString()} ₴ (звичайна ${marketingOldPrice.toLocaleString()} ₴)
+Емодзі + 5-8 хештегів. До 280 символів.`;
     } else {
-      systemPrompt = `Створи якісний опис товару українською мовою. Ціна: ${product.price?.toLocaleString() || '???'} ₴`;
+      systemPrompt = `Короткий опис товару. Ціна: ${retailPrice.toLocaleString()} ₴`;
     }
 
-    const userMessage = `Створи опис для товару:
-Назва: ${product.name}
-Ціна для клієнта: ${product.price} ₴
-${product.original_price ? `Оптова ціна (стара): ${product.original_price} ₴` : ""}
+    const userMessage = `Товар: ${product.name}
+Ціна: ${retailPrice} ₴
 ${product.brand ? `Бренд: ${product.brand}` : ""}
-${product.description ? `Існуючий опис: ${product.description}` : ""}
+${product.description ? `Опис: ${product.description}` : ""}
 ${product.sizes?.length ? `Розміри: ${product.sizes.join(", ")}` : ""}
 ${product.colors?.length ? `Кольори: ${product.colors.join(", ")}` : ""}
-${product.vendor_code ? `Артикул: ${product.vendor_code}` : ""}
-${product.model ? `Модель: ${product.model}` : ""}
 ${product.category ? `Категорія: ${product.category}` : ""}`;
 
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -129,18 +107,12 @@ ${product.category ? `Категорія: ${product.category}` : ""}`;
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
-      console.error("AI API error:", errorText);
+      console.error("AI error:", errorText);
       
       if (aiResponse.status === 429) {
         return new Response(
-          JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
+          JSON.stringify({ error: "Rate limit exceeded" }),
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      if (aiResponse.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "Payment required. Please add credits." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
       
@@ -150,31 +122,25 @@ ${product.category ? `Категорія: ${product.category}` : ""}`;
     const aiData = await aiResponse.json();
     const generatedText = aiData.choices?.[0]?.message?.content || "";
 
-    console.log("Description generated successfully for type:", type);
+    console.log("Generated description for:", type);
 
     return new Response(
       JSON.stringify({
         success: true,
         description: generatedText,
         type,
-        price: product.price,
-        original_price: product.original_price,
+        retail_price: retailPrice,
+        marketing_old_price: marketingOldPrice,
+        discount_percent: discount,
         savings: savings,
       }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
     console.error("generate-description error:", error);
     return new Response(
-      JSON.stringify({
-        error: error instanceof Error ? error.message : "Unknown error",
-      }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
