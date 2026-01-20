@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Gift, Percent, Zap, Clock, ChevronRight, Tag } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Gift, Percent, Zap, Clock, ChevronRight, Tag, ArrowLeft, ChevronLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { PromoCard } from "@/components/PromoCard";
+import { Button } from "@/components/ui/button";
 
 interface Promo {
   id: string;
@@ -51,7 +52,35 @@ const mockPromos: Promo[] = [
   },
 ];
 
+const promoConfig = {
+  discount: {
+    icon: Gift,
+    gradient: "from-live to-warning",
+    bgLight: "bg-live/10",
+    textColor: "text-live",
+  },
+  referral: {
+    icon: Gift,
+    gradient: "from-primary to-accent",
+    bgLight: "bg-primary/10",
+    textColor: "text-primary",
+  },
+  flash: {
+    icon: Zap,
+    gradient: "from-warning to-amber-400",
+    bgLight: "bg-warning/10",
+    textColor: "text-warning",
+  },
+  bonus: {
+    icon: Gift,
+    gradient: "from-success to-emerald-400",
+    bgLight: "bg-success/10",
+    textColor: "text-success",
+  },
+};
+
 export const Promos = () => {
+  const navigate = useNavigate();
   const [activeFilter, setActiveFilter] = useState<"all" | "discount" | "flash" | "bonus">("all");
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
@@ -66,6 +95,10 @@ export const Promos = () => {
     setTimeout(() => setCopiedCode(null), 2000);
   };
 
+  const handleBack = () => {
+    navigate("/");
+  };
+
   const filters = [
     { id: "all", label: "Всі", icon: Gift },
     { id: "discount", label: "Знижки", icon: Percent },
@@ -73,14 +106,34 @@ export const Promos = () => {
     { id: "bonus", label: "Бонуси", icon: Tag },
   ];
 
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString("uk-UA", {
+      day: "numeric",
+      month: "short",
+    });
+  };
+
   return (
-    <div className="min-h-screen bg-background pb-24">
-      {/* Hero Banner */}
-      <div className="relative bg-gradient-to-br from-primary via-primary/80 to-accent p-6 pt-4">
-        <div className="absolute inset-0 bg-[url('/placeholder.svg')] opacity-10 mix-blend-overlay" />
-        <div className="relative">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-12 h-12 rounded-full bg-background/20 backdrop-blur-sm flex items-center justify-center">
+    <div className="min-h-screen bg-background pb-8">
+      {/* Header with Back Button */}
+      <div className="sticky top-0 z-40 bg-gradient-to-br from-primary via-primary/90 to-accent">
+        {/* Back button row */}
+        <div className="flex items-center px-4 pt-3 pb-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleBack}
+            className="text-primary-foreground hover:bg-primary-foreground/10 -ml-2"
+          >
+            <ChevronLeft className="h-5 w-5 mr-1" />
+            Назад
+          </Button>
+        </div>
+
+        {/* Hero content */}
+        <div className="px-4 pb-5">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-12 h-12 rounded-full bg-primary-foreground/20 backdrop-blur-sm flex items-center justify-center">
               <Gift className="w-6 h-6 text-primary-foreground" />
             </div>
             <div>
@@ -90,16 +143,16 @@ export const Promos = () => {
           </div>
           
           {/* Stats */}
-          <div className="grid grid-cols-3 gap-3 mt-4">
-            <div className="bg-background/20 backdrop-blur-sm rounded-xl p-3 text-center">
+          <div className="grid grid-cols-3 gap-3">
+            <div className="bg-primary-foreground/15 backdrop-blur-sm rounded-xl p-3 text-center">
               <span className="text-2xl font-bold text-primary-foreground">{mockPromos.length}</span>
-              <p className="text-xs text-primary-foreground/70">Активних акцій</p>
+              <p className="text-xs text-primary-foreground/70">Активних</p>
             </div>
-            <div className="bg-background/20 backdrop-blur-sm rounded-xl p-3 text-center">
+            <div className="bg-primary-foreground/15 backdrop-blur-sm rounded-xl p-3 text-center">
               <span className="text-2xl font-bold text-primary-foreground">30%</span>
-              <p className="text-xs text-primary-foreground/70">Макс. знижка</p>
+              <p className="text-xs text-primary-foreground/70">Макс.</p>
             </div>
-            <div className="bg-background/20 backdrop-blur-sm rounded-xl p-3 text-center">
+            <div className="bg-primary-foreground/15 backdrop-blur-sm rounded-xl p-3 text-center">
               <span className="text-2xl font-bold text-primary-foreground">∞</span>
               <p className="text-xs text-primary-foreground/70">Бонуси</p>
             </div>
@@ -134,62 +187,91 @@ export const Promos = () => {
 
       {/* Promos List */}
       <div className="px-4 space-y-4">
-        {filteredPromos.map((promo) => (
-          <div
-            key={promo.id}
-            className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm"
-          >
-            <PromoCard
-              title={promo.title}
-              description={promo.description}
-              type={promo.type}
-              validUntil={promo.validUntil}
-            />
-            
-            {/* Promo Code Section */}
-            {promo.code && (
-              <div className="px-4 pb-4 -mt-2">
-                <div className="flex items-center justify-between bg-muted/50 rounded-xl p-3">
-                  <div className="flex items-center gap-2">
-                    <Tag className="w-4 h-4 text-primary" />
-                    <span className="font-mono font-bold text-foreground">{promo.code}</span>
+        {filteredPromos.map((promo) => {
+          const config = promoConfig[promo.type];
+          const Icon = config.icon;
+
+          return (
+            <div
+              key={promo.id}
+              className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm"
+            >
+              {/* Promo Header */}
+              <div className={cn("p-4", `bg-gradient-to-br ${config.gradient}`)}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-primary-foreground/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0">
+                    <Icon className="h-5 w-5 text-primary-foreground" />
                   </div>
-                  <button
-                    onClick={() => handleCopyCode(promo.code!)}
-                    className={cn(
-                      "px-3 py-1.5 rounded-lg text-sm font-medium transition-all",
-                      copiedCode === promo.code
-                        ? "bg-success text-success-foreground"
-                        : "bg-primary text-primary-foreground hover:bg-primary/90"
-                    )}
-                  >
-                    {copiedCode === promo.code ? "Скопійовано!" : "Копіювати"}
-                  </button>
+                  
+                  {promo.validUntil && (
+                    <div className="flex items-center gap-1 text-xs bg-primary-foreground/20 backdrop-blur-sm px-2 py-1 rounded-full text-primary-foreground">
+                      <Clock className="h-3 w-3" />
+                      <span>до {formatDate(promo.validUntil)}</span>
+                    </div>
+                  )}
                 </div>
-              </div>
-            )}
-
-            {/* Timer for flash sales */}
-            {promo.type === "flash" && promo.validUntil && (
-              <div className="px-4 pb-4 -mt-2">
-                <div className="flex items-center gap-2 text-warning">
-                  <Clock className="w-4 h-4" />
-                  <span className="text-sm font-medium">
-                    Залишилось: {Math.ceil((promo.validUntil.getTime() - Date.now()) / (1000 * 60 * 60))} год
-                  </span>
+                
+                <div className="mt-3">
+                  <h3 className="font-bold text-lg text-primary-foreground leading-tight">{promo.title}</h3>
+                  <p className="text-sm text-primary-foreground/80 mt-1">{promo.description}</p>
                 </div>
-              </div>
-            )}
 
-            {/* CTA Button */}
-            <div className="px-4 pb-4">
-              <button className="w-full flex items-center justify-center gap-2 bg-primary/10 text-primary py-3 rounded-xl font-medium hover:bg-primary/20 transition-colors">
-                Перейти до товарів
-                <ChevronRight className="w-4 h-4" />
-              </button>
+                {promo.discountPercent && (
+                  <div className="mt-3 inline-flex items-center gap-1 bg-primary-foreground/20 backdrop-blur-sm px-3 py-1.5 rounded-lg">
+                    <Percent className="h-4 w-4 text-primary-foreground" />
+                    <span className="font-bold text-primary-foreground">-{promo.discountPercent}%</span>
+                  </div>
+                )}
+              </div>
+              
+              {/* Promo Code Section */}
+              {promo.code && (
+                <div className="p-4 border-t border-border">
+                  <div className="flex items-center justify-between bg-muted rounded-xl p-3">
+                    <div className="flex items-center gap-2">
+                      <Tag className="w-4 h-4 text-primary" />
+                      <span className="font-mono font-bold text-foreground text-sm">{promo.code}</span>
+                    </div>
+                    <button
+                      onClick={() => handleCopyCode(promo.code!)}
+                      className={cn(
+                        "px-3 py-1.5 rounded-lg text-sm font-medium transition-all",
+                        copiedCode === promo.code
+                          ? "bg-success text-success-foreground"
+                          : "bg-primary text-primary-foreground hover:bg-primary/90"
+                      )}
+                    >
+                      {copiedCode === promo.code ? "Скопійовано!" : "Копіювати"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Timer for flash sales */}
+              {promo.type === "flash" && promo.validUntil && (
+                <div className="px-4 pb-3">
+                  <div className="flex items-center gap-2 text-warning">
+                    <Clock className="w-4 h-4" />
+                    <span className="text-sm font-medium">
+                      Залишилось: {Math.ceil((promo.validUntil.getTime() - Date.now()) / (1000 * 60 * 60))} год
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* CTA Button */}
+              <div className="px-4 pb-4">
+                <button 
+                  onClick={() => navigate("/")}
+                  className="w-full flex items-center justify-center gap-2 bg-primary/10 text-primary py-3 rounded-xl font-medium hover:bg-primary/20 transition-colors"
+                >
+                  Перейти до товарів
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
 
         {filteredPromos.length === 0 && (
           <div className="text-center py-12">
