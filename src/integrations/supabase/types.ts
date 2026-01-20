@@ -416,6 +416,7 @@ export type Database = {
           id: string
           images: string[] | null
           in_stock: boolean | null
+          is_boosted: boolean | null
           model: string | null
           name: string
           original_description: string | null
@@ -427,6 +428,8 @@ export type Database = {
           supplier_id: string | null
           updated_at: string
           vendor_code: string | null
+          video_url: string | null
+          views_count: number | null
         }
         Insert: {
           ai_category?: string | null
@@ -444,6 +447,7 @@ export type Database = {
           id?: string
           images?: string[] | null
           in_stock?: boolean | null
+          is_boosted?: boolean | null
           model?: string | null
           name: string
           original_description?: string | null
@@ -455,6 +459,8 @@ export type Database = {
           supplier_id?: string | null
           updated_at?: string
           vendor_code?: string | null
+          video_url?: string | null
+          views_count?: number | null
         }
         Update: {
           ai_category?: string | null
@@ -472,6 +478,7 @@ export type Database = {
           id?: string
           images?: string[] | null
           in_stock?: boolean | null
+          is_boosted?: boolean | null
           model?: string | null
           name?: string
           original_description?: string | null
@@ -483,6 +490,8 @@ export type Database = {
           supplier_id?: string | null
           updated_at?: string
           vendor_code?: string | null
+          video_url?: string | null
+          views_count?: number | null
         }
         Relationships: [
           {
