@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { CitySearch } from './CitySearch';
 import { WarehouseSelect } from './WarehouseSelect';
 
-export type DeliveryService = 'nova_poshta' | 'ukrposhta' | 'rozetka' | 'meest';
+export type DeliveryService = 'nova_poshta' | 'ukrposhta' | 'rozetka' | 'meest' | 'justin';
 export type DeliveryType = 'warehouse' | 'postomat' | 'courier' | 'fulfillment';
 
 interface DeliveryServiceSelectProps {
@@ -45,6 +45,13 @@ const deliveryServices = [
     icon: '✈️',
     description: 'Міжнародна та локальна доставка',
     supportsTypes: ['warehouse', 'courier'] as DeliveryType[],
+  },
+  {
+    id: 'justin' as DeliveryService,
+    name: 'Justin',
+    icon: '🟡',
+    description: 'Відділення у Сільпо та інших',
+    supportsTypes: ['warehouse'] as DeliveryType[],
   },
 ];
 
@@ -264,8 +271,20 @@ export function DeliveryFields({
     );
   }
 
-  // Rozetka / Meest - text field for pickup point
-  if (service === 'rozetka' || service === 'meest') {
+  // Rozetka / Meest / Justin - text field for pickup point
+  if (service === 'rozetka' || service === 'meest' || service === 'justin') {
+    const placeholderText = {
+      rozetka: 'Адреса магазину Rozetka',
+      meest: 'Адреса відділення Meest',
+      justin: 'Адреса відділення Justin (Сільпо, Le Silpo тощо)',
+    };
+    
+    const helperText = {
+      rozetka: 'Вкажіть адресу найближчої точки видачі Rozetka',
+      meest: 'Вкажіть адресу відділення Meest Express',
+      justin: 'Вкажіть адресу найближчого відділення Justin',
+    };
+    
     return (
       <div className="space-y-4">
         <CitySearch
@@ -282,20 +301,14 @@ export function DeliveryFields({
             <Input
               value={pickupPoint}
               onChange={(e) => onPickupPointChange(e.target.value)}
-              placeholder={
-                service === 'rozetka'
-                  ? 'Адреса магазину Rozetka'
-                  : 'Адреса відділення Meest'
-              }
+              placeholder={placeholderText[service]}
               className={errors.pickupPoint ? 'border-destructive' : ''}
             />
             {errors.pickupPoint && (
               <p className="text-xs text-destructive">{errors.pickupPoint}</p>
             )}
             <p className="text-xs text-muted-foreground">
-              {service === 'rozetka'
-                ? 'Вкажіть адресу найближчої точки видачі Rozetka'
-                : 'Вкажіть адресу відділення Meest Express'}
+              {helperText[service]}
             </p>
           </div>
         )}

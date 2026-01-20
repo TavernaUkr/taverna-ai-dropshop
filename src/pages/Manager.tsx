@@ -13,6 +13,13 @@ import {
   Clock,
   TrendingUp,
   Target,
+  BarChart3,
+  Eye,
+  MousePointerClick,
+  ShoppingCart,
+  Calendar,
+  RefreshCw,
+  Wand2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,9 +30,21 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+} from "recharts";
 
 interface Product {
   id: string;
@@ -436,35 +455,199 @@ export default function Manager() {
               ))}
           </TabsContent>
 
-          {/* Stats Tab */}
+          {/* Stats Tab - Enhanced with Charts */}
           <TabsContent value="stats" className="space-y-4">
+            {/* Stats Cards */}
             <div className="grid grid-cols-2 gap-3">
-              <Card>
-                <CardContent className="p-4 text-center">
-                  <p className="text-3xl font-bold text-primary">24</p>
-                  <p className="text-sm text-muted-foreground">Постів опубліковано</p>
+              <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Eye className="h-4 w-4 text-primary" />
+                    <span className="text-xs text-muted-foreground">Перегляди</span>
+                  </div>
+                  <p className="text-2xl font-bold text-foreground">1,247</p>
+                  <p className="text-xs text-success flex items-center gap-1 mt-1">
+                    <TrendingUp className="h-3 w-3" />
+                    +12% за тиждень
+                  </p>
                 </CardContent>
               </Card>
-              <Card>
-                <CardContent className="p-4 text-center">
-                  <p className="text-3xl font-bold text-primary">1.2K</p>
-                  <p className="text-sm text-muted-foreground">Переглядів</p>
+              <Card className="bg-gradient-to-br from-accent/10 to-accent/5 border-accent/20">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <MousePointerClick className="h-4 w-4 text-accent" />
+                    <span className="text-xs text-muted-foreground">Кліки</span>
+                  </div>
+                  <p className="text-2xl font-bold text-foreground">156</p>
+                  <p className="text-xs text-success flex items-center gap-1 mt-1">
+                    <TrendingUp className="h-3 w-3" />
+                    +8% за тиждень
+                  </p>
                 </CardContent>
               </Card>
-              <Card>
-                <CardContent className="p-4 text-center">
-                  <p className="text-3xl font-bold text-primary">156</p>
-                  <p className="text-sm text-muted-foreground">Кліків</p>
+              <Card className="bg-gradient-to-br from-success/10 to-success/5 border-success/20">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <ShoppingCart className="h-4 w-4 text-success" />
+                    <span className="text-xs text-muted-foreground">Замовлення</span>
+                  </div>
+                  <p className="text-2xl font-bold text-foreground">24</p>
+                  <p className="text-xs text-success flex items-center gap-1 mt-1">
+                    <TrendingUp className="h-3 w-3" />
+                    +15% за тиждень
+                  </p>
                 </CardContent>
               </Card>
-              <Card>
-                <CardContent className="p-4 text-center">
-                  <p className="text-3xl font-bold text-primary">12</p>
-                  <p className="text-sm text-muted-foreground">Замовлень</p>
+              <Card className="bg-gradient-to-br from-warning/10 to-warning/5 border-warning/20">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <BarChart3 className="h-4 w-4 text-warning" />
+                    <span className="text-xs text-muted-foreground">Конверсія</span>
+                  </div>
+                  <p className="text-2xl font-bold text-foreground">12.5%</p>
+                  <p className="text-xs text-success flex items-center gap-1 mt-1">
+                    <TrendingUp className="h-3 w-3" />
+                    +2.1% за тиждень
+                  </p>
                 </CardContent>
               </Card>
             </div>
 
+            {/* Views Chart */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-primary" />
+                  Динаміка переглядів
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-48">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart
+                      data={[
+                        { day: 'Пн', views: 120, clicks: 15 },
+                        { day: 'Вт', views: 180, clicks: 22 },
+                        { day: 'Ср', views: 250, clicks: 35 },
+                        { day: 'Чт', views: 190, clicks: 28 },
+                        { day: 'Пт', views: 320, clicks: 45 },
+                        { day: 'Сб', views: 280, clicks: 38 },
+                        { day: 'Нд', views: 220, clicks: 30 },
+                      ]}
+                      margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                    >
+                      <defs>
+                        <linearGradient id="colorViews" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis 
+                        dataKey="day" 
+                        stroke="hsl(var(--muted-foreground))" 
+                        fontSize={12}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+                      <YAxis 
+                        stroke="hsl(var(--muted-foreground))" 
+                        fontSize={12}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+                      <Tooltip 
+                        contentStyle={{ 
+                          background: 'hsl(var(--card))', 
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px',
+                          fontSize: '12px'
+                        }}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="views"
+                        stroke="hsl(var(--primary))"
+                        fillOpacity={1}
+                        fill="url(#colorViews)"
+                        strokeWidth={2}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Platform Performance */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4 text-primary" />
+                  Ефективність платформ
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {[
+                  { name: 'Telegram', icon: '📱', views: 850, percent: 68 },
+                  { name: 'Instagram', icon: '📸', views: 234, percent: 19 },
+                  { name: 'OLX', icon: '🛒', views: 98, percent: 8 },
+                  { name: 'Prom.ua', icon: '🏪', views: 65, percent: 5 },
+                ].map((platform) => (
+                  <div key={platform.name} className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span>{platform.icon}</span>
+                        <span className="text-sm font-medium">{platform.name}</span>
+                      </div>
+                      <span className="text-sm text-muted-foreground">{platform.views} переглядів</span>
+                    </div>
+                    <Progress value={platform.percent} className="h-2" />
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            {/* AI Processing Status */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Wand2 className="h-4 w-4 text-primary" />
+                  Статус AI-обробки товарів
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {[
+                  { name: 'Тактичні рукавички M-Pact', status: 'done', progress: 100 },
+                  { name: 'Рюкзак тактичний 35л', status: 'generating', progress: 65 },
+                  { name: 'Берці демісезонні', status: 'analyzing', progress: 30 },
+                ].map((item, idx) => (
+                  <div key={idx} className="p-3 bg-muted/50 rounded-lg space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium truncate flex-1 mr-2">{item.name}</span>
+                      <Badge 
+                        variant="outline" 
+                        className={cn(
+                          "text-xs shrink-0",
+                          item.status === 'done' && "bg-success/10 text-success border-success/20",
+                          item.status === 'generating' && "bg-primary/10 text-primary border-primary/20",
+                          item.status === 'analyzing' && "bg-warning/10 text-warning border-warning/20"
+                        )}
+                      >
+                        {item.status === 'done' && 'Готово'}
+                        {item.status === 'generating' && 'Генерація опису'}
+                        {item.status === 'analyzing' && 'AI аналіз'}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Progress value={item.progress} className="h-1.5 flex-1" />
+                      <span className="text-xs text-muted-foreground w-8">{item.progress}%</span>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            {/* Recent Publications */}
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">Останні публікації</CardTitle>
@@ -487,7 +670,8 @@ export default function Manager() {
                           ))}
                         </div>
                       </div>
-                      <Badge variant="outline" className="text-xs text-primary">
+                      <Badge variant="outline" className="text-xs text-success bg-success/10 border-success/20">
+                        <Check className="h-3 w-3 mr-1" />
                         Опубліковано
                       </Badge>
                     </div>

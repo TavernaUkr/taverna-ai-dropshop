@@ -1,9 +1,9 @@
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Banknote, CreditCard, Bitcoin, Check } from "lucide-react";
+import { Banknote, CreditCard, Wallet, Check, Smartphone } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type PaymentMethod = "prepayment" | "full" | "crypto" | "cash";
+export type PaymentMethod = "cash" | "card" | "mono" | "applepay" | "googlepay" | "telegram_wallet";
 
 interface PaymentMethodSelectProps {
   value: PaymentMethod;
@@ -15,35 +15,71 @@ const paymentMethods: {
   id: PaymentMethod;
   label: string;
   description: string;
-  icon: typeof Banknote;
+  icon: React.ReactNode;
   disabled?: boolean;
+  badge?: string;
 }[] = [
   {
     id: "cash",
     label: "Оплата при отриманні",
     description: "Готівкою або карткою на пошті",
-    icon: Banknote,
+    icon: <Banknote className="h-6 w-6" />,
   },
   {
-    id: "prepayment",
-    label: "Передоплата 50%",
-    description: "Половина суми зараз, решта при отриманні",
-    icon: CreditCard,
+    id: "card",
+    label: "Картка Visa/Mastercard",
+    description: "Безпечна онлайн оплата",
+    icon: <CreditCard className="h-6 w-6" />,
     disabled: true,
+    badge: "Скоро",
   },
   {
-    id: "full",
-    label: "Повна оплата",
-    description: "Онлайн оплата карткою Visa/Mastercard",
-    icon: CreditCard,
+    id: "mono",
+    label: "MonoPay",
+    description: "Швидка оплата через Monobank",
+    icon: (
+      <div className="w-6 h-6 rounded-full bg-foreground flex items-center justify-center">
+        <span className="text-background text-xs font-bold">M</span>
+      </div>
+    ),
     disabled: true,
+    badge: "Скоро",
   },
   {
-    id: "crypto",
-    label: "Криптовалюта",
-    description: "Bitcoin, Ethereum, USDT та інші",
-    icon: Bitcoin,
+    id: "applepay",
+    label: "Apple Pay",
+    description: "Оплата через Apple Wallet",
+    icon: (
+      <svg viewBox="0 0 24 24" className="h-6 w-6 fill-current">
+        <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+      </svg>
+    ),
     disabled: true,
+    badge: "Скоро",
+  },
+  {
+    id: "googlepay",
+    label: "Google Pay",
+    description: "Оплата через Google Wallet",
+    icon: (
+      <svg viewBox="0 0 24 24" className="h-6 w-6">
+        <path fill="#4285F4" d="M12.24 10.285V14.4h6.806c-.275 1.765-2.056 5.174-6.806 5.174-4.095 0-7.439-3.389-7.439-7.574s3.345-7.574 7.439-7.574c2.33 0 3.891.989 4.785 1.849l3.254-3.138C18.189 1.186 15.479 0 12.24 0c-6.635 0-12 5.365-12 12s5.365 12 12 12c6.926 0 11.52-4.869 11.52-11.726 0-.788-.085-1.39-.189-1.989H12.24z"/>
+      </svg>
+    ),
+    disabled: true,
+    badge: "Скоро",
+  },
+  {
+    id: "telegram_wallet",
+    label: "Telegram Wallet",
+    description: "Оплата криптовалютою TON/USDT",
+    icon: (
+      <div className="w-6 h-6 rounded-full bg-[hsl(200,85%,50%)] flex items-center justify-center">
+        <Wallet className="h-4 w-4 text-white" />
+      </div>
+    ),
+    disabled: true,
+    badge: "Скоро",
   },
 ];
 
@@ -62,10 +98,9 @@ export const PaymentMethodSelect = ({
       <RadioGroup
         value={value}
         onValueChange={(val) => onChange(val as PaymentMethod)}
-        className="space-y-3"
+        className="space-y-2"
       >
         {paymentMethods.map((method) => {
-          const Icon = method.icon;
           const isSelected = value === method.id;
           const isDisabled = method.disabled;
 
@@ -73,11 +108,11 @@ export const PaymentMethodSelect = ({
             <label
               key={method.id}
               className={cn(
-                "flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-all",
+                "flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all relative overflow-hidden",
                 isSelected
-                  ? "border-primary bg-primary/5"
+                  ? "border-primary bg-primary/5 ring-1 ring-primary"
                   : "border-border hover:border-primary/50",
-                isDisabled && "opacity-50 cursor-not-allowed"
+                isDisabled && "opacity-60 cursor-not-allowed"
               )}
             >
               <RadioGroupItem
@@ -86,35 +121,49 @@ export const PaymentMethodSelect = ({
                 className="sr-only"
               />
               
+              {/* Icon */}
               <div
                 className={cn(
-                  "w-12 h-12 rounded-full flex items-center justify-center",
-                  isSelected ? "bg-primary/20" : "bg-muted"
+                  "w-11 h-11 rounded-xl flex items-center justify-center shrink-0",
+                  isSelected ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"
                 )}
               >
-                <Icon
-                  className={cn(
-                    "h-6 w-6",
-                    isSelected ? "text-primary" : "text-muted-foreground"
+                {method.icon}
+              </div>
+              
+              {/* Content */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-foreground">{method.label}</span>
+                  {method.badge && (
+                    <span className="text-[10px] font-medium bg-warning/20 text-warning px-1.5 py-0.5 rounded-full">
+                      {method.badge}
+                    </span>
                   )}
-                />
+                </div>
+                <p className="text-xs text-muted-foreground truncate">{method.description}</p>
               </div>
               
-              <div className="flex-1">
-                <div className="font-medium text-foreground">{method.label}</div>
-                <p className="text-sm text-muted-foreground">{method.description}</p>
-                {isDisabled && (
-                  <p className="text-xs text-warning mt-1">Скоро буде доступно</p>
-                )}
-              </div>
-              
-              {isSelected && <Check className="h-5 w-5 text-primary" />}
+              {/* Selection indicator */}
+              {isSelected && (
+                <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center shrink-0">
+                  <Check className="h-4 w-4 text-primary-foreground" />
+                </div>
+              )}
             </label>
           );
         })}
       </RadioGroup>
 
       {error && <p className="text-xs text-destructive mt-2">{error}</p>}
+      
+      {/* Payment Security Badge */}
+      <div className="flex items-center justify-center gap-2 pt-2">
+        <svg viewBox="0 0 24 24" className="h-4 w-4 text-success fill-current">
+          <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/>
+        </svg>
+        <span className="text-xs text-muted-foreground">Безпечна оплата з шифруванням даних</span>
+      </div>
     </div>
   );
 };

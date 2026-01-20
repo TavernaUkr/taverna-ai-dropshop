@@ -493,9 +493,11 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
         <div className="text-sm font-medium text-foreground">Оплата</div>
         <p className="text-sm text-muted-foreground">
           {paymentMethod === 'cash' && 'Оплата при отриманні'}
-          {paymentMethod === 'prepayment' && 'Передоплата на картку'}
-          {paymentMethod === 'full' && 'Повна оплата онлайн'}
-          {paymentMethod === 'crypto' && 'Криптовалюта (USDT)'}
+          {paymentMethod === 'card' && 'Картка Visa/Mastercard'}
+          {paymentMethod === 'mono' && 'MonoPay'}
+          {paymentMethod === 'applepay' && 'Apple Pay'}
+          {paymentMethod === 'googlepay' && 'Google Pay'}
+          {paymentMethod === 'telegram_wallet' && 'Telegram Wallet'}
         </p>
       </div>
 
