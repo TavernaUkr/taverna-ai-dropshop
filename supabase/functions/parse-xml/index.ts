@@ -81,10 +81,31 @@ function validateUrl(urlString: string): URL {
   return url;
 }
 
-// Price markup function with configurable percentage
-function calculateDropPrice(originalPrice: number, markupPercent: number = 33): number {
+// Calculate tiered markup percentage based on original price
+// 33% for 0-1000 UAH, 28% for 1000-10000 UAH, 23% for 10000+ UAH, down to 20% for 1M+
+function getTieredMarkupPercent(originalPrice: number): number {
+  if (originalPrice >= 1000000) {
+    return 20; // Minimum markup for 1M+ items
+  } else if (originalPrice >= 100000) {
+    // Linear interpolation between 23% and 20% for 100k-1M range
+    const ratio = (originalPrice - 100000) / (1000000 - 100000);
+    return 23 - (ratio * 3); // Goes from 23% to 20%
+  } else if (originalPrice >= 10000) {
+    return 23; // 23% for 10000+ UAH
+  } else if (originalPrice >= 1000) {
+    return 28; // 28% for 1000-10000 UAH
+  } else {
+    return 33; // 33% for 0-1000 UAH
+  }
+}
+
+// Price markup function with tiered percentage
+function calculateDropPrice(originalPrice: number, overrideMarkupPercent?: number): number {
+  // Use override if provided, otherwise calculate based on price tier
+  const markupPercent = overrideMarkupPercent ?? getTieredMarkupPercent(originalPrice);
   const markup = originalPrice * (1 + markupPercent / 100);
   
+  // Aggressive rounding based on price range
   if (markup < 100) {
     return Math.ceil(markup / 5) * 5;
   } else if (markup < 500) {
@@ -93,8 +114,10 @@ function calculateDropPrice(originalPrice: number, markupPercent: number = 33): 
     return Math.ceil(markup / 50) * 50;
   } else if (markup < 5000) {
     return Math.ceil(markup / 100) * 100;
-  } else {
+  } else if (markup < 50000) {
     return Math.ceil(markup / 500) * 500;
+  } else {
+    return Math.ceil(markup / 1000) * 1000;
   }
 }
 
@@ -343,7 +366,7 @@ serve(async (req) => {
   }
 
   try {
-    const { xml_url, supplier_id, session_token, markup_percentage = 33, enable_ai = true } = await req.json();
+    const { xml_url, supplier_id, session_token, markup_percentage, enable_ai = true } = await req.json();
     
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -545,8 +568,9 @@ serve(async (req) => {
       const totalStock = groupProducts.reduce((sum, p) => sum + (p.stock_quantity || 0), 0);
       const inStock = groupProducts.some(p => p.in_stock);
       
-      // Calculate price with markup
+      // Calculate price with tiered markup (or use supplier's override if provided)
       const dropPrice = calculateDropPrice(firstProduct.original_price, markup_percentage);
+      const appliedMarkup = markup_percentage ?? getTieredMarkupPercent(firstProduct.original_price);
       
       // Determine category (AI-suggested or from XML)
       let categoryId = null;
