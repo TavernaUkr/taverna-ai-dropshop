@@ -231,7 +231,22 @@ ${existingSuppliers.map(s => `• ${s.name}`).join('\n')}` : ''}
       }
       
       const session = await validateSession(supabase, session_token);
-      if (!session || session.profile.user_type !== 'admin') {
+      if (!session) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid session' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      // Check admin role from secure user_roles table
+      const { data: adminRole } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', session.profile.id)
+        .eq('role', 'admin')
+        .single();
+      
+      if (!adminRole) {
         return new Response(
           JSON.stringify({ error: 'Admin access required' }),
           { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -272,12 +287,23 @@ ${existingSuppliers.map(s => `• ${s.name}`).join('\n')}` : ''}
           throw new Error(`Failed to create supplier: ${supplierError.message}`);
         }
 
-        // Update profile to supplier type if profile exists
+        // Add supplier role to user_roles table (secure roles)
         if (app.profile_id) {
+          // Update legacy user_type for backward compatibility
           await supabase
             .from('profiles')
             .update({ user_type: 'supplier' })
             .eq('id', app.profile_id);
+          
+          // Add supplier role to secure user_roles table
+          await supabase
+            .from('user_roles')
+            .upsert({ 
+              user_id: app.profile_id, 
+              role: 'supplier' 
+            }, { onConflict: 'user_id,role' });
+          
+          console.log(`Added supplier role to user ${app.profile_id}`);
         }
 
         // Update application status
@@ -366,7 +392,22 @@ ${existingSuppliers.map(s => `• ${s.name}`).join('\n')}` : ''}
       }
       
       const session = await validateSession(supabase, session_token);
-      if (!session || session.profile.user_type !== 'admin') {
+      if (!session) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid session' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      // Check admin role from secure user_roles table
+      const { data: adminRole } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', session.profile.id)
+        .eq('role', 'admin')
+        .single();
+      
+      if (!adminRole) {
         return new Response(
           JSON.stringify({ error: 'Admin access required' }),
           { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
