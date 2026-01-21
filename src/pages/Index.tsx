@@ -21,6 +21,8 @@ import { useCartContext } from "@/contexts/CartContext";
 import { useFavoritesContext } from "@/components/FavoritesContext";
 import { useProducts } from "@/hooks/useProducts";
 import { toast } from "sonner";
+import { getCategoryGradient } from "@/lib/categoryColors";
+import { ProductGridSkeleton } from "@/components/ui/product-skeleton";
 
 // Fallback product images
 import tacticalGloves from "@/assets/products/tactical-gloves.jpg";
@@ -34,13 +36,6 @@ const categoryIcons: Record<string, React.ElementType> = {
   "Одяг": Shirt,
   "Аксесуари": Watch,
   "Взуття": Footprints,
-};
-
-const categoryGradients: Record<string, string> = {
-  "Мілітарі": "from-[#4a5d23] to-[#6b7b3e]",
-  "Одяг": "from-primary to-primary/70",
-  "Аксесуари": "from-accent to-accent/70",
-  "Взуття": "from-[#5a4a3a] to-[#7a6a5a]",
 };
 
 // Fallback mock products
@@ -157,13 +152,15 @@ const CatalogTab = ({
             { id: "4", name: "Взуття", product_count: 67 },
           ]).map((cat) => {
             const IconComponent = categoryIcons[cat.name] || Shield;
+            // Use dynamic color based on category ID
+            const dynamicGradient = getCategoryGradient(cat.id);
             return (
             <CategoryCard
               key={cat.id}
               name={cat.name}
               icon={IconComponent}
               count={cat.product_count || 0}
-              gradient={categoryGradients[cat.name] || "from-primary to-primary/70"}
+              gradient={dynamicGradient}
               onClick={() => toast.info(`Категорія: ${cat.name}`)}
             />
           );})}
@@ -183,9 +180,7 @@ const CatalogTab = ({
         </div>
         
         {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
+          <ProductGridSkeleton count={8} />
         ) : (
           <div className="grid grid-cols-2 gap-3">
             {displayProducts.slice(0, 8).map((product) => (

@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Gift, Percent, Zap, Clock, ChevronRight, Tag, ArrowLeft, ChevronLeft } from "lucide-react";
+import { Gift, Percent, Zap, Clock, ChevronRight, Tag, ArrowLeft, ChevronLeft, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { hapticImpact, hapticNotification } from "@/lib/haptics";
 
 interface Promo {
   id: string;
@@ -13,7 +15,11 @@ interface Promo {
   discountPercent?: number;
   validUntil?: Date;
   isActive: boolean;
+  categoryFilter?: string; // Optional category filter for the promo
 }
+
+// Promo storage key
+const PROMO_STORAGE_KEY = "taverna_active_promo";
 
 // Mock data for promos - will be managed by admin
 const mockPromos: Promo[] = [
@@ -26,12 +32,14 @@ const mockPromos: Promo[] = [
     discountPercent: 15,
     validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     isActive: true,
+    categoryFilter: "Взуття",
   },
   {
     id: "2",
     title: "Flash Sale: -30% на рюкзаки",
     description: "Тільки сьогодні! Обмежена кількість",
     type: "flash",
+    code: "FLASH30",
     discountPercent: 30,
     validUntil: new Date(Date.now() + 24 * 60 * 60 * 1000),
     isActive: true,
@@ -92,7 +100,33 @@ export const Promos = () => {
   const handleCopyCode = (code: string) => {
     navigator.clipboard.writeText(code);
     setCopiedCode(code);
+    hapticImpact("light");
+    toast.success("Промокод скопійовано!");
     setTimeout(() => setCopiedCode(null), 2000);
+  };
+
+  const handleApplyPromo = (promo: Promo) => {
+    if (promo.code && promo.discountPercent) {
+      // Save promo to localStorage for automatic application at checkout
+      const promoData = {
+        code: promo.code,
+        discountPercent: promo.discountPercent,
+        title: promo.title,
+      };
+      localStorage.setItem(PROMO_STORAGE_KEY, JSON.stringify(promoData));
+      
+      hapticNotification("success");
+      toast.success(`Промокод ${promo.code} буде застосовано при оформленні!`, {
+        description: "Перейдіть до товарів та зробіть замовлення",
+      });
+    }
+    
+    // Navigate to products (optionally with category filter)
+    if (promo.categoryFilter) {
+      navigate(`/search?category=${encodeURIComponent(promo.categoryFilter)}`);
+    } else {
+      navigate("/search?all=true");
+    }
   };
 
   const handleBack = () => {
@@ -262,12 +296,18 @@ export const Promos = () => {
               {/* CTA Button */}
               <div className="px-4 pb-4">
                 <button 
-                  onClick={() => navigate("/")}
-                  className="w-full flex items-center justify-center gap-2 bg-primary/10 text-primary py-3 rounded-xl font-medium hover:bg-primary/20 transition-colors"
+                  onClick={() => handleApplyPromo(promo)}
+                  className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground py-3 rounded-xl font-medium hover:bg-primary/90 transition-colors shadow-md"
                 >
-                  Перейти до товарів
+                  {promo.code ? "Застосувати та перейти до товарів" : "Перейти до товарів"}
                   <ChevronRight className="w-4 h-4" />
                 </button>
+                {promo.code && (
+                  <p className="text-xs text-muted-foreground text-center mt-2 flex items-center justify-center gap-1">
+                    <Info className="w-3 h-3" />
+                    Промокод буде застосовано автоматично
+                  </p>
+                )}
               </div>
             </div>
           );
