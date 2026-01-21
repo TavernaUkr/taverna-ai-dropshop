@@ -166,41 +166,41 @@ export const ProfileDashboard = () => {
         </button>
       )}
 
-      {/* Partner Panel Button - Only for authenticated Telegram users */}
-      {isAuthenticated && (
+      {/* Partner Panel Button - Only for suppliers/admins/moderators */}
+      {isAuthenticated && (isSupplier || isAdmin || isModerator) && (
         <button
           onClick={handlePartnerClick}
-          className={cn(
-            "w-full flex items-center gap-4 p-4 rounded-xl border transition-all",
-            isSupplier || isAdmin
-              ? "bg-gradient-to-r from-primary/10 to-accent/10 border-primary/30 hover:border-primary"
-              : "bg-card border-border hover:border-primary hover:bg-primary/5"
-          )}
+          className="w-full flex items-center gap-4 p-4 rounded-xl border transition-all bg-gradient-to-r from-primary/10 to-accent/10 border-primary/30 hover:border-primary"
         >
-          <div className={cn(
-            "w-12 h-12 rounded-full flex items-center justify-center",
-            isSupplier || isAdmin ? "bg-primary/20" : "bg-muted"
-          )}>
-            {isSupplier || isAdmin ? (
-              <Store className="h-6 w-6 text-primary" />
-            ) : (
-              <Briefcase className="h-6 w-6 text-muted-foreground" />
-            )}
+          <div className="w-12 h-12 rounded-full flex items-center justify-center bg-primary/20">
+            <Store className="h-6 w-6 text-primary" />
           </div>
           <div className="flex-1 text-left">
-            <h4 className="font-semibold text-foreground">
-              {isSupplier || isAdmin ? "Панель партнера" : "Стати партнером"}
-            </h4>
+            <h4 className="font-semibold text-foreground">Панель партнера</h4>
             <p className="text-xs text-muted-foreground">
-              {isSupplier || isAdmin
-                ? "Керуйте товарами та замовленнями"
-                : "Продавайте товари через Taverna"}
+              Керуйте товарами та замовленнями
             </p>
           </div>
-          <ChevronRight className={cn(
-            "h-5 w-5",
-            isSupplier || isAdmin ? "text-primary" : "text-muted-foreground"
-          )} />
+          <ChevronRight className="h-5 w-5 text-primary" />
+        </button>
+      )}
+
+      {/* Become Partner Button - Only for regular customers */}
+      {isAuthenticated && !isSupplier && !isAdmin && !isModerator && (
+        <button
+          onClick={() => navigate("/partner")}
+          className="w-full flex items-center gap-4 p-4 rounded-xl border transition-all bg-success/10 border-success/30 hover:border-success hover:bg-success/20"
+        >
+          <div className="w-12 h-12 rounded-full flex items-center justify-center bg-success/20">
+            <Briefcase className="h-6 w-6 text-success" />
+          </div>
+          <div className="flex-1 text-left">
+            <h4 className="font-semibold text-foreground">Стати партнером</h4>
+            <p className="text-xs text-muted-foreground">
+              Продавайте товари через Taverna
+            </p>
+          </div>
+          <ChevronRight className="h-5 w-5 text-success" />
         </button>
       )}
 

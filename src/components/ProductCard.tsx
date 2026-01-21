@@ -130,15 +130,16 @@ export const ProductCard = ({
       )}
       onClick={onClick}
     >
-      {/* Boosted Badge */}
-      {isBoosted && (
-        <div className="absolute top-0 left-0 right-0 z-20 bg-gradient-to-r from-primary via-primary/80 to-accent text-primary-foreground text-[10px] font-bold py-1 text-center flex items-center justify-center gap-1">
-          <TrendingUp className="h-3 w-3" />
-          ТОП ПРОПОЗИЦІЯ
-        </div>
-      )}
       {/* Image with Video Preview on Hover */}
       <div className="relative aspect-square overflow-hidden bg-muted">
+        {/* Boosted Badge - Inside image container at top */}
+        {isBoosted && (
+          <div className="absolute top-0 left-0 right-0 z-20 bg-gradient-to-r from-primary via-primary/80 to-accent text-primary-foreground text-[10px] font-bold py-1.5 text-center flex items-center justify-center gap-1">
+            <TrendingUp className="h-3 w-3" />
+            ТОП ПРОПОЗИЦІЯ
+          </div>
+        )}
+        
         {/* Video Preview (shows on hover if video exists) */}
         {videoUrl && (
           <video
@@ -163,32 +164,36 @@ export const ProductCard = ({
           )}
         />
         
-        {/* Discount Badge */}
-        {discount > 0 && inStock && (
-          <div className="absolute top-3 left-3 bg-live text-live-foreground text-xs font-bold px-2.5 py-1 rounded-full shadow-lg">
-            -{discount}%
-          </div>
-        )}
-
-        {/* Savings Badge */}
-        {savings >= 100 && inStock && (
-          <div className="absolute top-12 left-3 bg-accent text-accent-foreground text-[10px] font-medium px-2 py-0.5 rounded-full shadow-md">
-            Економія {savings.toLocaleString()} ₴
-          </div>
-        )}
-
-        {/* Low Stock Badge - FOMO effect */}
+        {/* Low Stock Badge - FOMO effect - Top center but below boosted badge */}
         {inStock && stockQuantity !== undefined && stockQuantity > 0 && stockQuantity <= 5 && (
-          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10">
+          <div className={cn(
+            "absolute left-1/2 -translate-x-1/2 z-15",
+            isBoosted ? "top-10" : "top-3"
+          )}>
             <LowStockBadge quantity={stockQuantity} animated={true} />
           </div>
         )}
 
-        {/* Favorite Button */}
+        {/* Discount Badge - Bottom left to avoid collision */}
+        {discount > 0 && inStock && (
+          <div className="absolute bottom-12 left-3 bg-live text-live-foreground text-xs font-bold px-2.5 py-1 rounded-full shadow-lg z-10">
+            -{discount}%
+          </div>
+        )}
+
+        {/* Savings Badge - Below discount */}
+        {savings >= 100 && inStock && (
+          <div className="absolute bottom-6 left-3 bg-accent text-accent-foreground text-[10px] font-medium px-2 py-0.5 rounded-full shadow-md z-10">
+            Економія {savings.toLocaleString()} ₴
+          </div>
+        )}
+
+        {/* Favorite Button - Top right, with offset for boosted */}
         <button
           onClick={handleToggleFavorite}
           className={cn(
-            "absolute top-3 right-3 w-9 h-9 rounded-full flex items-center justify-center transition-all shadow-lg backdrop-blur-sm",
+            "absolute right-3 w-9 h-9 rounded-full flex items-center justify-center transition-all shadow-lg backdrop-blur-sm z-20",
+            isBoosted ? "top-10" : "top-3",
             isFavorite 
               ? "bg-live/90 text-live-foreground scale-110" 
               : "bg-background/80 text-muted-foreground hover:text-live hover:bg-background hover:scale-110"
@@ -197,9 +202,12 @@ export const ProductCard = ({
           <Heart className={cn("h-4 w-4", isFavorite && "fill-current")} />
         </button>
 
-        {/* Verified Supplier Badge */}
+        {/* Verified Supplier Badge - Next to favorite */}
         {isVerifiedSupplier && (
-          <div className="absolute top-3 right-14">
+          <div className={cn(
+            "absolute right-14 z-20",
+            isBoosted ? "top-10" : "top-3"
+          )}>
             <VerifiedBadge size="sm" showTooltip />
           </div>
         )}
@@ -220,18 +228,18 @@ export const ProductCard = ({
           </div>
         )}
 
-        {/* Quick Add Button */}
+        {/* Quick Add Button - Always visible on mobile, hover on desktop */}
         {inStock && (
           <motion.button
             onClick={handleAddToCart}
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 1 }}
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
             className={cn(
               "absolute bottom-3 right-3 w-11 h-11 rounded-full",
               "bg-accent text-accent-foreground shadow-lg",
               "flex items-center justify-center",
-              "opacity-0 group-hover:opacity-100",
+              "opacity-100 md:opacity-0 md:group-hover:opacity-100",
               "transition-opacity duration-300"
             )}
           >

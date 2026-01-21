@@ -106,6 +106,7 @@ export type Database = {
       }
       categories: {
         Row: {
+          color: string | null
           created_at: string
           external_id: string | null
           id: string
@@ -118,6 +119,7 @@ export type Database = {
           telegram_channel_id: string | null
         }
         Insert: {
+          color?: string | null
           created_at?: string
           external_id?: string | null
           id?: string
@@ -130,6 +132,7 @@ export type Database = {
           telegram_channel_id?: string | null
         }
         Update: {
+          color?: string | null
           created_at?: string
           external_id?: string | null
           id?: string
@@ -574,6 +577,57 @@ export type Database = {
         }
         Relationships: []
       }
+      promo_codes: {
+        Row: {
+          category_id: string | null
+          code: string
+          created_at: string | null
+          created_by: string | null
+          current_uses: number | null
+          discount_amount: number | null
+          discount_percent: number | null
+          id: string
+          is_active: boolean | null
+          max_uses: number | null
+          min_order_amount: number | null
+          updated_at: string | null
+          valid_from: string | null
+          valid_until: string | null
+        }
+        Insert: {
+          category_id?: string | null
+          code: string
+          created_at?: string | null
+          created_by?: string | null
+          current_uses?: number | null
+          discount_amount?: number | null
+          discount_percent?: number | null
+          id?: string
+          is_active?: boolean | null
+          max_uses?: number | null
+          min_order_amount?: number | null
+          updated_at?: string | null
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Update: {
+          category_id?: string | null
+          code?: string
+          created_at?: string | null
+          created_by?: string | null
+          current_uses?: number | null
+          discount_amount?: number | null
+          discount_percent?: number | null
+          id?: string
+          is_active?: boolean | null
+          max_uses?: number | null
+          min_order_amount?: number | null
+          updated_at?: string | null
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Relationships: []
+      }
       promotion_platforms: {
         Row: {
           cost_per_promotion: number | null
@@ -984,6 +1038,68 @@ export type Database = {
           telegram_id?: number | null
           updated_at?: string
           xml_url?: string | null
+        }
+        Relationships: []
+      }
+      used_promo_codes: {
+        Row: {
+          id: string
+          order_id: string | null
+          profile_id: string
+          promo_code_id: string | null
+          used_at: string | null
+        }
+        Insert: {
+          id?: string
+          order_id?: string | null
+          profile_id: string
+          promo_code_id?: string | null
+          used_at?: string | null
+        }
+        Update: {
+          id?: string
+          order_id?: string | null
+          profile_id?: string
+          promo_code_id?: string | null
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "used_promo_codes_promo_code_id_fkey"
+            columns: ["promo_code_id"]
+            isOneToOne: false
+            referencedRelation: "promo_codes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_bonuses: {
+        Row: {
+          balance: number | null
+          created_at: string | null
+          id: string
+          profile_id: string
+          total_earned: number | null
+          total_spent: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          balance?: number | null
+          created_at?: string | null
+          id?: string
+          profile_id: string
+          total_earned?: number | null
+          total_spent?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          balance?: number | null
+          created_at?: string | null
+          id?: string
+          profile_id?: string
+          total_earned?: number | null
+          total_spent?: number | null
+          updated_at?: string | null
         }
         Relationships: []
       }

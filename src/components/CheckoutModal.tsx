@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Loader2, Check, ChevronRight, ShoppingBag, Truck, User } from 'lucide-react';
+import { X, Loader2, Check, ChevronRight, ShoppingBag, Truck, User, Gift, Tag, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,7 @@ import { useTelegramAuthContext } from './TelegramAuthProvider';
 import { CartItem } from '@/hooks/useCart';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { hapticNotification } from '@/lib/haptics';
 
 // Import new checkout components
 import { CheckoutSteps, CheckoutStep } from './checkout/CheckoutSteps';
@@ -23,6 +24,8 @@ import {
   DeliveryType 
 } from './checkout/DeliveryServiceSelect';
 import { DeliveryEstimate } from './checkout/DeliveryEstimate';
+
+const PROMO_STORAGE_KEY = "taverna_active_promo";
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -47,6 +50,12 @@ interface DeliveryData {
   postalCode: string;
   pickupPoint: string;
   courierAddress: string;
+}
+
+interface ActivePromo {
+  code: string;
+  discountPercent?: number;
+  title?: string;
 }
 
 export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: CheckoutModalProps) {
@@ -80,14 +89,20 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
   const [orderNotes, setOrderNotes] = useState('');
   
+  // Promo & Bonuses
+  const [activePromo, setActivePromo] = useState<ActivePromo | null>(null);
+  const [bonusesToUse, setBonusesToUse] = useState(0);
+  const [userBonusBalance] = useState(150); // Mock - will come from useBonuses hook
+  
   // UI state
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Calculate totals
+  // Calculate totals with discounts
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const deliveryCost = 70; // Nova Poshta base
-  const total = subtotal + deliveryCost;
+  const deliveryCost = 70;
+  const promoDiscount = activePromo?.discountPercent ? Math.round(subtotal * activePromo.discountPercent / 100) : 0;
+  const total = Math.max(0, subtotal + deliveryCost - promoDiscount - bonusesToUse);
 
   // Initialize with user data if authenticated
   useEffect(() => {
@@ -100,12 +115,24 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
     }
   }, [isAuthenticated, profile]);
 
-  // Reset state when modal opens and pre-fill delivery from profile
+  // Reset state when modal opens and load promo from storage
   useEffect(() => {
     if (isOpen) {
       setCurrentStep('contact');
       setCompletedSteps([]);
       setErrors({});
+      setBonusesToUse(0);
+      
+      // Load promo from localStorage
+      const storedPromo = localStorage.getItem(PROMO_STORAGE_KEY);
+      if (storedPromo) {
+        try {
+          setActivePromo(JSON.parse(storedPromo));
+        } catch {
+          setActivePromo(null);
+        }
+      }
+      
       if (!isAuthenticated) {
         setContactData({ firstName: '', lastName: '', phone: '' });
       }
@@ -449,6 +476,65 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
         value={paymentMethod}
         onChange={setPaymentMethod}
       />
+
+      {/* Promo Code Display */}
+      {activePromo && (
+        <div className="bg-success/10 border border-success/30 rounded-xl p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Tag className="h-5 w-5 text-success" />
+              <div>
+                <p className="font-medium text-foreground">Промокод: {activePromo.code}</p>
+                <p className="text-sm text-success">-{activePromo.discountPercent}% знижка</p>
+              </div>
+            </div>
+            <button 
+              onClick={() => {
+                setActivePromo(null);
+                localStorage.removeItem(PROMO_STORAGE_KEY);
+              }}
+              className="text-xs text-muted-foreground hover:text-destructive"
+            >
+              Видалити
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Bonus Points */}
+      {isAuthenticated && userBonusBalance > 0 && (
+        <div className="bg-primary/10 border border-primary/30 rounded-xl p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Gift className="h-5 w-5 text-primary" />
+              <span className="font-medium text-foreground">Бонуси</span>
+            </div>
+            <span className="text-sm text-muted-foreground">Доступно: {userBonusBalance} ₴</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Input
+              type="number"
+              min={0}
+              max={Math.min(userBonusBalance, subtotal)}
+              value={bonusesToUse || ''}
+              onChange={(e) => setBonusesToUse(Math.min(Number(e.target.value) || 0, userBonusBalance, subtotal))}
+              placeholder="0"
+              className="flex-1"
+            />
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setBonusesToUse(Math.min(userBonusBalance, subtotal))}
+            >
+              Макс
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground flex items-center gap-1">
+            <Info className="h-3 w-3" />
+            Бонуси можна використовувати разом з промокодом
+          </p>
+        </div>
+      )}
 
       <div className="space-y-2">
         <Label className="text-sm font-medium text-foreground">Коментар до замовлення</Label>
