@@ -17,6 +17,7 @@ import Suppliers from "./pages/Suppliers";
 import SupplierProfile from "./pages/SupplierProfile";
 import Support from "./pages/Support";
 import Promos from "./pages/Promos";
+import ModeratorPanel from "./pages/ModeratorPanel";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -42,6 +43,7 @@ const App = () => (
                 <Route path="/supplier/:id" element={<SupplierProfile />} />
                 <Route path="/support" element={<Support />} />
                 <Route path="/promos" element={<Promos />} />
+                <Route path="/moderator" element={<ModeratorPanel />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>

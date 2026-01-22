@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { 
   ArrowLeft, Package, TrendingUp, Megaphone, Zap, Eye, MousePointer,
   ShoppingCart, Clock, CheckCircle, XCircle, PlayCircle, PauseCircle,
-  Shuffle, Globe, ChevronRight, Loader2, Plus, Sparkles, Send
+  Shuffle, Globe, ChevronRight, Loader2, Plus, Sparkles, Send, Settings
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,6 +31,8 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { SupplierSettings } from "@/components/supplier/SupplierSettings";
+import { useTelegramAuth } from "@/hooks/useTelegramAuth";
 
 interface Product {
   id: string;
@@ -348,10 +350,14 @@ export default function SupplierDashboard() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="w-full grid grid-cols-3 mb-4">
+          <TabsList className="w-full grid grid-cols-4 mb-4">
             <TabsTrigger value="overview">Огляд</TabsTrigger>
             <TabsTrigger value="post">Пости</TabsTrigger>
             <TabsTrigger value="ads">Реклама</TabsTrigger>
+            <TabsTrigger value="settings" className="gap-1">
+              <Settings className="h-4 w-4" />
+              <span className="hidden sm:inline">Налаштування</span>
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview">
@@ -685,6 +691,11 @@ export default function SupplierDashboard() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Settings Tab */}
+          <TabsContent value="settings">
+            <SupplierSettings supplierId="mock-supplier-id" />
           </TabsContent>
         </Tabs>
       </div>
