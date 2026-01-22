@@ -29,6 +29,7 @@ import { AIVerdict } from "@/components/product/AIVerdict";
 import { LowStockBadge } from "@/components/product/LowStockBadge";
 import { ProductSpecs } from "@/components/product/ProductSpecs";
 import { ReportProductModal } from "@/components/product/ReportProductModal";
+import { VerifiedBadge } from "@/components/ui/verified-badge";
 import { hapticImpact } from "@/lib/haptics";
 import {
   Breadcrumb,

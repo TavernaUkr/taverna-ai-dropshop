@@ -21,6 +21,9 @@ import {
   AlertTriangle,
   RefreshCw,
   Crown,
+  Tag,
+  Gift,
+  Brain,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -36,6 +39,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useTelegramAuth } from '@/hooks/useTelegramAuth';
+import { PromoCodesManager } from '@/components/admin/PromoCodesManager';
+import { BonusesManager } from '@/components/admin/BonusesManager';
+import { AIInsightsDashboard } from '@/components/admin/AIInsightsDashboard';
 
 interface SupplierApplication {
   id: string;
@@ -492,27 +498,29 @@ export default function AdminDashboard() {
       {/* Tabs */}
       <div className="p-4">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="w-full grid grid-cols-4 mb-4">
-            <TabsTrigger value="moderation" className="text-xs px-2">
-              <Users className="h-4 w-4 mr-1" />
-              <span className="hidden sm:inline">Модерація</span>
+          <TabsList className="w-full grid grid-cols-6 mb-4">
+            <TabsTrigger value="moderation" className="text-xs px-1">
+              <Users className="h-4 w-4" />
               {applications.length > 0 && (
-                <Badge variant="destructive" className="ml-1 h-5 w-5 p-0 flex items-center justify-center text-xs">
+                <Badge variant="destructive" className="ml-1 h-4 w-4 p-0 flex items-center justify-center text-[10px]">
                   {applications.length}
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="suppliers" className="text-xs px-2">
-              <Package className="h-4 w-4 mr-1" />
-              <span className="hidden sm:inline">Партнери</span>
+            <TabsTrigger value="suppliers" className="text-xs px-1">
+              <Package className="h-4 w-4" />
             </TabsTrigger>
-            <TabsTrigger value="roles" className="text-xs px-2">
-              <UserCog className="h-4 w-4 mr-1" />
-              <span className="hidden sm:inline">Ролі</span>
+            <TabsTrigger value="promos" className="text-xs px-1">
+              <Tag className="h-4 w-4" />
             </TabsTrigger>
-            <TabsTrigger value="settings" className="text-xs px-2">
-              <Settings className="h-4 w-4 mr-1" />
-              <span className="hidden sm:inline">Система</span>
+            <TabsTrigger value="bonuses" className="text-xs px-1">
+              <Gift className="h-4 w-4" />
+            </TabsTrigger>
+            <TabsTrigger value="ai-insights" className="text-xs px-1">
+              <Brain className="h-4 w-4" />
+            </TabsTrigger>
+            <TabsTrigger value="roles" className="text-xs px-1">
+              <UserCog className="h-4 w-4" />
             </TabsTrigger>
           </TabsList>
 
@@ -840,81 +848,19 @@ export default function AdminDashboard() {
             </ScrollArea>
           </TabsContent>
 
-          {/* Settings Tab */}
-          <TabsContent value="settings">
-            <ScrollArea className="h-[calc(100vh-380px)]">
-              <div className="space-y-4 pr-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <Megaphone className="h-5 w-5" />
-                      Промо-кампанії
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Налаштування автоматичних публікацій та акцій
-                    </p>
-                    <Button variant="outline" className="w-full" onClick={() => navigate('/manager')}>
-                      Відкрити Manager Dashboard
-                    </Button>
-                  </CardContent>
-                </Card>
+          {/* Promos Tab */}
+          <TabsContent value="promos">
+            <PromoCodesManager />
+          </TabsContent>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Системна інформація</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Всього постачальників:</span>
-                      <span className="font-medium">{suppliers.length}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Активних постачальників:</span>
-                      <span className="font-medium">{suppliers.filter(s => s.is_active).length}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Заявок на модерації:</span>
-                      <span className="font-medium">{applications.length}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Користувачів з ролями:</span>
-                      <span className="font-medium">{usersWithRoles.length}</span>
-                    </div>
-                  </CardContent>
-                </Card>
+          {/* Bonuses Tab */}
+          <TabsContent value="bonuses">
+            <BonusesManager />
+          </TabsContent>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Інтеграції</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-foreground">Telegram Bot</p>
-                        <p className="text-xs text-muted-foreground">Сповіщення адміну</p>
-                      </div>
-                      <Badge variant="default">Активний</Badge>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-foreground">Gemini AI</p>
-                        <p className="text-xs text-muted-foreground">Аналіз та генерація</p>
-                      </div>
-                      <Badge variant="default">Активний</Badge>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-foreground">Nova Poshta API</p>
-                        <p className="text-xs text-muted-foreground">Доставка</p>
-                      </div>
-                      <Badge variant="default">Активний</Badge>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </ScrollArea>
+          {/* AI Insights Tab */}
+          <TabsContent value="ai-insights">
+            <AIInsightsDashboard />
           </TabsContent>
         </Tabs>
       </div>
