@@ -39,6 +39,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useTelegramAuth } from '@/hooks/useTelegramAuth';
+import { hapticSelection } from '@/lib/haptics';
 import { PromoCodesManager } from '@/components/admin/PromoCodesManager';
 import { BonusesManager } from '@/components/admin/BonusesManager';
 import { AIInsightsDashboard } from '@/components/admin/AIInsightsDashboard';
@@ -497,7 +498,10 @@ export default function AdminDashboard() {
 
       {/* Tabs */}
       <div className="p-4">
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <Tabs value={activeTab} onValueChange={(value) => {
+          hapticSelection();
+          setActiveTab(value);
+        }}>
           <TabsList className="w-full grid grid-cols-6 mb-4">
             <TabsTrigger value="moderation" className="text-xs px-1">
               <Users className="h-4 w-4" />

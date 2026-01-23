@@ -2,10 +2,12 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { TelegramAuthProvider } from "@/components/TelegramAuthProvider";
 import { CartProvider } from "@/contexts/CartContext";
 import { FavoritesProvider } from "@/components/FavoritesContext";
+import { AnimatePresence, motion } from "framer-motion";
+import { useEffect } from "react";
 import Index from "./pages/Index";
 import SupplierRegistration from "./pages/SupplierRegistration";
 import SupplierDashboard from "./pages/SupplierDashboard";
@@ -22,6 +24,90 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+// Page transition variants
+const pageVariants = {
+  initial: { opacity: 0, y: 8 },
+  enter: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -8 },
+};
+
+const pageTransition = {
+  type: "tween" as const,
+  ease: "easeInOut" as const,
+  duration: 0.2,
+};
+
+// Telegram BackButton handler
+function TelegramBackButton() {
+  const location = useLocation();
+
+  useEffect(() => {
+    // Access Telegram WebApp without strict typing
+    const telegram = (window as any).Telegram;
+    const tg = telegram?.WebApp;
+    const backButton = tg?.BackButton;
+    
+    if (!backButton) return;
+
+    // Main tabs where back button should be hidden
+    const mainRoutes = ['/', '/search', '/promos', '/support'];
+    const isMainRoute = mainRoutes.includes(location.pathname);
+
+    if (isMainRoute) {
+      backButton.hide?.();
+    } else {
+      backButton.show?.();
+      const handleBack = () => window.history.back();
+      backButton.onClick?.(handleBack);
+      
+      return () => {
+        backButton.offClick?.(handleBack);
+      };
+    }
+  }, [location.pathname]);
+
+  return null;
+}
+
+// Animated Routes wrapper
+function AnimatedRoutes() {
+  const location = useLocation();
+
+  return (
+    <>
+      <TelegramBackButton />
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={location.pathname}
+          initial="initial"
+          animate="enter"
+          exit="exit"
+          variants={pageVariants}
+          transition={pageTransition}
+          className="min-h-screen pb-safe"
+        >
+          <Routes location={location}>
+            <Route path="/" element={<Index />} />
+            <Route path="/partner" element={<SupplierRegistration />} />
+            <Route path="/supplier" element={<SupplierDashboard />} />
+            <Route path="/product/:id" element={<ProductDetail />} />
+            <Route path="/search" element={<SearchResults />} />
+            <Route path="/manager" element={<Manager />} />
+            <Route path="/admin-dashboard" element={<AdminDashboard />} />
+            <Route path="/suppliers" element={<Suppliers />} />
+            <Route path="/supplier/:id" element={<SupplierProfile />} />
+            <Route path="/support" element={<Support />} />
+            <Route path="/promos" element={<Promos />} />
+            <Route path="/moderator" element={<ModeratorPanel />} />
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </motion.div>
+      </AnimatePresence>
+    </>
+  );
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -31,22 +117,7 @@ const App = () => (
             <Toaster />
             <Sonner />
             <BrowserRouter>
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/partner" element={<SupplierRegistration />} />
-                <Route path="/supplier" element={<SupplierDashboard />} />
-                <Route path="/product/:id" element={<ProductDetail />} />
-                <Route path="/search" element={<SearchResults />} />
-                <Route path="/manager" element={<Manager />} />
-                <Route path="/admin-dashboard" element={<AdminDashboard />} />
-                <Route path="/suppliers" element={<Suppliers />} />
-                <Route path="/supplier/:id" element={<SupplierProfile />} />
-                <Route path="/support" element={<Support />} />
-                <Route path="/promos" element={<Promos />} />
-                <Route path="/moderator" element={<ModeratorPanel />} />
-                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
+              <AnimatedRoutes />
             </BrowserRouter>
           </FavoritesProvider>
         </CartProvider>

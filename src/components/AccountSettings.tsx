@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { ArrowLeft, User, Phone, Mail, MapPin, Truck, Plus, Trash2, Check, X, ChevronRight, Edit2 } from "lucide-react";
+import { ArrowLeft, User, Phone, Mail, MapPin, Truck, Plus, Trash2, Check, X, ChevronRight, Edit2, Home, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { hapticImpact, hapticSelection } from "@/lib/haptics";
 
 interface Profile {
   id: string;
@@ -298,78 +299,136 @@ export const AccountSettings = ({
 
   // Addresses View
   if (view === 'addresses') {
+    const getAddressIcon = (type: string) => {
+      return type === 'address' ? Home : Building2;
+    };
+
     return (
       <div className="fixed inset-0 z-50 bg-background animate-fade-in">
         {renderHeader('Адреси доставки')}
         
         <div className="p-4 space-y-3">
+          {/* Address Counter */}
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm text-muted-foreground">Збережені адреси</p>
+            <span className={cn(
+              "text-xs font-medium px-2 py-1 rounded-full",
+              addresses.length >= 3 ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground"
+            )}>
+              {addresses.length}/3
+            </span>
+          </div>
+
           {addresses.length === 0 ? (
             <div className="text-center py-8">
               <div className="w-16 h-16 rounded-full bg-muted mx-auto flex items-center justify-center mb-4">
                 <MapPin className="h-8 w-8 text-muted-foreground" />
               </div>
               <p className="text-muted-foreground">Немає збережених адрес</p>
+              <p className="text-xs text-muted-foreground mt-1">Додайте адресу для швидкого оформлення</p>
             </div>
           ) : (
-            addresses.map((address) => (
-              <div
-                key={address.id}
-                className={cn(
-                  "bg-card rounded-xl p-4 border transition-all",
-                  address.is_default ? "border-primary" : "border-border"
-                )}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Truck className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-medium text-foreground">
-                        {getDeliveryServiceName(address.delivery_service)}
+            addresses.map((address, index) => {
+              const AddressIcon = getAddressIcon(address.delivery_type);
+              
+              return (
+                <div
+                  key={address.id}
+                  className={cn(
+                    "relative rounded-2xl p-4 border transition-all backdrop-blur-sm",
+                    "bg-card/80 hover:shadow-md",
+                    address.is_default 
+                      ? "border-primary/50 bg-primary/5 shadow-sm" 
+                      : "border-border hover:border-primary/30"
+                  )}
+                >
+                  {/* Default Badge */}
+                  {address.is_default && (
+                    <div className="absolute -top-2 left-4">
+                      <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded-full font-medium">
+                        Основна
                       </span>
-                      {address.is_default && (
-                        <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-                          За замовчуванням
-                        </span>
-                      )}
                     </div>
-                    <p className="font-medium text-foreground">{address.recipient_name}</p>
-                    <p className="text-sm text-muted-foreground">{address.phone}</p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {address.city}
-                      {address.warehouse_number && `, Відділення №${address.warehouse_number}`}
-                      {address.street_address && `, ${address.street_address}`}
-                      {address.building_number && ` ${address.building_number}`}
-                      {address.apartment && `, кв. ${address.apartment}`}
-                    </p>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    {!address.is_default && (
+                  )}
+
+                  <div className="flex items-start gap-3 pt-1">
+                    {/* Address Type Icon */}
+                    <div className={cn(
+                      "w-12 h-12 rounded-xl flex items-center justify-center shrink-0",
+                      address.is_default ? "bg-primary/20" : "bg-muted"
+                    )}>
+                      <AddressIcon className={cn(
+                        "h-6 w-6",
+                        address.is_default ? "text-primary" : "text-muted-foreground"
+                      )} />
+                    </div>
+
+                    {/* Address Details */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={cn(
+                          "text-xs font-medium px-2 py-0.5 rounded-full",
+                          address.delivery_service === 'nova_poshta' && "bg-red-500/10 text-red-600",
+                          address.delivery_service === 'ukrposhta' && "bg-amber-500/10 text-amber-600",
+                          address.delivery_service === 'meest' && "bg-blue-500/10 text-blue-600"
+                        )}>
+                          {getDeliveryServiceName(address.delivery_service)}
+                        </span>
+                      </div>
+                      <p className="font-semibold text-foreground">{address.recipient_name}</p>
+                      <p className="text-sm text-muted-foreground">{address.phone}</p>
+                      <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                        {address.city}
+                        {address.warehouse_number && `, Відділення №${address.warehouse_number}`}
+                        {address.street_address && `, ${address.street_address}`}
+                        {address.building_number && ` ${address.building_number}`}
+                        {address.apartment && `, кв. ${address.apartment}`}
+                      </p>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex flex-col gap-2">
+                      {!address.is_default && (
+                        <button
+                          onClick={() => {
+                            hapticImpact('light');
+                            handleSetDefault(address.id);
+                          }}
+                          className="p-2.5 rounded-xl bg-muted/80 hover:bg-primary/10 text-muted-foreground hover:text-primary transition-all active:scale-95"
+                          title="Зробити основною"
+                        >
+                          <Check className="h-4 w-4" />
+                        </button>
+                      )}
                       <button
-                        onClick={() => handleSetDefault(address.id)}
-                        className="p-2 rounded-lg bg-muted hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
+                        onClick={() => {
+                          hapticImpact('medium');
+                          handleDeleteAddress(address.id);
+                        }}
+                        className="p-2.5 rounded-xl bg-muted/80 hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all active:scale-95"
+                        title="Видалити"
                       >
-                        <Check className="h-4 w-4" />
+                        <Trash2 className="h-4 w-4" />
                       </button>
-                    )}
-                    <button
-                      onClick={() => handleDeleteAddress(address.id)}
-                      className="p-2 rounded-lg bg-muted hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
 
-          <button
-            onClick={() => setView('add-address')}
-            className="w-full py-3 bg-primary text-primary-foreground rounded-xl font-medium flex items-center justify-center gap-2"
-          >
-            <Plus className="h-5 w-5" />
-            Додати адресу
-          </button>
+          {addresses.length < 3 && (
+            <button
+              onClick={() => {
+                hapticSelection();
+                setView('add-address');
+              }}
+              className="w-full py-3.5 bg-primary text-primary-foreground rounded-xl font-medium flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+            >
+              <Plus className="h-5 w-5" />
+              Додати адресу
+            </button>
+          )}
         </div>
       </div>
     );

@@ -33,6 +33,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { SupplierSettings } from "@/components/supplier/SupplierSettings";
 import { useTelegramAuth } from "@/hooks/useTelegramAuth";
+import { hapticSelection } from "@/lib/haptics";
 
 interface Product {
   id: string;
@@ -349,7 +350,10 @@ export default function SupplierDashboard() {
         </Card>
 
         {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <Tabs value={activeTab} onValueChange={(value) => {
+          hapticSelection();
+          setActiveTab(value);
+        }}>
           <TabsList className="w-full grid grid-cols-4 mb-4">
             <TabsTrigger value="overview">Огляд</TabsTrigger>
             <TabsTrigger value="post">Пости</TabsTrigger>
