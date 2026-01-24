@@ -8,14 +8,14 @@ import {
   CreditCard, 
   Truck, 
   ChevronRight,
-  Send,
   Wrench,
   ShoppingBag,
   ArrowLeftRight,
   CheckCircle2,
   AlertCircle,
   Clock,
-  Phone
+  Phone,
+  Loader2
 } from "lucide-react";
 import { Header } from "@/components/Header";
 import { BottomNavigation } from "@/components/BottomNavigation";
@@ -36,11 +36,13 @@ import {
 } from "@/components/ui/dialog";
 import { useCartContext } from "@/contexts/CartContext";
 import { useFavoritesContext } from "@/components/FavoritesContext";
+import { useTelegramAuthContext } from "@/components/TelegramAuthProvider";
+import { useSupportTickets, TicketType } from "@/hooks/useSupportTickets";
 import { SearchModal } from "@/components/SearchModal";
 import { CartModal } from "@/components/CartModal";
 import { WishlistModal } from "@/components/WishlistModal";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { hapticSelection, hapticNotification } from "@/lib/haptics";
 
 declare global {
   interface Window {
@@ -116,6 +118,8 @@ const exchangeSteps = [
 
 const Support = () => {
   const navigate = useNavigate();
+  const { isAuthenticated } = useTelegramAuthContext();
+  const { getOrCreateTicket, isLoading: ticketLoading } = useSupportTickets();
   const [activeTab, setActiveTab] = useState("support");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -148,57 +152,35 @@ const Support = () => {
     setIsSupportModalOpen(true);
   };
 
-  const handleSupplierQuery = () => {
-    // Query about order/product -> anonymous chat with manager via bot
-    const supportData = JSON.stringify({
-      type: "supplier_query",
-      action: "/support_query",
-      category: "order_product",
-      timestamp: new Date().toISOString(),
-    });
-
-    if (window.Telegram?.WebApp?.sendData) {
-      window.Telegram.WebApp.sendData(supportData);
-      toast.success("Запит надіслано. Менеджер зв'яжеться з вами.");
-    } else {
-      // Fallback: open bot with start parameter
-      const botUrl = "https://t.me/TavernaBot?start=support_supplier";
-      if (window.Telegram?.WebApp?.openTelegramLink) {
-        window.Telegram.WebApp.openTelegramLink(botUrl);
-      } else {
-        window.open(botUrl, "_blank");
-      }
-      toast.success("Відкриваємо чат з менеджером...");
-    }
+  const handleStartChat = async (type: TicketType) => {
+    hapticSelection();
     
-    setIsSupportModalOpen(false);
+    if (!isAuthenticated) {
+      toast.error("Авторизуйтесь для створення звернення");
+      setIsSupportModalOpen(false);
+      return;
+    }
+
+    const ticket = await getOrCreateTicket(type);
+    
+    if (ticket) {
+      hapticNotification("success");
+      setIsSupportModalOpen(false);
+      navigate(`/support/chat/${ticket.id}`);
+    } else {
+      hapticNotification("error");
+      toast.error("Не вдалося створити звернення");
+    }
+  };
+
+  const handleSupplierQuery = () => {
+    handleStartChat("supplier_question");
   };
 
   const handleTechnicalSupport = () => {
-    // Technical issue with app -> contact Taverna admin
-    const supportData = JSON.stringify({
-      type: "technical_support",
-      action: "/support_query",
-      category: "app_issue",
-      timestamp: new Date().toISOString(),
-    });
-
-    if (window.Telegram?.WebApp?.sendData) {
-      window.Telegram.WebApp.sendData(supportData);
-      toast.success("Запит надіслано в технічну підтримку.");
-    } else {
-      // Fallback: open admin chat
-      const adminUrl = "https://t.me/taverna_admin?start=tech_support";
-      if (window.Telegram?.WebApp?.openTelegramLink) {
-        window.Telegram.WebApp.openTelegramLink(adminUrl);
-      } else {
-        window.open(adminUrl, "_blank");
-      }
-      toast.success("Відкриваємо чат технічної підтримки...");
-    }
-    
-    setIsSupportModalOpen(false);
+    handleStartChat("tech_support");
   };
+
 
   return (
     <div className="min-h-screen bg-background">
@@ -401,10 +383,15 @@ const Support = () => {
             {/* Supplier Query - Order/Product issues */}
             <button
               onClick={handleSupplierQuery}
-              className="w-full flex items-center gap-4 p-4 rounded-xl bg-card border border-border hover:border-primary hover:bg-primary/5 transition-all text-left group"
+              disabled={ticketLoading}
+              className="w-full flex items-center gap-4 p-4 rounded-xl bg-card border border-border hover:border-primary hover:bg-primary/5 transition-all text-left group disabled:opacity-50"
             >
               <div className="w-12 h-12 rounded-full bg-accent/20 flex items-center justify-center group-hover:bg-accent/30 transition-colors">
-                <ShoppingBag className="h-6 w-6 text-accent" />
+                {ticketLoading ? (
+                  <Loader2 className="h-6 w-6 text-accent animate-spin" />
+                ) : (
+                  <ShoppingBag className="h-6 w-6 text-accent" />
+                )}
               </div>
               <div className="flex-1">
                 <h4 className="font-semibold text-foreground">Питання до постачальника</h4>
@@ -418,10 +405,15 @@ const Support = () => {
             {/* Technical Support - App issues */}
             <button
               onClick={handleTechnicalSupport}
-              className="w-full flex items-center gap-4 p-4 rounded-xl bg-card border border-border hover:border-primary hover:bg-primary/5 transition-all text-left group"
+              disabled={ticketLoading}
+              className="w-full flex items-center gap-4 p-4 rounded-xl bg-card border border-border hover:border-primary hover:bg-primary/5 transition-all text-left group disabled:opacity-50"
             >
               <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center group-hover:bg-primary/30 transition-colors">
-                <Wrench className="h-6 w-6 text-primary" />
+                {ticketLoading ? (
+                  <Loader2 className="h-6 w-6 text-primary animate-spin" />
+                ) : (
+                  <Wrench className="h-6 w-6 text-primary" />
+                )}
               </div>
               <div className="flex-1">
                 <h4 className="font-semibold text-foreground">Технічна підтримка</h4>

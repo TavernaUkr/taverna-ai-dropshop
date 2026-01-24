@@ -20,6 +20,8 @@ import SupplierProfile from "./pages/SupplierProfile";
 import Support from "./pages/Support";
 import Promos from "./pages/Promos";
 import ModeratorPanel from "./pages/ModeratorPanel";
+import Referrals from "./pages/Referrals";
+import SupportChat from "./components/SupportChat";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -97,8 +99,10 @@ function AnimatedRoutes() {
             <Route path="/suppliers" element={<Suppliers />} />
             <Route path="/supplier/:id" element={<SupplierProfile />} />
             <Route path="/support" element={<Support />} />
+            <Route path="/support/chat/:ticketId" element={<SupportChat />} />
             <Route path="/promos" element={<Promos />} />
             <Route path="/moderator" element={<ModeratorPanel />} />
+            <Route path="/referrals" element={<Referrals />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
