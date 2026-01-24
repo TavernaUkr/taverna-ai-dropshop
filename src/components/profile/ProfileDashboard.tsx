@@ -15,6 +15,7 @@ import {
   Store,
   HelpCircle,
   BookOpen,
+  Users,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { SupplierGuideModal } from "@/components/SupplierGuideModal";
 import { CustomerGuideModal } from "@/components/CustomerGuideModal";
+import { hapticSelection } from "@/lib/haptics";
 
 export const ProfileDashboard = () => {
   const navigate = useNavigate();
@@ -189,10 +191,10 @@ export const ProfileDashboard = () => {
       {isAuthenticated && !isSupplier && !isAdmin && !isModerator && (
         <button
           onClick={() => navigate("/partner")}
-          className="w-full flex items-center gap-4 p-4 rounded-xl border transition-all bg-success/10 border-success/30 hover:border-success hover:bg-success/20"
+          className="w-full flex items-center gap-4 p-4 rounded-xl border transition-all bg-accent/10 border-accent/30 hover:border-accent hover:bg-accent/20"
         >
-          <div className="w-12 h-12 rounded-full flex items-center justify-center bg-success/20">
-            <Briefcase className="h-6 w-6 text-success" />
+          <div className="w-12 h-12 rounded-full flex items-center justify-center bg-accent/20">
+            <Briefcase className="h-6 w-6 text-accent" />
           </div>
           <div className="flex-1 text-left">
             <h4 className="font-semibold text-foreground">Стати партнером</h4>
@@ -200,7 +202,34 @@ export const ProfileDashboard = () => {
               Продавайте товари через Taverna
             </p>
           </div>
-          <ChevronRight className="h-5 w-5 text-success" />
+          <ChevronRight className="h-5 w-5 text-accent" />
+        </button>
+      )}
+
+      {/* Referral Program Button - For all authenticated users */}
+      {isAuthenticated && (
+        <button
+          onClick={() => {
+            hapticSelection();
+            navigate("/referrals");
+          }}
+          className="w-full flex items-center gap-4 p-4 rounded-xl border transition-all bg-gradient-to-r from-primary/5 to-accent/5 border-primary/20 hover:border-primary hover:from-primary/10 hover:to-accent/10"
+        >
+          <div className="w-12 h-12 rounded-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-accent/20">
+            <Users className="h-6 w-6 text-primary" />
+          </div>
+          <div className="flex-1 text-left">
+            <h4 className="font-semibold text-foreground">Реферальна програма</h4>
+            <p className="text-xs text-muted-foreground">
+              Запрошуй друзів — отримуй 100₴
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium bg-primary/10 text-primary px-2 py-1 rounded-full">
+              +100₴
+            </span>
+            <ChevronRight className="h-5 w-5 text-primary" />
+          </div>
         </button>
       )}
 

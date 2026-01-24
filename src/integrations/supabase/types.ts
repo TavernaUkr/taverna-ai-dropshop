@@ -534,6 +534,8 @@ export type Database = {
           last_warehouse: string | null
           last_warehouse_ref: string | null
           phone: string | null
+          referral_code: string | null
+          referred_by: string | null
           telegram_id: number | null
           telegram_username: string | null
           updated_at: string
@@ -552,6 +554,8 @@ export type Database = {
           last_warehouse?: string | null
           last_warehouse_ref?: string | null
           phone?: string | null
+          referral_code?: string | null
+          referred_by?: string | null
           telegram_id?: number | null
           telegram_username?: string | null
           updated_at?: string
@@ -570,12 +574,22 @@ export type Database = {
           last_warehouse?: string | null
           last_warehouse_ref?: string | null
           phone?: string | null
+          referral_code?: string | null
+          referred_by?: string | null
           telegram_id?: number | null
           telegram_username?: string | null
           updated_at?: string
           user_type?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_referred_by_fkey"
+            columns: ["referred_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       promo_codes: {
         Row: {
@@ -1040,6 +1054,83 @@ export type Database = {
           xml_url?: string | null
         }
         Relationships: []
+      }
+      support_tickets: {
+        Row: {
+          created_at: string
+          id: string
+          related_order_id: string | null
+          status: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          related_order_id?: string | null
+          status?: string
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          related_order_id?: string | null
+          status?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_tickets_related_order_id_fkey"
+            columns: ["related_order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_tickets_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ticket_messages: {
+        Row: {
+          created_at: string
+          id: string
+          message_text: string
+          sender_role: string
+          ticket_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message_text: string
+          sender_role: string
+          ticket_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message_text?: string
+          sender_role?: string
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_messages_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       used_promo_codes: {
         Row: {
