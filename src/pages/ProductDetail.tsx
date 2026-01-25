@@ -29,6 +29,9 @@ import { AIVerdict } from "@/components/product/AIVerdict";
 import { LowStockBadge } from "@/components/product/LowStockBadge";
 import { ProductSpecs } from "@/components/product/ProductSpecs";
 import { ReportProductModal } from "@/components/product/ReportProductModal";
+import { WarrantyModal } from "@/components/product/WarrantyModal";
+import { ReturnPolicyModal } from "@/components/product/ReturnPolicyModal";
+import { DeliveryInfoModal } from "@/components/product/DeliveryInfoModal";
 import { VerifiedBadge } from "@/components/ui/verified-badge";
 import { hapticImpact } from "@/lib/haptics";
 import {
@@ -56,6 +59,7 @@ interface Product {
   in_stock?: boolean;
   stock_quantity?: number;
   attributes?: Record<string, unknown>;
+  warranty_info?: string; // AI-generated warranty info
   supplier_id?: string;
   video_url?: string;
   category?: {
@@ -98,6 +102,9 @@ const ProductDetail = () => {
   const [activeTab, setActiveTab] = useState("description");
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [isReportOpen, setIsReportOpen] = useState(false);
+  const [isWarrantyOpen, setIsWarrantyOpen] = useState(false);
+  const [isReturnOpen, setIsReturnOpen] = useState(false);
+  const [isDeliveryOpen, setIsDeliveryOpen] = useState(false);
   const [newReview, setNewReview] = useState({ rating: 5, title: "", content: "" });
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
@@ -316,6 +323,31 @@ const ProductDetail = () => {
           onClose={() => setIsReportOpen(false)}
           productId={product.id}
           productName={product.name}
+        />
+      )}
+
+      {/* Warranty Modal */}
+      {product && (
+        <WarrantyModal
+          isOpen={isWarrantyOpen}
+          onClose={() => setIsWarrantyOpen(false)}
+          warrantyInfo={product.warranty_info}
+          productName={product.name}
+        />
+      )}
+
+      {/* Return Policy Modal */}
+      <ReturnPolicyModal
+        isOpen={isReturnOpen}
+        onClose={() => setIsReturnOpen(false)}
+      />
+
+      {/* Delivery Info Modal */}
+      {product && (
+        <DeliveryInfoModal
+          isOpen={isDeliveryOpen}
+          onClose={() => setIsDeliveryOpen(false)}
+          productPrice={product.price}
         />
       )}
 
@@ -639,20 +671,45 @@ const ProductDetail = () => {
           </div>
         </div>
 
-        {/* Features */}
+        {/* Features - Clickable */}
         <div className="grid grid-cols-3 gap-3">
-          <div className="bg-muted/50 rounded-xl p-3 text-center">
+          <button 
+            onClick={() => {
+              hapticImpact("light");
+              setIsDeliveryOpen(true);
+            }}
+            className="bg-muted/50 rounded-xl p-3 text-center hover:bg-muted/70 transition-colors active:scale-95"
+          >
             <Truck className="h-5 w-5 mx-auto mb-1 text-primary" />
-            <p className="text-xs text-muted-foreground">Нова Пошта</p>
-          </div>
-          <div className="bg-muted/50 rounded-xl p-3 text-center">
+            <p className="text-xs text-muted-foreground">Доставка</p>
+            <p className="text-[10px] text-primary font-medium mt-0.5">
+              від {product.price < 500 ? 50 : product.price < 1000 ? 60 : 70} ₴
+            </p>
+          </button>
+          <button 
+            onClick={() => {
+              hapticImpact("light");
+              setIsWarrantyOpen(true);
+            }}
+            className="bg-muted/50 rounded-xl p-3 text-center hover:bg-muted/70 transition-colors active:scale-95"
+          >
             <Shield className="h-5 w-5 mx-auto mb-1 text-primary" />
             <p className="text-xs text-muted-foreground">Гарантія</p>
-          </div>
-          <div className="bg-muted/50 rounded-xl p-3 text-center">
+            <p className="text-[10px] text-primary font-medium mt-0.5">
+              {product.warranty_info ? "є" : "уточнити"}
+            </p>
+          </button>
+          <button 
+            onClick={() => {
+              hapticImpact("light");
+              setIsReturnOpen(true);
+            }}
+            className="bg-muted/50 rounded-xl p-3 text-center hover:bg-muted/70 transition-colors active:scale-95"
+          >
             <Package className="h-5 w-5 mx-auto mb-1 text-primary" />
             <p className="text-xs text-muted-foreground">Повернення</p>
-          </div>
+            <p className="text-[10px] text-primary font-medium mt-0.5">/ Обмін</p>
+          </button>
         </div>
 
         {/* Tabs: Description, Characteristics, Reviews */}
