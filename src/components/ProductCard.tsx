@@ -174,19 +174,25 @@ export const ProductCard = ({
           </div>
         )}
 
-        {/* Discount Badge - Bottom left to avoid collision */}
-        {discount > 0 && inStock && (
-          <div className="absolute bottom-12 left-3 bg-live text-live-foreground text-xs font-bold px-2.5 py-1 rounded-full shadow-lg z-10">
-            -{discount}%
-          </div>
-        )}
+        {/* Badges Stack - Top left, below boosted banner */}
+        <div className={cn(
+          "absolute left-3 flex flex-col gap-1 z-10",
+          isBoosted ? "top-10" : "top-3"
+        )}>
+          {/* Discount Badge */}
+          {discount > 0 && inStock && (
+            <div className="bg-live text-live-foreground text-xs font-bold px-2.5 py-1 rounded-full shadow-lg">
+              -{discount}%
+            </div>
+          )}
 
-        {/* Savings Badge - Below discount */}
-        {savings >= 100 && inStock && (
-          <div className="absolute bottom-6 left-3 bg-accent text-accent-foreground text-[10px] font-medium px-2 py-0.5 rounded-full shadow-md z-10">
-            Економія {savings.toLocaleString()} ₴
-          </div>
-        )}
+          {/* Savings Badge */}
+          {savings >= 100 && inStock && (
+            <div className="bg-accent text-accent-foreground text-[10px] font-medium px-2 py-0.5 rounded-full shadow-md">
+              Економія {savings.toLocaleString()} ₴
+            </div>
+          )}
+        </div>
 
         {/* Favorite Button - Top right, with offset for boosted */}
         <button
@@ -212,9 +218,9 @@ export const ProductCard = ({
           </div>
         )}
 
-        {/* Category Badge */}
+        {/* Category Badge - Bottom left, now with clear space */}
         {category && (
-          <div className="absolute bottom-3 left-3 bg-primary/90 text-primary-foreground text-[10px] font-medium px-2.5 py-1 rounded-full backdrop-blur-sm shadow-md">
+          <div className="absolute bottom-3 left-3 bg-primary/90 text-primary-foreground text-[10px] font-medium px-2.5 py-1 rounded-full backdrop-blur-sm shadow-md z-10">
             {category}
           </div>
         )}
