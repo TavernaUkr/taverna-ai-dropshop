@@ -2,7 +2,8 @@ import { ShoppingCart, Heart, Package, Star, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LowStockBadge } from "./product/LowStockBadge";
 import { VerifiedBadge } from "./ui/verified-badge";
-import { useState, useEffect } from "react";
+import { VariantSelectionModal } from "./product/VariantSelectionModal";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { hapticImpact } from "@/lib/haptics";
 
@@ -26,7 +27,7 @@ interface ProductCardProps {
   supplierRating?: number;
   supplierVerified?: boolean;
   onClick?: () => void;
-  onAddToCart?: () => void;
+  onAddToCart?: (size?: string, color?: string) => void;
   onToggleFavorite?: () => void;
 }
 
@@ -64,6 +65,7 @@ const getColorInfo = (colorName: string) => {
 };
 
 export const ProductCard = ({
+  id,
   name,
   price,
   originalPrice, // Supplier price - hidden from customer
@@ -85,6 +87,10 @@ export const ProductCard = ({
   onAddToCart,
   onToggleFavorite,
 }: ProductCardProps) => {
+  const [isVariantModalOpen, setIsVariantModalOpen] = useState(false);
+  
+  // Check if product has variants that need selection
+  const hasVariants = (sizes && sizes.length > 0) || (colors && colors.length > 0);
   // Generate marketing "old price" for discount perception (15-20% higher than retail)
   const marketingOldPrice = Math.ceil(price * 1.18 / 50) * 50;
   
@@ -108,7 +114,19 @@ export const ProductCard = ({
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation();
     hapticImpact("medium");
+    
+    // If product has variants, open modal for selection
+    if (hasVariants) {
+      setIsVariantModalOpen(true);
+      return;
+    }
+    
+    // No variants - add directly
     onAddToCart?.();
+  };
+
+  const handleVariantAddToCart = (selectedSize?: string, selectedColor?: string) => {
+    onAddToCart?.(selectedSize, selectedColor);
   };
 
   const handleToggleFavorite = (e: React.MouseEvent) => {
@@ -179,9 +197,9 @@ export const ProductCard = ({
           "absolute left-3 flex flex-col gap-1 z-10",
           isBoosted ? "top-10" : "top-3"
         )}>
-          {/* Discount Badge */}
+          {/* Discount Badge - Smaller size */}
           {discount > 0 && inStock && (
-            <div className="bg-live text-live-foreground text-xs font-bold px-2.5 py-1 rounded-full shadow-lg">
+            <div className="bg-live text-live-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-md shadow-lg">
               -{discount}%
             </div>
           )}
@@ -242,7 +260,7 @@ export const ProductCard = ({
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
             className={cn(
-              "absolute bottom-3 right-3 w-11 h-11 rounded-full",
+              "absolute bottom-3 right-3 w-11 h-11 rounded-full z-30",
               "bg-accent text-accent-foreground shadow-lg",
               "flex items-center justify-center",
               "opacity-100 md:opacity-0 md:group-hover:opacity-100",
@@ -354,6 +372,19 @@ export const ProductCard = ({
           </div>
         </div>
       </div>
+
+      {/* Variant Selection Modal */}
+      <VariantSelectionModal
+        isOpen={isVariantModalOpen}
+        onClose={() => setIsVariantModalOpen(false)}
+        productId={id}
+        productName={name}
+        productPrice={price}
+        productImage={image}
+        sizes={sizes}
+        colors={colors}
+        onAddToCart={handleVariantAddToCart}
+      />
     </motion.div>
   );
 };
