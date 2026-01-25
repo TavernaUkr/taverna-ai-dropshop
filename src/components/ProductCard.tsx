@@ -6,7 +6,6 @@ import { VariantSelectionModal } from "./product/VariantSelectionModal";
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { hapticImpact } from "@/lib/haptics";
-
 interface ProductCardProps {
   id: string;
   name: string;
@@ -32,43 +31,120 @@ interface ProductCardProps {
 }
 
 // Color abbreviation mapping
-const colorMap: Record<string, { abbr: string; color: string }> = {
-  "чорний": { abbr: "Чрн", color: "#000000" },
-  "black": { abbr: "Чрн", color: "#000000" },
-  "білий": { abbr: "Біл", color: "#ffffff" },
-  "white": { abbr: "Біл", color: "#ffffff" },
-  "олива": { abbr: "Олв", color: "#556b2f" },
-  "olive": { abbr: "Олв", color: "#556b2f" },
-  "хакі": { abbr: "Хкі", color: "#c3b091" },
-  "khaki": { abbr: "Хкі", color: "#c3b091" },
-  "сірий": { abbr: "Сір", color: "#808080" },
-  "gray": { abbr: "Сір", color: "#808080" },
-  "зелений": { abbr: "Злн", color: "#228b22" },
-  "green": { abbr: "Злн", color: "#228b22" },
-  "синій": { abbr: "Снй", color: "#0000cd" },
-  "blue": { abbr: "Снй", color: "#0000cd" },
-  "коричневий": { abbr: "Крч", color: "#8b4513" },
-  "brown": { abbr: "Крч", color: "#8b4513" },
-  "бежевий": { abbr: "Бжв", color: "#f5f5dc" },
-  "beige": { abbr: "Бжв", color: "#f5f5dc" },
-  "червоний": { abbr: "Чрв", color: "#dc143c" },
-  "red": { abbr: "Чрв", color: "#dc143c" },
-  "мультикам": { abbr: "Мкм", color: "#6b8e23" },
-  "multicam": { abbr: "Мкм", color: "#6b8e23" },
-  "песочний": { abbr: "Псч", color: "#c2b280" },
-  "sand": { abbr: "Псч", color: "#c2b280" },
+const colorMap: Record<string, {
+  abbr: string;
+  color: string;
+}> = {
+  "чорний": {
+    abbr: "Чрн",
+    color: "#000000"
+  },
+  "black": {
+    abbr: "Чрн",
+    color: "#000000"
+  },
+  "білий": {
+    abbr: "Біл",
+    color: "#ffffff"
+  },
+  "white": {
+    abbr: "Біл",
+    color: "#ffffff"
+  },
+  "олива": {
+    abbr: "Олв",
+    color: "#556b2f"
+  },
+  "olive": {
+    abbr: "Олв",
+    color: "#556b2f"
+  },
+  "хакі": {
+    abbr: "Хкі",
+    color: "#c3b091"
+  },
+  "khaki": {
+    abbr: "Хкі",
+    color: "#c3b091"
+  },
+  "сірий": {
+    abbr: "Сір",
+    color: "#808080"
+  },
+  "gray": {
+    abbr: "Сір",
+    color: "#808080"
+  },
+  "зелений": {
+    abbr: "Злн",
+    color: "#228b22"
+  },
+  "green": {
+    abbr: "Злн",
+    color: "#228b22"
+  },
+  "синій": {
+    abbr: "Снй",
+    color: "#0000cd"
+  },
+  "blue": {
+    abbr: "Снй",
+    color: "#0000cd"
+  },
+  "коричневий": {
+    abbr: "Крч",
+    color: "#8b4513"
+  },
+  "brown": {
+    abbr: "Крч",
+    color: "#8b4513"
+  },
+  "бежевий": {
+    abbr: "Бжв",
+    color: "#f5f5dc"
+  },
+  "beige": {
+    abbr: "Бжв",
+    color: "#f5f5dc"
+  },
+  "червоний": {
+    abbr: "Чрв",
+    color: "#dc143c"
+  },
+  "red": {
+    abbr: "Чрв",
+    color: "#dc143c"
+  },
+  "мультикам": {
+    abbr: "Мкм",
+    color: "#6b8e23"
+  },
+  "multicam": {
+    abbr: "Мкм",
+    color: "#6b8e23"
+  },
+  "песочний": {
+    abbr: "Псч",
+    color: "#c2b280"
+  },
+  "sand": {
+    abbr: "Псч",
+    color: "#c2b280"
+  }
 };
-
 const getColorInfo = (colorName: string) => {
   const normalized = colorName.toLowerCase().trim();
-  return colorMap[normalized] || { abbr: colorName.slice(0, 3), color: "#888888" };
+  return colorMap[normalized] || {
+    abbr: colorName.slice(0, 3),
+    color: "#888888"
+  };
 };
-
 export const ProductCard = ({
   id,
   name,
   price,
-  originalPrice, // Supplier price - hidden from customer
+  originalPrice,
+  // Supplier price - hidden from customer
   image,
   videoUrl,
   category,
@@ -85,18 +161,18 @@ export const ProductCard = ({
   supplierVerified = false,
   onClick,
   onAddToCart,
-  onToggleFavorite,
+  onToggleFavorite
 }: ProductCardProps) => {
   const [isVariantModalOpen, setIsVariantModalOpen] = useState(false);
-  
+
   // Check if product has variants that need selection
-  const hasVariants = (sizes && sizes.length > 0) || (colors && colors.length > 0);
+  const hasVariants = sizes && sizes.length > 0 || colors && colors.length > 0;
   // Generate marketing "old price" for discount perception (15-20% higher than retail)
   const marketingOldPrice = Math.ceil(price * 1.18 / 50) * 50;
-  
+
   // Calculate discount percentage based on marketing price
   const discount = Math.round((1 - price / marketingOldPrice) * 100);
-  
+
   // Calculate savings amount for customer
   const savings = marketingOldPrice - price;
 
@@ -109,167 +185,106 @@ export const ProductCard = ({
   const hasMoreColors = colors && colors.length > 4;
 
   // Show verified badge for high-rated suppliers
-  const isVerifiedSupplier = supplierVerified || (supplierRating !== undefined && supplierRating >= 4.5);
-
+  const isVerifiedSupplier = supplierVerified || supplierRating !== undefined && supplierRating >= 4.5;
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation();
     hapticImpact("medium");
-    
+
     // If product has variants, open modal for selection
     if (hasVariants) {
       setIsVariantModalOpen(true);
       return;
     }
-    
+
     // No variants - add directly
     onAddToCart?.();
   };
-
   const handleVariantAddToCart = (selectedSize?: string, selectedColor?: string) => {
     onAddToCart?.(selectedSize, selectedColor);
   };
-
   const handleToggleFavorite = (e: React.MouseEvent) => {
     e.stopPropagation();
     hapticImpact("light");
     onToggleFavorite?.();
   };
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
-      transition={{ duration: 0.3 }}
-      className={cn(
-        "group relative bg-card rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 border border-border/50",
-        isBoosted && "ring-2 ring-primary/50 shadow-primary/20 shadow-lg"
-      )}
-      onClick={onClick}
-    >
+  return <motion.div initial={{
+    opacity: 0,
+    y: 20
+  }} animate={{
+    opacity: 1,
+    y: 0
+  }} whileHover={{
+    scale: 1.02
+  }} whileTap={{
+    scale: 0.98
+  }} transition={{
+    duration: 0.3
+  }} className={cn("group relative bg-card rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 border border-border/50", isBoosted && "ring-2 ring-primary/50 shadow-primary/20 shadow-lg")} onClick={onClick}>
       {/* Image with Video Preview on Hover */}
       <div className="relative aspect-square overflow-hidden bg-muted">
         {/* Boosted Badge - Inside image container at top */}
-        {isBoosted && (
-          <div className="absolute top-0 left-0 right-0 z-20 bg-gradient-to-r from-primary via-primary/80 to-accent text-primary-foreground text-[10px] font-bold py-1.5 text-center flex items-center justify-center gap-1">
+        {isBoosted && <div className="absolute top-0 left-0 right-0 z-20 bg-gradient-to-r from-primary via-primary/80 to-accent text-primary-foreground text-[10px] font-bold py-1.5 text-center flex items-center justify-center gap-1">
             <TrendingUp className="h-3 w-3" />
             ТОП ПРОПОЗИЦІЯ
-          </div>
-        )}
+          </div>}
         
         {/* Video Preview (shows on hover if video exists) */}
-        {videoUrl && (
-          <video
-            src={videoUrl}
-            muted
-            loop
-            playsInline
-            className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10"
-            onMouseEnter={(e) => e.currentTarget.play()}
-            onMouseLeave={(e) => {
-              e.currentTarget.pause();
-              e.currentTarget.currentTime = 0;
-            }}
-          />
-        )}
-        <img
-          src={image}
-          alt={name}
-          className={cn(
-            "w-full h-full object-cover transition-all duration-500",
-            videoUrl ? "group-hover:opacity-0 group-hover:scale-110" : "group-hover:scale-110"
-          )}
-        />
+        {videoUrl && <video src={videoUrl} muted loop playsInline className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10" onMouseEnter={e => e.currentTarget.play()} onMouseLeave={e => {
+        e.currentTarget.pause();
+        e.currentTarget.currentTime = 0;
+      }} />}
+        <img src={image} alt={name} className={cn("w-full h-full object-cover transition-all duration-500", videoUrl ? "group-hover:opacity-0 group-hover:scale-110" : "group-hover:scale-110")} />
         
         {/* Low Stock Badge - FOMO effect - Top center but below boosted badge */}
-        {inStock && stockQuantity !== undefined && stockQuantity > 0 && stockQuantity <= 5 && (
-          <div className={cn(
-            "absolute left-1/2 -translate-x-1/2 z-15",
-            isBoosted ? "top-10" : "top-3"
-          )}>
+        {inStock && stockQuantity !== undefined && stockQuantity > 0 && stockQuantity <= 5 && <div className={cn("absolute left-1/2 -translate-x-1/2 z-15", isBoosted ? "top-10" : "top-3")}>
             <LowStockBadge quantity={stockQuantity} animated={true} />
-          </div>
-        )}
+          </div>}
 
         {/* Badges Stack - Top left, below boosted banner */}
-        <div className={cn(
-          "absolute left-3 flex flex-col gap-1 z-10",
-          isBoosted ? "top-10" : "top-3"
-        )}>
+        <div className={cn("absolute left-3 flex-col gap-1 z-10 flex items-start justify-start", isBoosted ? "top-10" : "top-3")}>
           {/* Discount Badge - Smaller size */}
-          {discount > 0 && inStock && (
-            <div className="bg-live text-live-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-md shadow-lg">
+          {discount > 0 && inStock && <div className="bg-live text-live-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-md shadow-lg">
               -{discount}%
-            </div>
-          )}
+            </div>}
 
           {/* Savings Badge */}
-          {savings >= 100 && inStock && (
-            <div className="bg-accent text-accent-foreground text-[10px] font-medium px-2 py-0.5 rounded-full shadow-md">
+          {savings >= 100 && inStock && <div className="bg-accent text-accent-foreground text-[10px] font-medium px-2 py-0.5 rounded-full shadow-md">
               Економія {savings.toLocaleString()} ₴
-            </div>
-          )}
+            </div>}
         </div>
 
         {/* Favorite Button - Top right, with offset for boosted */}
-        <button
-          onClick={handleToggleFavorite}
-          className={cn(
-            "absolute right-3 w-9 h-9 rounded-full flex items-center justify-center transition-all shadow-lg backdrop-blur-sm z-20",
-            isBoosted ? "top-10" : "top-3",
-            isFavorite 
-              ? "bg-live/90 text-live-foreground scale-110" 
-              : "bg-background/80 text-muted-foreground hover:text-live hover:bg-background hover:scale-110"
-          )}
-        >
+        <button onClick={handleToggleFavorite} className={cn("absolute right-3 w-9 h-9 rounded-full flex items-center justify-center transition-all shadow-lg backdrop-blur-sm z-20", isBoosted ? "top-10" : "top-3", isFavorite ? "bg-live/90 text-live-foreground scale-110" : "bg-background/80 text-muted-foreground hover:text-live hover:bg-background hover:scale-110")}>
           <Heart className={cn("h-4 w-4", isFavorite && "fill-current")} />
         </button>
 
         {/* Verified Supplier Badge - Next to favorite */}
-        {isVerifiedSupplier && (
-          <div className={cn(
-            "absolute right-14 z-20",
-            isBoosted ? "top-10" : "top-3"
-          )}>
+        {isVerifiedSupplier && <div className={cn("absolute right-14 z-20", isBoosted ? "top-10" : "top-3")}>
             <VerifiedBadge size="sm" showTooltip />
-          </div>
-        )}
+          </div>}
 
         {/* Category Badge - Bottom left, now with clear space */}
-        {category && (
-          <div className="absolute bottom-3 left-3 bg-primary/90 text-primary-foreground text-[10px] font-medium px-2.5 py-1 rounded-full backdrop-blur-sm shadow-md z-10">
+        {category && <div className="absolute bottom-3 left-3 bg-primary/90 text-primary-foreground text-[10px] font-medium px-2.5 py-1 rounded-full backdrop-blur-sm shadow-md z-10">
             {category}
-          </div>
-        )}
+          </div>}
 
         {/* Out of Stock Overlay */}
-        {!inStock && (
-          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center">
+        {!inStock && <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center">
             <span className="text-sm font-medium text-muted-foreground bg-muted px-4 py-2 rounded-full">
               Немає в наявності
             </span>
-          </div>
-        )}
+          </div>}
 
         {/* Quick Add Button - Always visible on mobile, hover on desktop */}
-        {inStock && (
-          <motion.button
-            onClick={handleAddToCart}
-            initial={{ opacity: 1 }}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.95 }}
-            className={cn(
-              "absolute bottom-3 right-3 w-11 h-11 rounded-full z-30",
-              "bg-accent text-accent-foreground shadow-lg",
-              "flex items-center justify-center",
-              "opacity-100 md:opacity-0 md:group-hover:opacity-100",
-              "transition-opacity duration-300"
-            )}
-          >
+        {inStock && <motion.button onClick={handleAddToCart} initial={{
+        opacity: 1
+      }} whileHover={{
+        scale: 1.1
+      }} whileTap={{
+        scale: 0.95
+      }} className={cn("absolute bottom-3 right-3 w-11 h-11 rounded-full z-30", "bg-accent text-accent-foreground shadow-lg", "flex items-center justify-center", "opacity-100 md:opacity-0 md:group-hover:opacity-100", "transition-opacity duration-300")}>
             <ShoppingCart className="h-5 w-5" />
-          </motion.button>
-        )}
+          </motion.button>}
       </div>
 
       {/* Info */}
@@ -279,26 +294,14 @@ export const ProductCard = ({
         </h3>
         
         {/* Rating */}
-        {rating !== undefined && rating > 0 && (
-          <div className="flex items-center gap-1 mt-1">
+        {rating !== undefined && rating > 0 && <div className="flex items-center gap-1 mt-1">
             <div className="flex items-center gap-0.5">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <Star
-                  key={star}
-                  className={cn(
-                    "h-3 w-3",
-                    star <= Math.round(rating) ? "text-warning fill-warning" : "text-muted"
-                  )}
-                />
-              ))}
+              {[1, 2, 3, 4, 5].map(star => <Star key={star} className={cn("h-3 w-3", star <= Math.round(rating) ? "text-warning fill-warning" : "text-muted")} />)}
             </div>
-            {reviewCount !== undefined && reviewCount > 0 && (
-              <span className="text-[10px] text-muted-foreground">
+            {reviewCount !== undefined && reviewCount > 0 && <span className="text-[10px] text-muted-foreground">
                 ({reviewCount})
-              </span>
-            )}
-          </div>
-        )}
+              </span>}
+          </div>}
         
         {/* Price and Variants Row */}
         <div className="mt-2 flex items-start justify-between gap-2">
@@ -308,83 +311,48 @@ export const ProductCard = ({
               <span className="text-lg font-bold text-primary">
                 {price.toLocaleString()} ₴
               </span>
-              {inStock && (
-                <span className="text-[10px] font-medium text-live bg-live/10 px-1 py-0.5 rounded">
+              {inStock && <span className="text-[10px] font-medium text-live bg-live/10 px-1 py-0.5 rounded">
                   Акція
-                </span>
-              )}
+                </span>}
             </div>
             
             {/* Marketing "old price" */}
-            {inStock && (
-              <span className="text-xs text-muted-foreground line-through">
+            {inStock && <span className="text-xs text-muted-foreground line-through">
                 {marketingOldPrice.toLocaleString()} ₴
-              </span>
-            )}
+              </span>}
           </div>
 
           {/* Variants Column */}
           <div className="flex flex-col items-end gap-1 text-right shrink-0">
             {/* Stock Quantity */}
-            {inStock && stockQuantity !== undefined && stockQuantity > 0 && (
-              <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+            {inStock && stockQuantity !== undefined && stockQuantity > 0 && <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
                 <Package className="h-3 w-3" />
                 <span>{stockQuantity > 99 ? "99+" : stockQuantity} шт</span>
-              </div>
-            )}
+              </div>}
 
             {/* Sizes */}
-            {displaySizes.length > 0 && (
-              <div className="flex items-center gap-0.5 flex-wrap justify-end">
-                {displaySizes.map((size, idx) => (
-                  <span 
-                    key={idx}
-                    className="text-[9px] bg-muted px-1 py-0.5 rounded font-medium"
-                  >
+            {displaySizes.length > 0 && <div className="flex items-center gap-0.5 flex-wrap justify-end">
+                {displaySizes.map((size, idx) => <span key={idx} className="text-[9px] bg-muted px-1 py-0.5 rounded font-medium">
                     {size}
-                  </span>
-                ))}
-                {hasMoreSizes && (
-                  <span className="text-[9px] text-muted-foreground">+{sizes!.length - 4}</span>
-                )}
-              </div>
-            )}
+                  </span>)}
+                {hasMoreSizes && <span className="text-[9px] text-muted-foreground">+{sizes!.length - 4}</span>}
+              </div>}
 
             {/* Colors */}
-            {displayColors.length > 0 && (
-              <div className="flex items-center gap-0.5 flex-wrap justify-end">
+            {displayColors.length > 0 && <div className="flex items-center gap-0.5 flex-wrap justify-end">
                 {displayColors.map((color, idx) => {
-                  const info = getColorInfo(color);
-                  return (
-                    <span 
-                      key={idx}
-                      className="w-4 h-4 rounded-full border border-border shadow-sm"
-                      style={{ backgroundColor: info.color }}
-                      title={color}
-                    />
-                  );
-                })}
-                {hasMoreColors && (
-                  <span className="text-[9px] text-muted-foreground">+{colors!.length - 4}</span>
-                )}
-              </div>
-            )}
+              const info = getColorInfo(color);
+              return <span key={idx} className="w-4 h-4 rounded-full border border-border shadow-sm" style={{
+                backgroundColor: info.color
+              }} title={color} />;
+            })}
+                {hasMoreColors && <span className="text-[9px] text-muted-foreground">+{colors!.length - 4}</span>}
+              </div>}
           </div>
         </div>
       </div>
 
       {/* Variant Selection Modal */}
-      <VariantSelectionModal
-        isOpen={isVariantModalOpen}
-        onClose={() => setIsVariantModalOpen(false)}
-        productId={id}
-        productName={name}
-        productPrice={price}
-        productImage={image}
-        sizes={sizes}
-        colors={colors}
-        onAddToCart={handleVariantAddToCart}
-      />
-    </motion.div>
-  );
+      <VariantSelectionModal isOpen={isVariantModalOpen} onClose={() => setIsVariantModalOpen(false)} productId={id} productName={name} productPrice={price} productImage={image} sizes={sizes} colors={colors} onAddToCart={handleVariantAddToCart} />
+    </motion.div>;
 };
