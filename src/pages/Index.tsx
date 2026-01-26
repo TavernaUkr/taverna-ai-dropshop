@@ -231,6 +231,11 @@ const LiveTab = () => (
 
 const AccountTab = () => {
   const navigate = useNavigate();
+  const { isAuthenticated, profile } = useTelegramAuthContext();
+
+  const roles = Array.isArray(profile?.roles) ? (profile.roles as string[]) : [];
+  const isPartnerUser =
+    roles.includes("supplier") || roles.includes("admin") || roles.includes("moderator");
   
   return (
     <div className="space-y-4 pb-28 animate-fade-in">
@@ -238,17 +243,21 @@ const AccountTab = () => {
       <ProfileDashboard />
       
       {/* Partner Banner */}
-      <PartnerBanner onClick={() => navigate("/partner")} />
+      {isAuthenticated && !isPartnerUser && (
+        <PartnerBanner onClick={() => navigate("/partner")} />
+      )}
       
       {/* Dev/Manager Access (hidden link) */}
-      <div className="mt-4">
-        <Link 
-          to="/manager" 
-          className="text-xs text-muted-foreground hover:text-primary transition-colors block text-center py-2"
-        >
-          🔧 Панель партнера
-        </Link>
-      </div>
+      {isAuthenticated && isPartnerUser && (
+        <div className="mt-4">
+          <Link 
+            to="/manager" 
+            className="text-xs text-muted-foreground hover:text-primary transition-colors block text-center py-2"
+          >
+            🔧 Панель партнера
+          </Link>
+        </div>
+      )}
     </div>
   );
 };
