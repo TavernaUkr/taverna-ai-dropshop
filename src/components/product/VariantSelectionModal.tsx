@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ShoppingCart, X, ChevronRight } from "lucide-react";
+import { ShoppingCart, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
   Dialog,
@@ -46,7 +46,10 @@ export function VariantSelectionModal({
     (!hasRequiredSizes || selectedSize) && 
     (!hasRequiredColors || selectedColor);
 
-  const handleAddToCart = () => {
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
     if (!canAddToCart) {
       if (hasRequiredSizes && !selectedSize) {
         toast.error("Оберіть розмір");
@@ -60,19 +63,42 @@ export function VariantSelectionModal({
     
     hapticImpact("medium");
     onAddToCart(selectedSize || undefined, selectedColor || undefined);
-    onClose();
     toast.success(`${productName} додано до кошика`);
+    
+    // Reset selections and close modal
+    setSelectedSize(null);
+    setSelectedColor(null);
+    onClose();
   };
 
-  const handleViewProduct = () => {
+  const handleViewProduct = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
     hapticImpact("light");
     onClose();
     navigate(`/product/${productId}`);
   };
 
+  const handleSizeSelect = (size: string) => {
+    hapticImpact("light");
+    setSelectedSize(size);
+  };
+
+  const handleColorSelect = (color: string) => {
+    hapticImpact("light");
+    setSelectedColor(color);
+  };
+
+  const handleModalClose = () => {
+    setSelectedSize(null);
+    setSelectedColor(null);
+    onClose();
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
+    <Dialog open={isOpen} onOpenChange={handleModalClose}>
+      <DialogContent className="max-w-md" onClick={(e) => e.stopPropagation()}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ShoppingCart className="h-5 w-5 text-primary" />
@@ -80,7 +106,7 @@ export function VariantSelectionModal({
           </DialogTitle>
         </DialogHeader>
         
-        <div className="space-y-4">
+        <div className="space-y-4" onClick={(e) => e.stopPropagation()}>
           {/* Product preview */}
           <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-xl">
             <img
@@ -100,24 +126,28 @@ export function VariantSelectionModal({
           
           {/* Size selector */}
           {hasRequiredSizes && (
-            <ProductVariantSelector
-              label="Розмір"
-              options={sizes}
-              selected={selectedSize}
-              onSelect={setSelectedSize}
-              type="button"
-            />
+            <div onClick={(e) => e.stopPropagation()}>
+              <ProductVariantSelector
+                label="Розмір"
+                options={sizes}
+                selected={selectedSize}
+                onSelect={handleSizeSelect}
+                type="button"
+              />
+            </div>
           )}
           
           {/* Color selector */}
           {hasRequiredColors && (
-            <ProductVariantSelector
-              label="Колір"
-              options={colors}
-              selected={selectedColor}
-              onSelect={setSelectedColor}
-              type="color"
-            />
+            <div onClick={(e) => e.stopPropagation()}>
+              <ProductVariantSelector
+                label="Колір"
+                options={colors}
+                selected={selectedColor}
+                onSelect={handleColorSelect}
+                type="color"
+              />
+            </div>
           )}
           
           {/* Validation message */}
@@ -132,6 +162,7 @@ export function VariantSelectionModal({
           {/* Actions */}
           <div className="flex flex-col gap-2 pt-2">
             <Button
+              type="button"
               onClick={handleAddToCart}
               disabled={!canAddToCart}
               className="w-full gap-2"
@@ -141,6 +172,7 @@ export function VariantSelectionModal({
             </Button>
             
             <Button
+              type="button"
               variant="outline"
               onClick={handleViewProduct}
               className="w-full gap-2"
