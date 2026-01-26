@@ -9,7 +9,6 @@ import {
   Bell,
   ChevronRight,
   LogOut,
-  Briefcase,
   Store,
   HelpCircle,
   BookOpen,
@@ -21,7 +20,6 @@ import { Separator } from "@/components/ui/separator";
 import { useTelegramAuthContext } from "@/components/TelegramAuthProvider";
 import { OrdersHistory } from "@/components/OrdersHistory";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 import { SupplierGuideModal } from "@/components/SupplierGuideModal";
 import { CustomerGuideModal } from "@/components/CustomerGuideModal";
 import { hapticSelection } from "@/lib/haptics";
@@ -53,7 +51,7 @@ export const ProfileDashboard = () => {
   };
 
   const handlePartnerClick = () => {
-    if (isSupplier || isAdmin) {
+    if (isSupplier || isAdmin || isModerator) {
       // User is already a supplier/admin - go to manager dashboard
       navigate("/manager");
     } else {
@@ -197,25 +195,6 @@ export const ProfileDashboard = () => {
             </span>
             <ChevronRight className="h-5 w-5 text-primary" />
           </div>
-        </button>
-      )}
-
-      {/* Become Partner Button - Only for regular customers (at bottom) */}
-      {isAuthenticated && !isSupplier && !isAdmin && !isModerator && (
-        <button
-          onClick={() => navigate("/partner")}
-          className="w-full flex items-center gap-4 p-4 rounded-xl border transition-all bg-accent/10 border-accent/30 hover:border-accent hover:bg-accent/20"
-        >
-          <div className="w-12 h-12 rounded-full flex items-center justify-center bg-accent/20">
-            <Briefcase className="h-6 w-6 text-accent" />
-          </div>
-          <div className="flex-1 text-left">
-            <h4 className="font-semibold text-foreground">Стати партнером</h4>
-            <p className="text-xs text-muted-foreground">
-              Продавайте товари через Taverna
-            </p>
-          </div>
-          <ChevronRight className="h-5 w-5 text-accent" />
         </button>
       )}
 
