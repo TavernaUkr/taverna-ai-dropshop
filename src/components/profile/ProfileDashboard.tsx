@@ -9,8 +9,6 @@ import {
   Bell,
   ChevronRight,
   LogOut,
-  Copy,
-  Check,
   Briefcase,
   Store,
   HelpCircle,
@@ -32,7 +30,6 @@ export const ProfileDashboard = () => {
   const navigate = useNavigate();
   const { isAuthenticated, profile, logout } = useTelegramAuthContext();
   const [activeTab, setActiveTab] = useState("orders");
-  const [copied, setCopied] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [showSupplierGuide, setShowSupplierGuide] = useState(false);
   const [showCustomerGuide, setShowCustomerGuide] = useState(false);
@@ -48,17 +45,6 @@ export const ProfileDashboard = () => {
     balance: 150,
     referralCount: 3,
     referralLink: `https://t.me/TavernaBot/app?startapp=ref_${profile?.id?.slice(0, 8) || "guest"}`,
-  };
-
-  const handleCopyReferralLink = async () => {
-    try {
-      await navigator.clipboard.writeText(affiliateData.referralLink);
-      setCopied(true);
-      toast.success("Реферальне посилання скопійовано");
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      toast.error("Не вдалося скопіювати");
-    }
   };
 
   const handleLogout = async () => {
@@ -187,25 +173,6 @@ export const ProfileDashboard = () => {
         </button>
       )}
 
-      {/* Become Partner Button - Only for regular customers */}
-      {isAuthenticated && !isSupplier && !isAdmin && !isModerator && (
-        <button
-          onClick={() => navigate("/partner")}
-          className="w-full flex items-center gap-4 p-4 rounded-xl border transition-all bg-accent/10 border-accent/30 hover:border-accent hover:bg-accent/20"
-        >
-          <div className="w-12 h-12 rounded-full flex items-center justify-center bg-accent/20">
-            <Briefcase className="h-6 w-6 text-accent" />
-          </div>
-          <div className="flex-1 text-left">
-            <h4 className="font-semibold text-foreground">Стати партнером</h4>
-            <p className="text-xs text-muted-foreground">
-              Продавайте товари через Taverna
-            </p>
-          </div>
-          <ChevronRight className="h-5 w-5 text-accent" />
-        </button>
-      )}
-
       {/* Referral Program Button - For all authenticated users */}
       {isAuthenticated && (
         <button
@@ -233,6 +200,25 @@ export const ProfileDashboard = () => {
         </button>
       )}
 
+      {/* Become Partner Button - Only for regular customers (at bottom) */}
+      {isAuthenticated && !isSupplier && !isAdmin && !isModerator && (
+        <button
+          onClick={() => navigate("/partner")}
+          className="w-full flex items-center gap-4 p-4 rounded-xl border transition-all bg-accent/10 border-accent/30 hover:border-accent hover:bg-accent/20"
+        >
+          <div className="w-12 h-12 rounded-full flex items-center justify-center bg-accent/20">
+            <Briefcase className="h-6 w-6 text-accent" />
+          </div>
+          <div className="flex-1 text-left">
+            <h4 className="font-semibold text-foreground">Стати партнером</h4>
+            <p className="text-xs text-muted-foreground">
+              Продавайте товари через Taverna
+            </p>
+          </div>
+          <ChevronRight className="h-5 w-5 text-accent" />
+        </button>
+      )}
+
       {/* Tabs - Only show full tabs when authenticated */}
       {isAuthenticated ? (
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -256,7 +242,7 @@ export const ProfileDashboard = () => {
             <OrdersHistory />
           </TabsContent>
 
-          {/* Affiliate Tab */}
+          {/* Bonuses Tab */}
           <TabsContent value="affiliate" className="mt-4 space-y-4">
             {/* Balance Card */}
             <div className="bg-gradient-to-br from-primary/20 to-accent/20 rounded-xl p-5 border border-primary/20">
@@ -272,43 +258,93 @@ export const ProfileDashboard = () => {
               </p>
             </div>
 
-            {/* Stats */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-card rounded-xl p-4 border border-border text-center">
-                <div className="text-2xl font-bold text-primary">
-                  {affiliateData.referralCount}
-                </div>
-                <p className="text-sm text-muted-foreground">Запрошених друзів</p>
+            {/* Personalized Offers Section */}
+            <div className="bg-card rounded-xl border border-border overflow-hidden">
+              <div className="p-4 border-b border-border">
+                <h4 className="font-semibold text-foreground flex items-center gap-2">
+                  <Gift className="h-4 w-4 text-primary" />
+                  Персональні пропозиції
+                </h4>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Спеціально підібрані бонуси на основі ваших вподобань
+                </p>
               </div>
-              <div className="bg-card rounded-xl p-4 border border-border text-center">
-                <div className="text-2xl font-bold text-primary">100 ₴</div>
-                <p className="text-sm text-muted-foreground">За кожного друга</p>
+              
+              {/* Personalized Bonus Items */}
+              <div className="divide-y divide-border">
+                {/* Cashback offer */}
+                <div className="p-4 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    <span className="text-lg">💰</span>
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium text-foreground text-sm">Кешбек 5%</p>
+                    <p className="text-xs text-muted-foreground">На наступне замовлення</p>
+                  </div>
+                  <span className="text-xs font-medium bg-primary/10 text-primary px-2 py-1 rounded-full">
+                    Активний
+                  </span>
+                </div>
+
+                {/* Category discount */}
+                <div className="p-4 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center">
+                    <span className="text-lg">🎯</span>
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium text-foreground text-sm">-10% на улюблену категорію</p>
+                    <p className="text-xs text-muted-foreground">Тактичне спорядження</p>
+                  </div>
+                  <span className="text-xs font-medium bg-accent/10 text-accent px-2 py-1 rounded-full">
+                    Новий
+                  </span>
+                </div>
+
+                {/* Free delivery */}
+                <div className="p-4 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                    <span className="text-lg">🚚</span>
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium text-foreground text-sm">Безкоштовна доставка</p>
+                    <p className="text-xs text-muted-foreground">При замовленні від 1500₴</p>
+                  </div>
+                  <span className="text-xs font-medium bg-muted text-muted-foreground px-2 py-1 rounded-full">
+                    Доступно
+                  </span>
+                </div>
               </div>
             </div>
 
-            {/* Referral Link */}
-            <div className="bg-card rounded-xl p-4 border border-border space-y-3">
-              <h4 className="font-medium text-foreground">Реферальне посилання</h4>
-              <div className="flex items-center gap-2">
-                <div className="flex-1 p-3 bg-muted rounded-lg text-sm font-mono text-muted-foreground truncate">
-                  {affiliateData.referralLink}
-                </div>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={handleCopyReferralLink}
-                  className="flex-shrink-0"
+            {/* Promo Codes Section */}
+            <div className="bg-card rounded-xl border border-border overflow-hidden">
+              <div className="p-4 border-b border-border">
+                <h4 className="font-semibold text-foreground flex items-center gap-2">
+                  <span className="text-lg">🏷️</span>
+                  Мої промокоди
+                </h4>
+              </div>
+              
+              <div className="p-4 text-center text-muted-foreground">
+                <p className="text-sm">Поки що у вас немає активних промокодів</p>
+                <Button 
+                  variant="link" 
+                  className="mt-2 text-primary"
+                  onClick={() => navigate("/promos")}
                 >
-                  {copied ? (
-                    <Check className="h-4 w-4 text-primary" />
-                  ) : (
-                    <Copy className="h-4 w-4" />
-                  )}
+                  Переглянути акції
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Поділіться посиланням з друзями та отримуйте бонуси за кожну їх покупку
-              </p>
+            </div>
+
+            {/* Info about earning bonuses */}
+            <div className="bg-muted/50 rounded-xl p-4 border border-border">
+              <h4 className="font-medium text-foreground text-sm mb-2">Як отримати більше бонусів?</h4>
+              <ul className="text-xs text-muted-foreground space-y-1">
+                <li>• Запрошуйте друзів — отримуйте 100₴ за кожного</li>
+                <li>• Робіть покупки — накопичуйте кешбек</li>
+                <li>• Залишайте відгуки — отримуйте бали</li>
+              </ul>
             </div>
           </TabsContent>
 
