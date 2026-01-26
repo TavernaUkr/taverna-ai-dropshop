@@ -70,7 +70,11 @@ export const ProductVariantSelector = ({
               <button
                 key={option}
                 type="button"
-                onClick={() => onSelect(option)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onSelect(option);
+                }}
                 className={cn(
                   "relative w-10 h-10 rounded-full border-2 transition-all",
                   isSelected
@@ -107,7 +111,11 @@ export const ProductVariantSelector = ({
             <button
               key={option}
               type="button"
-              onClick={() => onSelect(option)}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onSelect(option);
+              }}
               className={cn(
                 "px-4 py-2 rounded-lg border text-sm font-medium transition-all",
                 isSelected
