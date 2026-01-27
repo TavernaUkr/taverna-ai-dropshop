@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -23,14 +23,31 @@ import { toast } from "sonner";
 import { SupplierGuideModal } from "@/components/SupplierGuideModal";
 import { CustomerGuideModal } from "@/components/CustomerGuideModal";
 import { hapticSelection } from "@/lib/haptics";
+import { DevRoleSwitcher } from "@/components/profile/DevRoleSwitcher";
+
+type TestRole = "guest" | "customer" | "supplier" | "moderator" | "admin";
 
 export const ProfileDashboard = () => {
   const navigate = useNavigate();
-  const { isAuthenticated, profile, logout } = useTelegramAuthContext();
+  const { isAuthenticated: realIsAuthenticated, profile: realProfile, logout } = useTelegramAuthContext();
   const [activeTab, setActiveTab] = useState("orders");
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [showSupplierGuide, setShowSupplierGuide] = useState(false);
   const [showCustomerGuide, setShowCustomerGuide] = useState(false);
+  
+  // DEV MODE: Test role switcher
+  const [testRole, setTestRole] = useState<TestRole>("guest");
+  const isDevMode = import.meta.env.DEV || window.location.hostname.includes("lovable.app");
+  
+  // Determine effective auth state based on test role (for dev testing)
+  const isAuthenticated = isDevMode && testRole !== "guest" ? true : realIsAuthenticated;
+  const profile = isDevMode && testRole !== "guest" 
+    ? { 
+        ...realProfile, 
+        first_name: `Test ${testRole.charAt(0).toUpperCase() + testRole.slice(1)}`,
+        roles: testRole === "customer" ? [] : [testRole]
+      } 
+    : realProfile;
 
   // Check roles from secure user_roles table (not from profile.user_type to prevent privilege escalation)
   const userRoles = profile?.roles || [];
@@ -470,6 +487,14 @@ export const ProfileDashboard = () => {
         isOpen={showCustomerGuide} 
         onClose={() => setShowCustomerGuide(false)} 
       />
+
+      {/* DEV MODE: Role Switcher for testing */}
+      {isDevMode && (
+        <DevRoleSwitcher 
+          currentRole={testRole} 
+          onRoleChange={setTestRole} 
+        />
+      )}
     </div>
   );
 };
