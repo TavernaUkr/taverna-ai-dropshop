@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Package,
@@ -13,6 +13,9 @@ import {
   HelpCircle,
   BookOpen,
   Users,
+  Shield,
+  Flag,
+  MessageSquare,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -24,6 +27,7 @@ import { SupplierGuideModal } from "@/components/SupplierGuideModal";
 import { CustomerGuideModal } from "@/components/CustomerGuideModal";
 import { hapticSelection } from "@/lib/haptics";
 import { DevRoleSwitcher } from "@/components/profile/DevRoleSwitcher";
+import { supabase } from "@/integrations/supabase/client";
 
 type TestRole = "guest" | "customer" | "supplier" | "moderator" | "admin";
 
@@ -34,23 +38,62 @@ export const ProfileDashboard = () => {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [showSupplierGuide, setShowSupplierGuide] = useState(false);
   const [showCustomerGuide, setShowCustomerGuide] = useState(false);
+  const [realUserRoles, setRealUserRoles] = useState<string[]>([]);
   
-  // DEV MODE: Test role switcher
+  // DEV MODE: Test role switcher (only for real admins)
   const [testRole, setTestRole] = useState<TestRole>("guest");
   const isDevMode = import.meta.env.DEV || window.location.hostname.includes("lovable.app");
   
-  // Determine effective auth state based on test role (for dev testing)
-  const isAuthenticated = isDevMode && testRole !== "guest" ? true : realIsAuthenticated;
-  const profile = isDevMode && testRole !== "guest" 
+  // Fetch real user roles from secure user_roles table
+  useEffect(() => {
+    const fetchUserRoles = async () => {
+      if (!realProfile?.id) {
+        setRealUserRoles([]);
+        return;
+      }
+      
+      try {
+        const { data: roles, error } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', realProfile.id);
+        
+        if (error) {
+          console.error('Error fetching user roles:', error);
+          setRealUserRoles([]);
+        } else {
+          setRealUserRoles(roles?.map(r => r.role) || []);
+        }
+      } catch (err) {
+        console.error('Error fetching user roles:', err);
+        setRealUserRoles([]);
+      }
+    };
+    
+    fetchUserRoles();
+  }, [realProfile?.id]);
+  
+  // Check if user is a real admin for showing DevRoleSwitcher
+  const isRealAdmin = realUserRoles.includes('admin');
+  
+  // Determine effective auth state based on test role (for dev testing by real admins only)
+  const isAuthenticated = isDevMode && isRealAdmin && testRole !== "guest" 
+    ? true 
+    : realIsAuthenticated;
+  
+  const profile = isDevMode && isRealAdmin && testRole !== "guest" 
     ? { 
         ...realProfile, 
         first_name: `Test ${testRole.charAt(0).toUpperCase() + testRole.slice(1)}`,
         roles: testRole === "customer" ? [] : [testRole]
       } 
-    : realProfile;
+    : { ...realProfile, roles: realUserRoles };
 
   // Check roles from secure user_roles table (not from profile.user_type to prevent privilege escalation)
-  const userRoles = profile?.roles || [];
+  const userRoles = isDevMode && isRealAdmin && testRole !== "guest" 
+    ? (testRole === "customer" ? [] : [testRole])
+    : realUserRoles;
+    
   const isSupplier = userRoles.includes('supplier') || userRoles.includes('admin');
   const isAdmin = userRoles.includes('admin');
   const isModerator = userRoles.includes('moderator');
@@ -441,40 +484,76 @@ export const ProfileDashboard = () => {
           </TabsContent>
         </Tabs>
       ) : (
-        /* Guest View - Limited info */
-        <div className="bg-card rounded-xl p-6 border border-border text-center space-y-4">
-          <div className="w-16 h-16 rounded-full bg-muted mx-auto flex items-center justify-center">
-            <Package className="h-8 w-8 text-muted-foreground" />
+        /* Guest View - Clear distinction from Client */
+        <div className="bg-card rounded-xl p-6 border border-dashed border-muted-foreground/30 text-center space-y-4">
+          <div className="w-16 h-16 rounded-full bg-muted/50 mx-auto flex items-center justify-center">
+            <User className="h-8 w-8 text-muted-foreground/50" />
           </div>
           <div>
-            <h4 className="font-semibold text-foreground">Авторизуйтесь для доступу</h4>
+            <div className="inline-flex items-center gap-2 mb-2">
+              <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
+                👤 Гість
+              </span>
+            </div>
+            <h4 className="font-semibold text-foreground">Ви не авторизовані</h4>
             <p className="text-sm text-muted-foreground mt-1">
-              Переглядайте історію замовлень, керуйте адресами доставки та отримуйте бонуси
+              Авторизуйтесь через Telegram для доступу до всіх функцій
             </p>
           </div>
-          <div className="grid grid-cols-3 gap-2 pt-2">
-            <div className="p-3 bg-muted rounded-lg">
-              <Package className="h-5 w-5 mx-auto text-muted-foreground mb-1" />
-              <p className="text-xs text-muted-foreground">Замовлення</p>
+          
+          {/* What you get with authorization */}
+          <div className="grid grid-cols-3 gap-2 pt-2 opacity-50">
+            <div className="p-3 bg-muted/50 rounded-lg border border-dashed border-muted-foreground/20">
+              <Package className="h-5 w-5 mx-auto text-muted-foreground/50 mb-1" />
+              <p className="text-xs text-muted-foreground/70">Замовлення</p>
             </div>
-            <div className="p-3 bg-muted rounded-lg">
-              <Gift className="h-5 w-5 mx-auto text-muted-foreground mb-1" />
-              <p className="text-xs text-muted-foreground">Бонуси</p>
+            <div className="p-3 bg-muted/50 rounded-lg border border-dashed border-muted-foreground/20">
+              <Gift className="h-5 w-5 mx-auto text-muted-foreground/50 mb-1" />
+              <p className="text-xs text-muted-foreground/70">Бонуси</p>
             </div>
-            <div className="p-3 bg-muted rounded-lg">
-              <Settings className="h-5 w-5 mx-auto text-muted-foreground mb-1" />
-              <p className="text-xs text-muted-foreground">Налаштування</p>
+            <div className="p-3 bg-muted/50 rounded-lg border border-dashed border-muted-foreground/20">
+              <Settings className="h-5 w-5 mx-auto text-muted-foreground/50 mb-1" />
+              <p className="text-xs text-muted-foreground/70">Налаштування</p>
             </div>
           </div>
 
           {/* Help button for guests */}
           <button 
             onClick={() => setShowCustomerGuide(true)}
-            className="w-full flex items-center justify-center gap-2 p-3 bg-primary/10 rounded-xl text-primary hover:bg-primary/20 transition-colors"
+            className="w-full flex items-center justify-center gap-2 p-3 bg-muted/50 rounded-xl text-muted-foreground hover:bg-muted transition-colors"
           >
             <HelpCircle className="h-4 w-4" />
             <span className="text-sm font-medium">Як користуватись Taverna</span>
           </button>
+        </div>
+      )}
+      
+      {/* Moderator Quick Actions - Only for moderators */}
+      {isAuthenticated && isModerator && !isAdmin && (
+        <div className="bg-orange-500/5 rounded-xl border border-orange-500/20 p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <Shield className="h-5 w-5 text-orange-500" />
+            <h4 className="font-semibold text-foreground">Швидкі дії модератора</h4>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <Link
+              to="/moderator"
+              className="flex items-center gap-2 p-3 bg-card rounded-lg border border-border hover:border-orange-500/50 transition-colors"
+            >
+              <Flag className="h-4 w-4 text-orange-500" />
+              <span className="text-sm font-medium text-foreground">Скарги</span>
+            </Link>
+            <Link
+              to="/support"
+              className="flex items-center gap-2 p-3 bg-card rounded-lg border border-border hover:border-orange-500/50 transition-colors"
+            >
+              <MessageSquare className="h-4 w-4 text-orange-500" />
+              <span className="text-sm font-medium text-foreground">Чати</span>
+            </Link>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            ⚠️ Акції, бонуси та розіграші потребують підтвердження адміна
+          </p>
         </div>
       )}
 
@@ -488,11 +567,12 @@ export const ProfileDashboard = () => {
         onClose={() => setShowCustomerGuide(false)} 
       />
 
-      {/* DEV MODE: Role Switcher for testing */}
-      {isDevMode && (
+      {/* ADMIN ONLY: Role Switcher for testing UI states */}
+      {isDevMode && isRealAdmin && (
         <DevRoleSwitcher 
           currentRole={testRole} 
-          onRoleChange={setTestRole} 
+          onRoleChange={setTestRole}
+          profileId={realProfile?.id}
         />
       )}
     </div>

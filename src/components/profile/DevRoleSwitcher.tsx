@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -8,42 +8,107 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Bug, X } from "lucide-react";
+import { Bug, X, Shield } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 type TestRole = "guest" | "customer" | "supplier" | "moderator" | "admin";
 
 interface DevRoleSwitcherProps {
   currentRole: TestRole;
   onRoleChange: (role: TestRole) => void;
+  profileId?: string | null;
 }
 
-export const DevRoleSwitcher = ({ currentRole, onRoleChange }: DevRoleSwitcherProps) => {
+export const DevRoleSwitcher = ({ currentRole, onRoleChange, profileId }: DevRoleSwitcherProps) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isChecking, setIsChecking] = useState(true);
 
-  const roleLabels: Record<TestRole, { label: string; color: string }> = {
-    guest: { label: "👤 Гість", color: "bg-muted text-muted-foreground" },
-    customer: { label: "🛒 Клієнт", color: "bg-blue-500/10 text-blue-500" },
-    supplier: { label: "📦 Постачальник", color: "bg-primary/10 text-primary" },
-    moderator: { label: "🛡️ Модератор", color: "bg-orange-500/10 text-orange-500" },
-    admin: { label: "⚙️ Адмін", color: "bg-destructive/10 text-destructive" },
+  // Check if user is a real admin from user_roles table
+  useEffect(() => {
+    const checkAdminAccess = async () => {
+      if (!profileId) {
+        setIsChecking(false);
+        setIsAdmin(false);
+        return;
+      }
+
+      try {
+        const { data: roles, error } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', profileId);
+
+        if (error) {
+          console.error('Error checking admin access:', error);
+          setIsAdmin(false);
+        } else {
+          const hasAdminRole = roles?.some(r => r.role === 'admin');
+          setIsAdmin(hasAdminRole || false);
+        }
+      } catch (err) {
+        console.error('Error checking admin access:', err);
+        setIsAdmin(false);
+      } finally {
+        setIsChecking(false);
+      }
+    };
+
+    checkAdminAccess();
+  }, [profileId]);
+
+  const roleLabels: Record<TestRole, { label: string; color: string; description: string }> = {
+    guest: { 
+      label: "👤 Гість", 
+      color: "bg-muted text-muted-foreground",
+      description: "Неавторизований користувач"
+    },
+    customer: { 
+      label: "🛒 Клієнт", 
+      color: "bg-blue-500/10 text-blue-500",
+      description: "Авторизований покупець"
+    },
+    supplier: { 
+      label: "📦 Постачальник", 
+      color: "bg-primary/10 text-primary",
+      description: "Партнер з товарами"
+    },
+    moderator: { 
+      label: "🛡️ Модератор", 
+      color: "bg-orange-500/10 text-orange-500",
+      description: "Скарги, чати, відгуки"
+    },
+    admin: { 
+      label: "⚙️ Адмін", 
+      color: "bg-destructive/10 text-destructive",
+      description: "Повний доступ"
+    },
   };
+
+  // Only show to real admins (verified from database)
+  if (isChecking || !isAdmin) {
+    return null;
+  }
 
   if (!isOpen) {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-24 right-4 z-50 p-2 bg-muted/80 backdrop-blur-sm rounded-full shadow-lg border border-border hover:bg-muted transition-colors"
-        title="Dev: Role Switcher"
+        className="fixed bottom-24 right-4 z-50 p-2 bg-destructive/20 backdrop-blur-sm rounded-full shadow-lg border border-destructive/30 hover:bg-destructive/30 transition-colors"
+        title="Admin: Role Switcher"
       >
-        <Bug className="h-5 w-5 text-muted-foreground" />
+        <Bug className="h-5 w-5 text-destructive" />
       </button>
     );
   }
 
   return (
-    <div className="fixed bottom-24 right-4 z-50 bg-card/95 backdrop-blur-sm rounded-xl shadow-xl border border-border p-4 min-w-[200px]">
+    <div className="fixed bottom-24 right-4 z-50 bg-card/95 backdrop-blur-sm rounded-xl shadow-xl border border-destructive/30 p-4 min-w-[240px]">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-xs font-medium text-muted-foreground">🔧 DEV MODE</span>
+        <div className="flex items-center gap-2">
+          <Shield className="h-4 w-4 text-destructive" />
+          <span className="text-xs font-medium text-destructive">🔧 ADMIN TESTER</span>
+        </div>
         <button
           onClick={() => setIsOpen(false)}
           className="p-1 hover:bg-muted rounded-md transition-colors"
@@ -54,10 +119,13 @@ export const DevRoleSwitcher = ({ currentRole, onRoleChange }: DevRoleSwitcherPr
 
       <div className="space-y-3">
         <div>
-          <p className="text-xs text-muted-foreground mb-1">Поточна роль:</p>
+          <p className="text-xs text-muted-foreground mb-1">Симуляція ролі:</p>
           <Badge className={roleLabels[currentRole].color}>
             {roleLabels[currentRole].label}
           </Badge>
+          <p className="text-[10px] text-muted-foreground mt-1">
+            {roleLabels[currentRole].description}
+          </p>
         </div>
 
         <Select value={currentRole} onValueChange={(v) => onRoleChange(v as TestRole)}>
@@ -65,17 +133,44 @@ export const DevRoleSwitcher = ({ currentRole, onRoleChange }: DevRoleSwitcherPr
             <SelectValue placeholder="Обрати роль" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="guest">👤 Гість</SelectItem>
-            <SelectItem value="customer">🛒 Клієнт</SelectItem>
-            <SelectItem value="supplier">📦 Постачальник</SelectItem>
-            <SelectItem value="moderator">🛡️ Модератор</SelectItem>
-            <SelectItem value="admin">⚙️ Адмін</SelectItem>
+            <SelectItem value="guest">
+              <div className="flex flex-col">
+                <span>👤 Гість</span>
+                <span className="text-[10px] text-muted-foreground">Неавторизований</span>
+              </div>
+            </SelectItem>
+            <SelectItem value="customer">
+              <div className="flex flex-col">
+                <span>🛒 Клієнт</span>
+                <span className="text-[10px] text-muted-foreground">Авторизований покупець</span>
+              </div>
+            </SelectItem>
+            <SelectItem value="supplier">
+              <div className="flex flex-col">
+                <span>📦 Постачальник</span>
+                <span className="text-[10px] text-muted-foreground">Партнер з товарами</span>
+              </div>
+            </SelectItem>
+            <SelectItem value="moderator">
+              <div className="flex flex-col">
+                <span>🛡️ Модератор</span>
+                <span className="text-[10px] text-muted-foreground">Скарги, чати, відгуки</span>
+              </div>
+            </SelectItem>
+            <SelectItem value="admin">
+              <div className="flex flex-col">
+                <span>⚙️ Адмін</span>
+                <span className="text-[10px] text-muted-foreground">Повний доступ</span>
+              </div>
+            </SelectItem>
           </SelectContent>
         </Select>
 
-        <p className="text-[10px] text-muted-foreground leading-tight">
-          Це тестовий перемикач для розробки. Реальні ролі керуються через API бекенду.
-        </p>
+        <div className="p-2 bg-destructive/10 rounded-lg border border-destructive/20">
+          <p className="text-[10px] text-destructive leading-tight">
+            ⚠️ Тільки для тестування UI. Реальні ролі контролюються через API бекенду.
+          </p>
+        </div>
       </div>
     </div>
   );
