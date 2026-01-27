@@ -242,17 +242,15 @@ const AccountTab = () => {
       {/* Profile Dashboard with full functionality */}
       <ProfileDashboard />
       
-      {/* Partner Banner */}
-      {isAuthenticated && !isPartnerUser && (
-        <PartnerBanner onClick={() => navigate("/partner")} />
-      )}
+      {/* Partner Banner - Available for ALL users (guest, client, supplier, moderator, admin) */}
+      <PartnerBanner onClick={() => navigate("/partner")} />
       
-      {/* Dev/Manager Access (hidden link) */}
+      {/* Partner Panel Link - Only for suppliers/moderators/admins */}
       {isAuthenticated && isPartnerUser && (
-        <div className="mt-4">
+        <div className="mt-2">
           <Link 
             to="/manager" 
-            className="text-xs text-muted-foreground hover:text-primary transition-colors block text-center py-2"
+            className="w-full flex items-center justify-center gap-2 p-3 bg-primary/10 rounded-xl text-primary hover:bg-primary/20 transition-colors text-sm font-medium"
           >
             🔧 Панель партнера
           </Link>
