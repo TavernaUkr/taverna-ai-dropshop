@@ -76,12 +76,16 @@ export const ProfileDashboard = () => {
   // Check if user is a real admin for showing DevRoleSwitcher
   const isRealAdmin = realUserRoles.includes('admin');
   
-  // Determine effective auth state based on test role (for dev testing by real admins only)
-  const isAuthenticated = isDevMode && isRealAdmin && testRole !== "guest" 
+  // DEV_MODE flag to allow role switcher during development
+  const DEV_MODE_SWITCHER = true; // Set to false in production
+  const showDevSwitcher = isDevMode && (DEV_MODE_SWITCHER || isRealAdmin);
+  
+  // Determine effective auth state based on test role (for dev testing)
+  const isAuthenticated = showDevSwitcher && testRole !== "guest" 
     ? true 
     : realIsAuthenticated;
   
-  const profile = isDevMode && isRealAdmin && testRole !== "guest" 
+  const profile = showDevSwitcher && testRole !== "guest" 
     ? { 
         ...realProfile, 
         first_name: `Test ${testRole.charAt(0).toUpperCase() + testRole.slice(1)}`,
@@ -90,7 +94,7 @@ export const ProfileDashboard = () => {
     : { ...realProfile, roles: realUserRoles };
 
   // Check roles from secure user_roles table (not from profile.user_type to prevent privilege escalation)
-  const userRoles = isDevMode && isRealAdmin && testRole !== "guest" 
+  const userRoles = showDevSwitcher && testRole !== "guest" 
     ? (testRole === "customer" ? [] : [testRole])
     : realUserRoles;
     
@@ -164,9 +168,19 @@ export const ProfileDashboard = () => {
             )}
           </div>
           <div className="flex-1">
-            <h3 className="font-semibold text-foreground">{getDisplayName()}</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold text-foreground">{getDisplayName()}</h3>
+              {/* DEV Role Switcher - inline next to profile name */}
+              {showDevSwitcher && (
+                <DevRoleSwitcher
+                  currentRole={testRole}
+                  onRoleChange={setTestRole}
+                  profileId={realProfile?.id}
+                />
+              )}
+            </div>
             {isAuthenticated ? (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <p className="text-sm text-muted-foreground">
                   {profile?.telegram_username
                     ? `@${profile.telegram_username}`
@@ -180,6 +194,11 @@ export const ProfileDashboard = () => {
                 {isAdmin && (
                   <span className="text-xs bg-warning/10 text-warning px-2 py-0.5 rounded-full font-medium">
                     Адмін
+                  </span>
+                )}
+                {isModerator && (
+                  <span className="text-xs bg-orange-500/10 text-orange-500 px-2 py-0.5 rounded-full font-medium">
+                    Модератор
                   </span>
                 )}
               </div>
