@@ -19,6 +19,9 @@ interface DevRoleSwitcherProps {
   profileId?: string | null;
 }
 
+// Development mode flag - set to true during development, false for production
+const DEV_MODE = true;
+
 export const DevRoleSwitcher = ({ currentRole, onRoleChange, profileId }: DevRoleSwitcherProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -27,6 +30,13 @@ export const DevRoleSwitcher = ({ currentRole, onRoleChange, profileId }: DevRol
   // Check if user is a real admin from user_roles table
   useEffect(() => {
     const checkAdminAccess = async () => {
+      // In DEV_MODE, always allow access for testing
+      if (DEV_MODE) {
+        setIsAdmin(true);
+        setIsChecking(false);
+        return;
+      }
+
       if (!profileId) {
         setIsChecking(false);
         setIsAdmin(false);
@@ -85,19 +95,20 @@ export const DevRoleSwitcher = ({ currentRole, onRoleChange, profileId }: DevRol
     },
   };
 
-  // Only show to real admins (verified from database)
+  // Only show to real admins (verified from database) or in DEV_MODE
   if (isChecking || !isAdmin) {
     return null;
   }
 
+  // Compact inline button (shown next to Profile header)
   if (!isOpen) {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-24 right-4 z-50 p-2 bg-destructive/20 backdrop-blur-sm rounded-full shadow-lg border border-destructive/30 hover:bg-destructive/30 transition-colors"
-        title="Admin: Role Switcher"
+        className="p-1.5 bg-destructive/20 rounded-full hover:bg-destructive/30 transition-colors"
+        title="DEV: Role Switcher"
       >
-        <Bug className="h-5 w-5 text-destructive" />
+        <Bug className="h-4 w-4 text-destructive" />
       </button>
     );
   }
