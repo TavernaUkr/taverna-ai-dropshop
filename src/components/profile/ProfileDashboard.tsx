@@ -16,6 +16,7 @@ import {
   Shield,
   Flag,
   MessageSquare,
+  MapPin,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -27,17 +28,28 @@ import { SupplierGuideModal } from "@/components/SupplierGuideModal";
 import { CustomerGuideModal } from "@/components/CustomerGuideModal";
 import { hapticSelection } from "@/lib/haptics";
 import { DevRoleSwitcher } from "@/components/profile/DevRoleSwitcher";
+import { AccountSettings } from "@/components/AccountSettings";
 import { supabase } from "@/integrations/supabase/client";
 
 type TestRole = "guest" | "customer" | "supplier" | "moderator" | "admin";
 
 export const ProfileDashboard = () => {
   const navigate = useNavigate();
-  const { isAuthenticated: realIsAuthenticated, profile: realProfile, logout } = useTelegramAuthContext();
+  const { 
+    isAuthenticated: realIsAuthenticated, 
+    profile: realProfile, 
+    addresses,
+    logout,
+    updateProfile,
+    addAddress,
+    updateAddress,
+    deleteAddress
+  } = useTelegramAuthContext();
   const [activeTab, setActiveTab] = useState("orders");
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [showSupplierGuide, setShowSupplierGuide] = useState(false);
   const [showCustomerGuide, setShowCustomerGuide] = useState(false);
+  const [showAccountSettings, setShowAccountSettings] = useState(false);
   const [realUserRoles, setRealUserRoles] = useState<string[]>([]);
   
   // DEV MODE: Test role switcher (only for real admins)
@@ -426,32 +438,30 @@ export const ProfileDashboard = () => {
                 />
               </div>
 
-              {/* Profile */}
-              <button className="w-full flex items-center justify-between p-4 border-b border-border hover:bg-muted/50 transition-colors">
+              {/* Account Settings Button */}
+              <button 
+                onClick={() => {
+                  hapticSelection();
+                  setShowAccountSettings(true);
+                }}
+                className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
+              >
                 <div className="flex items-center gap-3">
                   <User className="h-5 w-5 text-muted-foreground" />
                   <div className="text-left">
-                    <p className="font-medium text-foreground">Мої дані</p>
-                    <p className="text-sm text-muted-foreground">
-                      Редагувати особисту інформацію
+                    <p className="font-medium text-foreground">Налаштування профілю</p>
+                    <p className="text-sm text-muted-foreground flex items-center gap-1">
+                      <MapPin className="h-3 w-3" />
+                      Мої дані, адреси доставки
                     </p>
                   </div>
                 </div>
-                <ChevronRight className="h-5 w-5 text-muted-foreground" />
-              </button>
-
-              {/* Addresses */}
-              <button className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors">
-                <div className="flex items-center gap-3">
-                  <Package className="h-5 w-5 text-muted-foreground" />
-                  <div className="text-left">
-                    <p className="font-medium text-foreground">Адреси доставки</p>
-                    <p className="text-sm text-muted-foreground">
-                      Керування адресами
-                    </p>
-                  </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                    {addresses?.length || 0}
+                  </span>
+                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
                 </div>
-                <ChevronRight className="h-5 w-5 text-muted-foreground" />
               </button>
 
               {/* Help Guides */}
@@ -585,6 +595,19 @@ export const ProfileDashboard = () => {
         isOpen={showCustomerGuide} 
         onClose={() => setShowCustomerGuide(false)} 
       />
+
+      {/* Account Settings Modal */}
+      {showAccountSettings && (
+        <AccountSettings
+          profile={profile}
+          addresses={addresses || []}
+          onBack={() => setShowAccountSettings(false)}
+          onUpdateProfile={updateProfile}
+          onAddAddress={addAddress}
+          onUpdateAddress={updateAddress}
+          onDeleteAddress={deleteAddress}
+        />
+      )}
 
       {/* ADMIN ONLY: Role Switcher for testing UI states */}
       {isDevMode && isRealAdmin && (
