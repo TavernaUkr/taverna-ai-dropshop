@@ -5,11 +5,6 @@ import {
   Megaphone,
   Plus,
   Send,
-  Sparkles,
-  Loader2,
-  Image,
-  Search,
-  Check,
   Clock,
   TrendingUp,
   Target,
@@ -17,17 +12,13 @@ import {
   Eye,
   MousePointerClick,
   ShoppingCart,
-  Calendar,
   RefreshCw,
   Wand2,
+  Image,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -42,9 +33,9 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  BarChart,
-  Bar,
 } from "recharts";
+import { PostingTab } from "@/components/manager/PostingTab";
+import { AdvertisingTab } from "@/components/manager/AdvertisingTab";
 
 interface Product {
   id: string;
@@ -60,6 +51,7 @@ interface PromotionalPost {
   aiText: string;
   scheduledAt?: Date;
   platforms: string[];
+  type: "posting" | "advertising";
 }
 
 const platforms = [
@@ -77,16 +69,11 @@ const platforms = [
 
 export default function Manager() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("create");
+  const [activeTab, setActiveTab] = useState("posting");
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [productSearch, setProductSearch] = useState("");
   const [isSearching, setIsSearching] = useState(false);
-  const [aiText, setAiText] = useState("");
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(["telegram"]);
-  const [isAutoAds, setIsAutoAds] = useState(false);
-  const [isPublishing, setIsPublishing] = useState(false);
   const [inviteLink, setInviteLink] = useState<string | null>(null);
 
   // Generate invite link for new suppliers
@@ -107,6 +94,7 @@ export default function Manager() {
       status: "published",
       aiText: "🧤 Тактичні рукавички M-Pact — надійний захист для ваших рук!",
       platforms: ["telegram", "instagram"],
+      type: "posting",
     },
     {
       id: "2",
@@ -115,6 +103,7 @@ export default function Manager() {
       aiText: "🎒 Місткий та надійний рюкзак для справжніх тактиків!",
       scheduledAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
       platforms: ["telegram", "olx", "prom"],
+      type: "advertising",
     },
   ]);
 
@@ -148,72 +137,6 @@ export default function Manager() {
     return () => clearTimeout(debounce);
   }, [productSearch]);
 
-  // Generate AI description
-  const handleGenerateDescription = async () => {
-    if (!selectedProduct) {
-      toast.error("Спочатку оберіть товар");
-      return;
-    }
-
-    setIsGenerating(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("generate-description", {
-        body: {
-          product: selectedProduct,
-          platform: selectedPlatforms[0] || "telegram",
-        },
-      });
-
-      if (error) throw error;
-      setAiText(data?.description || "");
-      toast.success("Опис згенеровано!");
-    } catch (err) {
-      console.error("Generate description error:", err);
-      // Fallback to mock
-      setAiText(`🔥 ${selectedProduct.name} за суперціною!\n\n✅ Висока якість\n✅ Швидка доставка\n✅ Гарантія\n\n💰 Ціна: ${selectedProduct.price} ₴\n\n👉 Замовляй зараз у Taverna Drop Shop!`);
-      toast.success("Опис згенеровано!");
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  // Publish post
-  const handlePublish = async () => {
-    if (!selectedProduct || !aiText) {
-      toast.error("Оберіть товар та згенеруйте опис");
-      return;
-    }
-
-    setIsPublishing(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("telegram-publish", {
-        body: {
-          product_id: selectedProduct.id,
-          custom_text: aiText,
-        },
-      });
-
-      if (error) throw error;
-      toast.success("Пост опубліковано в Telegram!");
-      setSelectedProduct(null);
-      setAiText("");
-      setProductSearch("");
-    } catch (err) {
-      console.error("Publish error:", err);
-      toast.error("Помилка публікації");
-    } finally {
-      setIsPublishing(false);
-    }
-  };
-
-  const togglePlatform = (platformId: string) => {
-    setSelectedPlatforms((prev) =>
-      prev.includes(platformId)
-        ? prev.filter((p) => p !== platformId)
-        : [...prev, platformId]
-    );
-  };
-
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -228,8 +151,8 @@ export default function Manager() {
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
-              <h1 className="font-bold text-lg text-foreground">Менеджер</h1>
-              <p className="text-xs text-muted-foreground">Управління рекламою</p>
+              <h1 className="font-bold text-lg text-foreground">Панель партнера</h1>
+              <p className="text-xs text-muted-foreground">Постинг та реклама</p>
             </div>
           </div>
           <Button variant="outline" size="sm" onClick={generateInviteLink}>
@@ -250,177 +173,74 @@ export default function Manager() {
       {/* Content */}
       <div className="p-4">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="w-full grid grid-cols-3 mb-4">
-            <TabsTrigger value="create">
-              <Plus className="h-4 w-4 mr-1" />
-              Створити
+          <TabsList className="w-full grid grid-cols-4 mb-4">
+            <TabsTrigger value="posting" className="text-xs">
+              <Send className="h-4 w-4 mr-1" />
+              Постинг
             </TabsTrigger>
-            <TabsTrigger value="scheduled">
+            <TabsTrigger value="advertising" className="text-xs">
+              <Megaphone className="h-4 w-4 mr-1" />
+              Реклама
+            </TabsTrigger>
+            <TabsTrigger value="scheduled" className="text-xs">
               <Clock className="h-4 w-4 mr-1" />
-              Заплановані
+              Черга
             </TabsTrigger>
-            <TabsTrigger value="stats">
+            <TabsTrigger value="stats" className="text-xs">
               <TrendingUp className="h-4 w-4 mr-1" />
               Статистика
             </TabsTrigger>
           </TabsList>
 
-          {/* Create Post Tab */}
-          <TabsContent value="create" className="space-y-4">
-            {/* Auto Ads Toggle */}
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                      <Target className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-foreground">Авто-реклама</p>
-                      <p className="text-sm text-muted-foreground">
-                        Безкоштовно від Taverna Group
-                      </p>
-                    </div>
-                  </div>
-                  <Switch checked={isAutoAds} onCheckedChange={setIsAutoAds} />
-                </div>
-                {isAutoAds && (
-                  <p className="text-xs text-muted-foreground mt-3 p-2 bg-muted rounded-lg">
-                    Товари будуть автоматично рекламуватись на різних платформах по черзі
-                  </p>
-                )}
-              </CardContent>
-            </Card>
+          {/* Posting Tab */}
+          <TabsContent value="posting">
+            <PostingTab
+              products={products}
+              isSearching={isSearching}
+              productSearch={productSearch}
+              setProductSearch={setProductSearch}
+              selectedProduct={selectedProduct}
+              setSelectedProduct={setSelectedProduct}
+              setProducts={setProducts}
+            />
+          </TabsContent>
 
-            {/* Product Search */}
-            <div className="space-y-2">
-              <Label>Оберіть товар</Label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  value={productSearch}
-                  onChange={(e) => setProductSearch(e.target.value)}
-                  placeholder="Пошук товару..."
-                  className="pl-10"
-                />
-              </div>
-              
-              {/* Search Results */}
-              {isSearching && (
-                <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-sm text-muted-foreground">Пошук...</span>
-                </div>
-              )}
-              
-              {products.length > 0 && (
-                <div className="border border-border rounded-lg overflow-hidden">
-                  {products.map((product) => (
-                    <button
-                      key={product.id}
-                      onClick={() => {
-                        setSelectedProduct(product);
-                        setProductSearch(product.name);
-                        setProducts([]);
-                      }}
-                      className="w-full flex items-center gap-3 p-3 hover:bg-muted transition-colors border-b border-border last:border-0"
-                    >
-                      <div className="w-12 h-12 bg-muted rounded-lg overflow-hidden">
-                        {product.images?.[0] && (
-                          <img
-                            src={product.images[0]}
-                            alt={product.name}
-                            className="w-full h-full object-cover"
-                          />
-                        )}
-                      </div>
-                      <div className="flex-1 text-left">
-                        <p className="font-medium text-sm truncate">{product.name}</p>
-                        <p className="text-sm text-primary">{product.price} ₴</p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {/* Selected Product */}
-              {selectedProduct && (
-                <div className="flex items-center gap-3 p-3 bg-primary/10 rounded-lg border border-primary/20">
-                  <Check className="h-5 w-5 text-primary" />
-                  <div className="flex-1">
-                    <p className="font-medium text-sm">{selectedProduct.name}</p>
-                    <p className="text-sm text-primary">{selectedProduct.price} ₴</p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Platforms */}
-            <div className="space-y-2">
-              <Label>Платформи для публікації</Label>
-              <div className="flex flex-wrap gap-2">
-                {platforms.map((platform) => (
-                  <button
-                    key={platform.id}
-                    onClick={() => togglePlatform(platform.id)}
-                    className={cn(
-                      "flex items-center gap-2 px-3 py-2 rounded-lg border transition-all",
-                      selectedPlatforms.includes(platform.id)
-                        ? "border-primary bg-primary/10"
-                        : "border-border hover:border-primary/50"
-                    )}
-                  >
-                    <span>{platform.icon}</span>
-                    <span className="text-sm">{platform.name}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* AI Text Generation */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label>Текст публікації</Label>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleGenerateDescription}
-                  disabled={!selectedProduct || isGenerating}
-                >
-                  {isGenerating ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <Sparkles className="h-4 w-4 mr-2" />
-                  )}
-                  Згенерувати AI
-                </Button>
-              </div>
-              <Textarea
-                value={aiText}
-                onChange={(e) => setAiText(e.target.value)}
-                placeholder="Тут з'явиться згенерований текст або введіть власний..."
-                rows={6}
-              />
-            </div>
-
-            {/* Publish Button */}
-            <Button
-              className="w-full"
-              size="lg"
-              onClick={handlePublish}
-              disabled={!selectedProduct || !aiText || isPublishing}
-            >
-              {isPublishing ? (
-                <Loader2 className="h-5 w-5 animate-spin mr-2" />
-              ) : (
-                <Send className="h-5 w-5 mr-2" />
-              )}
-              Опублікувати зараз
-            </Button>
+          {/* Advertising Tab */}
+          <TabsContent value="advertising">
+            <AdvertisingTab
+              products={products}
+              isSearching={isSearching}
+              productSearch={productSearch}
+              setProductSearch={setProductSearch}
+              selectedProduct={selectedProduct}
+              setSelectedProduct={setSelectedProduct}
+              setProducts={setProducts}
+            />
           </TabsContent>
 
           {/* Scheduled Posts Tab */}
           <TabsContent value="scheduled" className="space-y-4">
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <Card className="p-3">
+                <div className="flex items-center gap-2">
+                  <Send className="h-4 w-4 text-primary" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">У черзі постинга</p>
+                    <p className="text-lg font-bold">12</p>
+                  </div>
+                </div>
+              </Card>
+              <Card className="p-3">
+                <div className="flex items-center gap-2">
+                  <Megaphone className="h-4 w-4 text-warning" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">Активна реклама</p>
+                    <p className="text-lg font-bold">3</p>
+                  </div>
+                </div>
+              </Card>
+            </div>
+
             {promotionalPosts
               .filter((p) => p.status === "scheduled")
               .map((post) => (
@@ -431,8 +251,21 @@ export default function Manager() {
                         <Image className="h-6 w-6 text-muted-foreground" />
                       </div>
                       <div className="flex-1">
-                        <p className="font-medium text-sm">{post.product?.name}</p>
-                        <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="font-medium text-sm">{post.product?.name}</p>
+                          <Badge 
+                            variant="outline" 
+                            className={cn(
+                              "text-xs",
+                              post.type === "posting" 
+                                ? "bg-primary/10 text-primary border-primary/20" 
+                                : "bg-warning/10 text-warning border-warning/20"
+                            )}
+                          >
+                            {post.type === "posting" ? "Постинг" : "Реклама"}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground line-clamp-2">
                           {post.aiText}
                         </p>
                         <div className="flex items-center gap-2 mt-2">
@@ -453,9 +286,16 @@ export default function Manager() {
                   </CardContent>
                 </Card>
               ))}
+
+            {promotionalPosts.filter((p) => p.status === "scheduled").length === 0 && (
+              <div className="text-center py-8 text-muted-foreground">
+                <Clock className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                <p className="text-sm">Немає запланованих публікацій</p>
+              </div>
+            )}
           </TabsContent>
 
-          {/* Stats Tab - Enhanced with Charts */}
+          {/* Stats Tab */}
           <TabsContent value="stats" className="space-y-4">
             {/* Stats Cards */}
             <div className="grid grid-cols-2 gap-3">
