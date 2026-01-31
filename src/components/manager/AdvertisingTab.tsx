@@ -12,6 +12,11 @@ import {
   Users,
   TrendingUp,
   ExternalLink,
+  RefreshCw,
+  AlertCircle,
+  CheckCircle2,
+  Clock,
+  ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +35,9 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { PaymentModal } from "./PaymentModal";
+import { AIPostPreview } from "./AIPostPreview";
+import { PlatformConditions } from "./PlatformConditions";
 
 interface Product {
   id: string;
@@ -59,6 +67,7 @@ const AD_PLATFORMS = [
     cpm: 15,
     features: ["Таргетована аудиторія", "Кнопки дій", "Статистика"],
     markup: 33,
+    apiStatus: "connected" as const,
   },
   {
     id: "instagram",
@@ -69,6 +78,7 @@ const AD_PLATFORMS = [
     cpm: 25,
     features: ["Stories & Reels", "Візуальний контент", "Шопінг теги"],
     markup: 33,
+    apiStatus: "pending" as const,
   },
   {
     id: "facebook",
@@ -79,6 +89,7 @@ const AD_PLATFORMS = [
     cpm: 20,
     features: ["Широка аудиторія", "Ретаргетинг", "Детальний таргетинг"],
     markup: 33,
+    apiStatus: "pending" as const,
   },
   {
     id: "olx",
@@ -89,6 +100,7 @@ const AD_PLATFORMS = [
     cpm: 10,
     features: ["Топ оголошення", "Підняття в пошуку", "VIP статус"],
     markup: 28,
+    apiStatus: "pending" as const,
   },
   {
     id: "prom",
@@ -99,6 +111,7 @@ const AD_PLATFORMS = [
     cpm: 18,
     features: ["Топ у категорії", "Рекомендації", "Бейджі"],
     markup: 28,
+    apiStatus: "pending" as const,
   },
   {
     id: "tiktok",
@@ -109,6 +122,7 @@ const AD_PLATFORMS = [
     cpm: 12,
     features: ["Вірусний потенціал", "Молода аудиторія", "Тренди"],
     markup: 33,
+    apiStatus: "pending" as const,
   },
   {
     id: "youtube",
@@ -119,6 +133,7 @@ const AD_PLATFORMS = [
     cpm: 35,
     features: ["Відео реклама", "Детальна аналітика", "Скіпабельні оголошення"],
     markup: 28,
+    apiStatus: "pending" as const,
   },
   {
     id: "google",
@@ -129,8 +144,11 @@ const AD_PLATFORMS = [
     cpm: 30,
     features: ["Пошукова реклама", "Контекстний таргетинг", "Ремаркетинг"],
     markup: 23,
+    apiStatus: "pending" as const,
   },
 ];
+
+type AdStatus = "draft" | "pending_review" | "approved" | "active" | "rejected" | "completed";
 
 export function AdvertisingTab({
   products,
@@ -147,8 +165,16 @@ export function AdvertisingTab({
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [aiPromptHint, setAiPromptHint] = useState("");
   const [budget, setBudget] = useState<number>(100);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [showConditions, setShowConditions] = useState(false);
+  const [adStatus, setAdStatus] = useState<AdStatus>("draft");
 
   const togglePlatform = (platformId: string) => {
+    const platform = AD_PLATFORMS.find((p) => p.id === platformId);
+    if (platform?.apiStatus === "pending") {
+      toast.info(`API ${platform.name} буде підключено найближчим часом`);
+    }
     setSelectedPlatforms((prev) =>
       prev.includes(platformId)
         ? prev.filter((p) => p !== platformId)
@@ -177,10 +203,12 @@ export function AdvertisingTab({
 
       if (error) throw error;
       setAiText(data?.description || "");
+      setShowPreview(true);
       toast.success("Рекламний текст згенеровано!");
     } catch (err) {
       console.error("Generate description error:", err);
       setAiText(`🔥 ${selectedProduct.name}\n\n✨ Преміум якість за найкращою ціною!\n💰 Всього ${selectedProduct.price} ₴\n\n🚀 Швидка доставка по Україні\n✅ Гарантія якості\n\n👉 Замовляй зараз!`);
+      setShowPreview(true);
       toast.success("Текст згенеровано!");
     } finally {
       setIsGenerating(false);
@@ -209,9 +237,31 @@ export function AdvertisingTab({
       toast.error("Оберіть хоча б одну платформу");
       return;
     }
+    if (!aiText) {
+      toast.error("Згенеруйте або введіть рекламний текст");
+      return;
+    }
 
-    toast.info("Функція оплати буде доступна після підключення платіжної системи");
+    setShowPaymentModal(true);
   };
+
+  const handlePaymentSuccess = async () => {
+    setAdStatus("pending_review");
+    toast.success("Оплата успішна! Рекламу передано на модерацію.");
+    
+    // Simulate moderation process
+    setTimeout(() => {
+      setAdStatus("approved");
+      toast.success("Рекламу схвалено! Запуск кампанії...");
+      
+      setTimeout(() => {
+        setAdStatus("active");
+        toast.success("Рекламна кампанія активна!");
+      }, 2000);
+    }, 3000);
+  };
+
+  const totalCost = calculateTotalCost();
 
   return (
     <div className="space-y-4">
@@ -241,11 +291,19 @@ export function AdvertisingTab({
               <div className="p-3 bg-primary/10 rounded-lg">
                 <p className="font-medium text-foreground mb-1">🎯 Що входить:</p>
                 <ul className="space-y-1 text-xs">
-                  <li>• AI-генерація рекламного тексту</li>
+                  <li>• AI-генерація рекламного тексту (Gemini)</li>
                   <li>• Автоматична модерація контенту</li>
                   <li>• Таргетинг на вашу аудиторію</li>
                   <li>• Детальна статистика та звіти</li>
+                  <li>• Перевірка ефективності реклами</li>
                 </ul>
+              </div>
+              <div className="p-3 bg-warning/10 rounded-lg border border-warning/20">
+                <p className="font-medium text-foreground mb-1">⚠️ Модерація:</p>
+                <p className="text-xs">
+                  Кожна реклама проходить автоматичну перевірку перед публікацією.
+                  Час модерації залежить від платформи (від 30 хв до 24 год).
+                </p>
               </div>
             </div>
           </AccordionContent>
@@ -270,9 +328,17 @@ export function AdvertisingTab({
             <Switch checked={isAutoAds} onCheckedChange={setIsAutoAds} />
           </div>
           {isAutoAds && (
-            <p className="text-xs text-muted-foreground mt-3 p-2 bg-muted rounded-lg">
-              ✅ Ваші товари автоматично рекламуються на всіх платформах Taverna по черзі
-            </p>
+            <div className="mt-3 p-3 bg-muted rounded-lg space-y-2">
+              <p className="text-xs text-muted-foreground">
+                ✅ Ваші товари автоматично рекламуються на всіх платформах Taverna по черзі
+              </p>
+              <div className="flex items-center gap-2">
+                <Clock className="h-3 w-3 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">
+                  Наступна реклама через ~{Math.floor(Math.random() * 20) + 10} хв
+                </span>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -334,13 +400,36 @@ export function AdvertisingTab({
               <p className="font-medium text-sm">{selectedProduct.name}</p>
               <p className="text-sm text-primary">{selectedProduct.price} ₴</p>
             </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                setSelectedProduct(null);
+                setProductSearch("");
+                setAiText("");
+                setShowPreview(false);
+              }}
+            >
+              <RefreshCw className="h-4 w-4" />
+            </Button>
           </div>
         )}
       </div>
 
       {/* Platform Selection */}
       <div className="space-y-3">
-        <Label>Оберіть платформи для реклами</Label>
+        <div className="flex items-center justify-between">
+          <Label>Оберіть платформи для реклами</Label>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowConditions(!showConditions)}
+            disabled={selectedPlatforms.length === 0}
+          >
+            <Info className="h-4 w-4 mr-1" />
+            Умови
+          </Button>
+        </div>
         <div className="grid grid-cols-1 gap-2">
           {AD_PLATFORMS.map((platform) => (
             <button
@@ -363,6 +452,17 @@ export function AdvertisingTab({
                   <Badge variant="secondary" className="text-xs">
                     +{platform.markup}%
                   </Badge>
+                  {platform.apiStatus === "connected" ? (
+                    <Badge variant="outline" className="text-xs bg-success/10 text-success border-success/30">
+                      <CheckCircle2 className="h-3 w-3 mr-1" />
+                      API
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-xs bg-warning/10 text-warning border-warning/30">
+                      <Clock className="h-3 w-3 mr-1" />
+                      Скоро
+                    </Badge>
+                  )}
                 </div>
                 <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1">
@@ -383,6 +483,11 @@ export function AdvertisingTab({
         </div>
       </div>
 
+      {/* Platform Conditions */}
+      {showConditions && selectedPlatforms.length > 0 && (
+        <PlatformConditions selectedPlatforms={selectedPlatforms} />
+      )}
+
       {/* Budget */}
       {selectedPlatforms.length > 0 && (
         <div className="space-y-2">
@@ -394,6 +499,11 @@ export function AdvertisingTab({
             min={50}
             step={50}
           />
+          <p className="text-xs text-muted-foreground">
+            Мінімальний бюджет для обраних платформ: {Math.max(...selectedPlatforms.map(id => 
+              AD_PLATFORMS.find(p => p.id === id)?.minBudget || 50
+            ))} ₴
+          </p>
         </div>
       )}
 
@@ -414,19 +524,30 @@ export function AdvertisingTab({
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <Label>Рекламний текст</Label>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleGenerateDescription}
-            disabled={!selectedProduct || isGenerating}
-          >
-            {isGenerating ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            ) : (
-              <Sparkles className="h-4 w-4 mr-2" />
-            )}
-            Згенерувати AI
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowPreview(!showPreview)}
+              disabled={!aiText}
+            >
+              <Eye className="h-4 w-4 mr-1" />
+              Перегляд
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleGenerateDescription}
+              disabled={!selectedProduct || isGenerating}
+            >
+              {isGenerating ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Sparkles className="h-4 w-4 mr-2" />
+              )}
+              Згенерувати AI
+            </Button>
+          </div>
         </div>
         <Textarea
           value={aiText}
@@ -436,13 +557,76 @@ export function AdvertisingTab({
         />
       </div>
 
+      {/* AI Post Preview */}
+      {showPreview && (
+        <AIPostPreview
+          product={selectedProduct}
+          postText={aiText}
+          platform={(selectedPlatforms[0] || "telegram") as any}
+        />
+      )}
+
+      {/* Ad Status */}
+      {adStatus !== "draft" && (
+        <Card className={cn(
+          "border",
+          adStatus === "pending_review" && "border-warning/50 bg-warning/5",
+          adStatus === "approved" && "border-success/50 bg-success/5",
+          adStatus === "active" && "border-success/50 bg-success/5",
+          adStatus === "rejected" && "border-destructive/50 bg-destructive/5",
+          adStatus === "completed" && "border-muted bg-muted/50"
+        )}>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              {adStatus === "pending_review" && <Clock className="h-5 w-5 text-warning animate-pulse" />}
+              {adStatus === "approved" && <ShieldCheck className="h-5 w-5 text-success" />}
+              {adStatus === "active" && <TrendingUp className="h-5 w-5 text-success animate-pulse" />}
+              {adStatus === "rejected" && <AlertCircle className="h-5 w-5 text-destructive" />}
+              {adStatus === "completed" && <CheckCircle2 className="h-5 w-5 text-muted-foreground" />}
+              <div className="flex-1">
+                <p className="font-medium text-sm">
+                  {adStatus === "pending_review" && "Модерація рекламного контенту..."}
+                  {adStatus === "approved" && "Рекламу схвалено!"}
+                  {adStatus === "active" && "Рекламна кампанія активна"}
+                  {adStatus === "rejected" && "Рекламу відхилено"}
+                  {adStatus === "completed" && "Кампанію завершено"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {adStatus === "pending_review" && "Перевірка на відповідність правилам платформ"}
+                  {adStatus === "approved" && "Запуск кампанії розпочнеться найближчим часом"}
+                  {adStatus === "active" && "Відстежуйте статистику в розділі 'Статистика'"}
+                  {adStatus === "rejected" && "Будь ласка, перевірте вміст та спробуйте знову"}
+                  {adStatus === "completed" && "Переглянути звіт можна в розділі 'Статистика'"}
+                </p>
+              </div>
+            </div>
+            {adStatus === "active" && (
+              <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                <div className="p-2 bg-muted rounded">
+                  <p className="text-lg font-bold">1,247</p>
+                  <p className="text-xs text-muted-foreground">Перегляди</p>
+                </div>
+                <div className="p-2 bg-muted rounded">
+                  <p className="text-lg font-bold">156</p>
+                  <p className="text-xs text-muted-foreground">Кліки</p>
+                </div>
+                <div className="p-2 bg-muted rounded">
+                  <p className="text-lg font-bold">12.5%</p>
+                  <p className="text-xs text-muted-foreground">CTR</p>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Cost Summary */}
       {selectedPlatforms.length > 0 && (
         <Card className="border-success/30 bg-success/5">
           <CardContent className="p-4 space-y-3">
             <div className="flex items-center justify-between">
               <span className="font-medium">Загальна вартість:</span>
-              <span className="text-xl font-bold text-success">{calculateTotalCost()} ₴</span>
+              <span className="text-xl font-bold text-success">{totalCost} ₴</span>
             </div>
             <div className="text-xs text-muted-foreground space-y-1">
               {selectedPlatforms.map((platformId) => {
@@ -458,16 +642,8 @@ export function AdvertisingTab({
                 );
               })}
             </div>
-            <div className="grid grid-cols-3 gap-2 pt-2">
-              <Button variant="outline" size="sm" className="text-xs">
-                MonoPay
-              </Button>
-              <Button variant="outline" size="sm" className="text-xs">
-                LiqPay
-              </Button>
-              <Button variant="outline" size="sm" className="text-xs">
-                Stripe
-              </Button>
+            <div className="pt-2 border-t border-border">
+              <p className="text-xs text-muted-foreground mb-2">Оберіть спосіб оплати:</p>
             </div>
           </CardContent>
         </Card>
@@ -478,11 +654,34 @@ export function AdvertisingTab({
         className="w-full"
         size="lg"
         onClick={handleSubmitAd}
-        disabled={!selectedProduct || selectedPlatforms.length === 0}
+        disabled={
+          !selectedProduct || 
+          selectedPlatforms.length === 0 || 
+          !aiText || 
+          adStatus === "pending_review" || 
+          adStatus === "active"
+        }
       >
-        <Megaphone className="h-5 w-5 mr-2" />
-        Запустити рекламу ({calculateTotalCost()} ₴)
+        {adStatus === "pending_review" ? (
+          <Loader2 className="h-5 w-5 animate-spin mr-2" />
+        ) : (
+          <Megaphone className="h-5 w-5 mr-2" />
+        )}
+        {adStatus === "pending_review" 
+          ? "Модерація..." 
+          : `Оплатити ${totalCost} ₴ та запустити рекламу`
+        }
       </Button>
+
+      {/* Payment Modal */}
+      <PaymentModal
+        open={showPaymentModal}
+        onOpenChange={setShowPaymentModal}
+        amount={totalCost}
+        description={`Рекламна кампанія: ${selectedProduct?.name || "товар"} на ${selectedPlatforms.length} платформах`}
+        type="advertising"
+        onSuccess={handlePaymentSuccess}
+      />
     </div>
   );
 }

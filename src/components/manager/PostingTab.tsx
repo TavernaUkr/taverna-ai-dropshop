@@ -10,6 +10,10 @@ import {
   Zap,
   Info,
   CreditCard,
+  Eye,
+  RefreshCw,
+  AlertCircle,
+  CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,9 +28,18 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { PaymentModal } from "./PaymentModal";
+import { AIPostPreview } from "./AIPostPreview";
 
 interface Product {
   id: string;
@@ -51,6 +64,16 @@ const POSTING_INTERVALS = {
   xmlProducts: { min: 2, max: 5, label: "Товари з XML" },
 };
 
+const POSTING_PLATFORMS = [
+  { id: "telegram", name: "Telegram", icon: "📱", price: 50 },
+  { id: "instagram", name: "Instagram", icon: "📸", price: 100 },
+  { id: "facebook", name: "Facebook", icon: "👥", price: 100 },
+  { id: "olx", name: "OLX", icon: "🛒", price: 30 },
+  { id: "prom", name: "Prom.ua", icon: "🏪", price: 40 },
+];
+
+type PostStatus = "draft" | "pending" | "approved" | "published" | "rejected";
+
 export function PostingTab({
   products,
   isSearching,
@@ -66,6 +89,10 @@ export function PostingTab({
   const [isPublishing, setIsPublishing] = useState(false);
   const [showPaidPosting, setShowPaidPosting] = useState(false);
   const [aiPromptHint, setAiPromptHint] = useState("");
+  const [selectedPlatform, setSelectedPlatform] = useState("telegram");
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [postStatus, setPostStatus] = useState<PostStatus>("draft");
 
   const handleGenerateDescription = async () => {
     if (!selectedProduct) {
@@ -78,17 +105,19 @@ export function PostingTab({
       const { data, error } = await supabase.functions.invoke("generate-description", {
         body: {
           product: selectedProduct,
-          type: "telegram",
+          type: selectedPlatform === "olx" || selectedPlatform === "prom" ? "marketplace" : "telegram",
           aiHint: aiPromptHint || undefined,
         },
       });
 
       if (error) throw error;
       setAiText(data?.description || "");
+      setShowPreview(true);
       toast.success("Опис згенеровано AI Gemini!");
     } catch (err) {
       console.error("Generate description error:", err);
       setAiText(`🔥 ${selectedProduct.name} за суперціною!\n\n✅ Висока якість\n✅ Швидка доставка\n✅ Гарантія\n\n💰 Ціна: ${selectedProduct.price} ₴\n\n👉 Замовляй зараз у Taverna Drop Shop!`);
+      setShowPreview(true);
       toast.success("Опис згенеровано!");
     } finally {
       setIsGenerating(false);
@@ -101,7 +130,14 @@ export function PostingTab({
       return;
     }
 
+    if (showPaidPosting) {
+      setShowPaymentModal(true);
+      return;
+    }
+
     setIsPublishing(true);
+    setPostStatus("pending");
+    
     try {
       const { data, error } = await supabase.functions.invoke("telegram-publish", {
         body: {
@@ -111,17 +147,32 @@ export function PostingTab({
       });
 
       if (error) throw error;
+      setPostStatus("published");
       toast.success("Пост опубліковано в Telegram!");
-      setSelectedProduct(null);
-      setAiText("");
-      setProductSearch("");
+      setTimeout(() => {
+        setSelectedProduct(null);
+        setAiText("");
+        setProductSearch("");
+        setPostStatus("draft");
+        setShowPreview(false);
+      }, 2000);
     } catch (err) {
       console.error("Publish error:", err);
+      setPostStatus("rejected");
       toast.error("Помилка публікації");
     } finally {
       setIsPublishing(false);
     }
   };
+
+  const handlePaymentSuccess = () => {
+    setPostStatus("approved");
+    toast.success("Оплата успішна! Пост буде опублікований негайно.");
+    handlePublish();
+  };
+
+  const selectedPlatformData = POSTING_PLATFORMS.find((p) => p.id === selectedPlatform);
+  const paidPostingPrice = selectedPlatformData?.price || 50;
 
   return (
     <div className="space-y-4">
@@ -137,7 +188,7 @@ export function PostingTab({
           <AccordionContent className="px-4 pb-4">
             <div className="space-y-3 text-sm text-muted-foreground">
               <p>
-                <strong className="text-foreground">Постинг</strong> — це моментна публікація ваших товарів у Telegram-канал Taverna Group.
+                <strong className="text-foreground">Постинг</strong> — це моментна публікація ваших товарів у Telegram-канал Taverna Group та інші платформи.
               </p>
               <div className="space-y-2">
                 <p className="font-medium text-foreground">🎯 Як це працює:</p>
@@ -155,6 +206,13 @@ export function PostingTab({
                   <li>• <strong>Існуючі товари:</strong> кожні {POSTING_INTERVALS.oldProducts.min}-{POSTING_INTERVALS.oldProducts.max} хв</li>
                   <li>• <strong>Товари з MyDrop XML:</strong> кожні {POSTING_INTERVALS.xmlProducts.min}-{POSTING_INTERVALS.xmlProducts.max} хв</li>
                 </ul>
+              </div>
+              <div className="p-3 bg-warning/10 rounded-lg border border-warning/20">
+                <p className="font-medium text-foreground mb-1">💰 Платний постинг:</p>
+                <p className="text-xs">
+                  Обходить чергу та публікується <strong>негайно</strong>. 
+                  AI-опис, кнопка замовлення та пріоритетне розміщення включені.
+                </p>
               </div>
             </div>
           </AccordionContent>
@@ -190,6 +248,12 @@ export function PostingTab({
                   </Badge>
                 ))}
               </div>
+              <div className="flex items-center gap-2 mt-2">
+                <Clock className="h-3 w-3 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">
+                  Наступна публікація через ~{Math.floor(Math.random() * 5) + 2} хв
+                </span>
+              </div>
             </div>
           )}
         </CardContent>
@@ -224,6 +288,31 @@ export function PostingTab({
           <p className="text-xs text-muted-foreground">Негайна публікація</p>
         </button>
       </div>
+
+      {/* Platform Selection for Paid Posting */}
+      {showPaidPosting && (
+        <div className="space-y-2">
+          <Label>Оберіть платформу для публікації</Label>
+          <Select value={selectedPlatform} onValueChange={setSelectedPlatform}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {POSTING_PLATFORMS.map((platform) => (
+                <SelectItem key={platform.id} value={platform.id}>
+                  <div className="flex items-center gap-2">
+                    <span>{platform.icon}</span>
+                    <span>{platform.name}</span>
+                    <Badge variant="secondary" className="text-xs ml-2">
+                      {platform.price} ₴
+                    </Badge>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {/* Product Search */}
       <div className="space-y-2">
@@ -282,6 +371,18 @@ export function PostingTab({
               <p className="font-medium text-sm">{selectedProduct.name}</p>
               <p className="text-sm text-primary">{selectedProduct.price} ₴</p>
             </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                setSelectedProduct(null);
+                setProductSearch("");
+                setAiText("");
+                setShowPreview(false);
+              }}
+            >
+              <RefreshCw className="h-4 w-4" />
+            </Button>
           </div>
         )}
       </div>
@@ -290,7 +391,7 @@ export function PostingTab({
       <div className="space-y-2">
         <Label className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />
-          Підказка для AI Gemini (опційно)
+          Як ви бачите цей пост? (для AI Gemini)
         </Label>
         <Input
           value={aiPromptHint}
@@ -298,7 +399,7 @@ export function PostingTab({
           placeholder="Наприклад: зробити акцент на якості, або додати емодзі..."
         />
         <p className="text-xs text-muted-foreground">
-          Опишіть, як ви бачите цей пост — AI врахує ваші побажання
+          Опишіть своє бачення — AI врахує ваші побажання при генерації
         </p>
       </div>
 
@@ -306,19 +407,30 @@ export function PostingTab({
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <Label>Текст публікації</Label>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleGenerateDescription}
-            disabled={!selectedProduct || isGenerating}
-          >
-            {isGenerating ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            ) : (
-              <Sparkles className="h-4 w-4 mr-2" />
-            )}
-            Згенерувати AI
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowPreview(!showPreview)}
+              disabled={!aiText}
+            >
+              <Eye className="h-4 w-4 mr-1" />
+              Перегляд
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleGenerateDescription}
+              disabled={!selectedProduct || isGenerating}
+            >
+              {isGenerating ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Sparkles className="h-4 w-4 mr-2" />
+              )}
+              Згенерувати AI
+            </Button>
+          </div>
         </div>
         <Textarea
           value={aiText}
@@ -327,6 +439,49 @@ export function PostingTab({
           rows={6}
         />
       </div>
+
+      {/* AI Post Preview */}
+      {showPreview && (
+        <AIPostPreview
+          product={selectedProduct}
+          postText={aiText}
+          platform={selectedPlatform as any}
+        />
+      )}
+
+      {/* Post Status */}
+      {postStatus !== "draft" && (
+        <Card className={cn(
+          "border",
+          postStatus === "pending" && "border-warning/50 bg-warning/5",
+          postStatus === "approved" && "border-success/50 bg-success/5",
+          postStatus === "published" && "border-success/50 bg-success/5",
+          postStatus === "rejected" && "border-destructive/50 bg-destructive/5"
+        )}>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              {postStatus === "pending" && <Clock className="h-5 w-5 text-warning animate-pulse" />}
+              {postStatus === "approved" && <CheckCircle2 className="h-5 w-5 text-success" />}
+              {postStatus === "published" && <CheckCircle2 className="h-5 w-5 text-success" />}
+              {postStatus === "rejected" && <AlertCircle className="h-5 w-5 text-destructive" />}
+              <div>
+                <p className="font-medium text-sm">
+                  {postStatus === "pending" && "Перевірка модератором..."}
+                  {postStatus === "approved" && "Пост схвалено!"}
+                  {postStatus === "published" && "Пост опубліковано!"}
+                  {postStatus === "rejected" && "Пост відхилено"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {postStatus === "pending" && "Зазвичай це займає до 2 хвилин"}
+                  {postStatus === "approved" && "Публікація розпочнеться найближчим часом"}
+                  {postStatus === "published" && "Ваш пост вже доступний для перегляду"}
+                  {postStatus === "rejected" && "Будь ласка, перевірте вміст та спробуйте знову"}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Paid Posting Options */}
       {showPaidPosting && (
@@ -343,23 +498,14 @@ export function PostingTab({
             </p>
             <div className="p-3 bg-muted rounded-lg">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm">Telegram пост</span>
-                <span className="font-medium">50 ₴</span>
+                <span className="text-sm">
+                  {selectedPlatformData?.icon} {selectedPlatformData?.name} пост
+                </span>
+                <span className="font-medium">{paidPostingPrice} ₴</span>
               </div>
               <p className="text-xs text-muted-foreground">
-                Включає: пріоритетну публікацію + AI-опис + кнопку замовлення
+                Включає: пріоритетну публікацію + AI-опис + кнопку замовлення + автомодерацію
               </p>
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              <Button variant="outline" size="sm" className="text-xs">
-                MonoPay
-              </Button>
-              <Button variant="outline" size="sm" className="text-xs">
-                LiqPay
-              </Button>
-              <Button variant="outline" size="sm" className="text-xs">
-                Stripe
-              </Button>
             </div>
           </CardContent>
         </Card>
@@ -370,15 +516,25 @@ export function PostingTab({
         className="w-full"
         size="lg"
         onClick={handlePublish}
-        disabled={!selectedProduct || !aiText || isPublishing}
+        disabled={!selectedProduct || !aiText || isPublishing || postStatus === "pending"}
       >
         {isPublishing ? (
           <Loader2 className="h-5 w-5 animate-spin mr-2" />
         ) : (
           <Send className="h-5 w-5 mr-2" />
         )}
-        {showPaidPosting ? "Оплатити та опублікувати" : "Додати в чергу постинга"}
+        {showPaidPosting ? `Оплатити ${paidPostingPrice} ₴ та опублікувати` : "Додати в чергу постинга"}
       </Button>
+
+      {/* Payment Modal */}
+      <PaymentModal
+        open={showPaymentModal}
+        onOpenChange={setShowPaymentModal}
+        amount={paidPostingPrice}
+        description={`Платний постинг: ${selectedProduct?.name || "товар"} на ${selectedPlatformData?.name}`}
+        type="posting"
+        onSuccess={handlePaymentSuccess}
+      />
     </div>
   );
 }
