@@ -75,6 +75,64 @@ export default function Manager() {
   const [productSearch, setProductSearch] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const [supplierId, setSupplierId] = useState<string | null>(null);
+  const [promotionalPosts, setPromotionalPosts] = useState<PromotionalPost[]>([]);
+  const [queueStats, setQueueStats] = useState({ pending: 0, active: 0 });
+
+  // Get current supplier ID from profile
+  useEffect(() => {
+    const getSupplierInfo = async () => {
+      // For now, get first supplier - in production, link to user profile
+      const { data: suppliers } = await supabase
+        .from("suppliers")
+        .select("id")
+        .eq("is_active", true)
+        .limit(1);
+      
+      if (suppliers?.[0]) {
+        setSupplierId(suppliers[0].id);
+      }
+    };
+    getSupplierInfo();
+  }, []);
+
+  // Fetch promotional posts from database
+  useEffect(() => {
+    const fetchPromotions = async () => {
+      if (!supplierId) return;
+
+      const { data, error } = await supabase
+        .from("promotions")
+        .select("*, product:products(id, name, price, images)")
+        .eq("supplier_id", supplierId)
+        .order("created_at", { ascending: false })
+        .limit(20);
+
+      if (!error && data) {
+        const posts: PromotionalPost[] = data.map((p) => ({
+          id: p.id,
+          product: p.product ? {
+            id: p.product.id,
+            name: p.product.name,
+            price: p.product.price,
+            images: p.product.images || [],
+          } : null,
+          status: p.status === "active" ? "published" : p.status === "pending" ? "scheduled" : "draft",
+          aiText: p.ai_generated_text || "",
+          scheduledAt: p.start_date ? new Date(p.start_date) : undefined,
+          platforms: p.platforms || [],
+          type: p.promotion_type === "auto" || p.promotion_type === "paid_posting" ? "posting" : "advertising",
+        }));
+        setPromotionalPosts(posts);
+        
+        setQueueStats({
+          pending: posts.filter((p) => p.status === "scheduled").length,
+          active: posts.filter((p) => p.status === "published").length,
+        });
+      }
+    };
+    fetchPromotions();
+  }, [supplierId]);
 
   // Generate invite link for new suppliers
   const generateInviteLink = () => {
@@ -86,28 +144,7 @@ export default function Manager() {
     toast.success("Посилання скопійовано!");
   };
 
-  // Mock data for promotional posts
-  const [promotionalPosts] = useState<PromotionalPost[]>([
-    {
-      id: "1",
-      product: { id: "1", name: "Тактичні рукавички M-Pact", price: 890, images: [] },
-      status: "published",
-      aiText: "🧤 Тактичні рукавички M-Pact — надійний захист для ваших рук!",
-      platforms: ["telegram", "instagram"],
-      type: "posting",
-    },
-    {
-      id: "2",
-      product: { id: "2", name: "Рюкзак тактичний 35л", price: 2450, images: [] },
-      status: "scheduled",
-      aiText: "🎒 Місткий та надійний рюкзак для справжніх тактиків!",
-      scheduledAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-      platforms: ["telegram", "olx", "prom"],
-      type: "advertising",
-    },
-  ]);
-
-  // Search products
+  // Search products - filter by supplier if available
   useEffect(() => {
     if (productSearch.length < 2) {
       setProducts([]);
@@ -117,11 +154,18 @@ export default function Manager() {
     const searchProducts = async () => {
       setIsSearching(true);
       try {
-        const { data, error } = await supabase
+        let query = supabase
           .from("products")
           .select("id, name, price, images")
           .ilike("name", `%${productSearch}%`)
-          .limit(10);
+          .eq("in_stock", true);
+        
+        // Filter by supplier if available
+        if (supplierId) {
+          query = query.eq("supplier_id", supplierId);
+        }
+        
+        const { data, error } = await query.limit(15);
 
         if (!error && data) {
           setProducts(data);
@@ -135,7 +179,7 @@ export default function Manager() {
 
     const debounce = setTimeout(searchProducts, 300);
     return () => clearTimeout(debounce);
-  }, [productSearch]);
+  }, [productSearch, supplierId]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -226,7 +270,7 @@ export default function Manager() {
                   <Send className="h-4 w-4 text-primary" />
                   <div>
                     <p className="text-xs text-muted-foreground">У черзі постинга</p>
-                    <p className="text-lg font-bold">12</p>
+                    <p className="text-lg font-bold">{queueStats.pending}</p>
                   </div>
                 </div>
               </Card>
@@ -235,7 +279,7 @@ export default function Manager() {
                   <Megaphone className="h-4 w-4 text-warning" />
                   <div>
                     <p className="text-xs text-muted-foreground">Активна реклама</p>
-                    <p className="text-lg font-bold">3</p>
+                    <p className="text-lg font-bold">{queueStats.active}</p>
                   </div>
                 </div>
               </Card>

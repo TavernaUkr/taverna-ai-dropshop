@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.generate-description]
 verify_jwt = false
+
+[functions.auto-post]
+verify_jwt = false

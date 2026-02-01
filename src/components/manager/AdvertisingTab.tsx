@@ -249,6 +249,25 @@ export function AdvertisingTab({
     setAdStatus("pending_review");
     toast.success("Оплата успішна! Рекламу передано на модерацію.");
     
+    // Save campaign to database
+    try {
+      const { error } = await supabase.from("promotions").insert({
+        product_id: selectedProduct?.id,
+        promotion_type: "paid_advertising",
+        status: "pending",
+        platforms: selectedPlatforms,
+        budget: budget,
+        ai_generated_text: aiText,
+        start_date: new Date().toISOString(),
+      });
+
+      if (error) {
+        console.error("Failed to save promotion:", error);
+      }
+    } catch (err) {
+      console.error("Save promotion error:", err);
+    }
+    
     // Simulate moderation process
     setTimeout(() => {
       setAdStatus("approved");

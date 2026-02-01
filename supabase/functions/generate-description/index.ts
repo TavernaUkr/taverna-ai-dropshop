@@ -34,7 +34,7 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const { product, type = "telegram" } = await req.json();
+    const { product, type = "telegram", aiHint } = await req.json();
 
     if (!product || !product.name) {
       throw new Error("Product data with name is required");
@@ -47,6 +47,9 @@ serve(async (req) => {
     const marketingOldPrice = getMarketingOldPrice(retailPrice);
     const discount = Math.round((1 - retailPrice / marketingOldPrice) * 100);
     const savings = marketingOldPrice - retailPrice;
+
+    // Add AI hint to system prompt if provided
+    const aiHintSection = aiHint ? `\n\nДОДАТКОВІ ІНСТРУКЦІЇ ВІД КОРИСТУВАЧА:\n${aiHint}` : "";
 
     let systemPrompt = "";
     
@@ -69,17 +72,17 @@ serve(async (req) => {
 
 ✅ [Характеристики]
 
-👇 Тисни кнопку нижче, щоб замовити!`;
+👇 Тисни кнопку нижче, щоб замовити!${aiHintSection}`;
     } else if (type === "marketplace") {
       systemPrompt = `SEO-опис для маркетплейсу (OLX, Prom).
 Ціна: ${retailPrice.toLocaleString()} ₴
-Без емодзі. 400-800 символів. Ключові слова для пошуку.`;
+Без емодзі. 400-800 символів. Ключові слова для пошуку.${aiHintSection}`;
     } else if (type === "social") {
       systemPrompt = `SMM пост для Instagram/Facebook.
 Ціна: ${retailPrice.toLocaleString()} ₴ (звичайна ${marketingOldPrice.toLocaleString()} ₴)
-Емодзі + 5-8 хештегів. До 280 символів.`;
+Емодзі + 5-8 хештегів. До 280 символів.${aiHintSection}`;
     } else {
-      systemPrompt = `Короткий опис товару. Ціна: ${retailPrice.toLocaleString()} ₴`;
+      systemPrompt = `Короткий опис товару. Ціна: ${retailPrice.toLocaleString()} ₴${aiHintSection}`;
     }
 
     const userMessage = `Товар: ${product.name}
