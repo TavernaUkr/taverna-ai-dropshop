@@ -165,9 +165,25 @@ export function PostingTab({
     }
   };
 
-  const handlePaymentSuccess = () => {
+  const handlePaymentSuccess = async () => {
     setPostStatus("approved");
     toast.success("Оплата успішна! Пост буде опублікований негайно.");
+    
+    // Save paid posting to database
+    try {
+      await supabase.from("promotions").insert({
+        product_id: selectedProduct?.id,
+        promotion_type: "paid_posting",
+        status: "pending",
+        platforms: [selectedPlatform],
+        budget: paidPostingPrice,
+        ai_generated_text: aiText,
+        start_date: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.error("Save promotion error:", err);
+    }
+    
     handlePublish();
   };
 
