@@ -12,6 +12,10 @@ import {
   RefreshCw,
   MessageSquare,
   Flag,
+  Scale,
+  Gift,
+  Headphones,
+  Users,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,6 +26,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useTelegramAuth } from '@/hooks/useTelegramAuth';
+import { hapticSelection } from '@/lib/haptics';
+import { DisputesManager } from '@/components/moderator/DisputesManager';
+import { IndividualBonusManager } from '@/components/moderator/IndividualBonusManager';
+import { TechSupportQueue } from '@/components/moderator/TechSupportQueue';
 
 interface Report {
   id: string;
@@ -49,6 +57,13 @@ interface PendingProduct {
   created_at: string;
 }
 
+interface ModeratorStats {
+  openReports: number;
+  openDisputes: number;
+  openTickets: number;
+  productsToReview: number;
+}
+
 export default function ModeratorPanel() {
   const navigate = useNavigate();
   const { profile } = useTelegramAuth();
@@ -60,6 +75,12 @@ export default function ModeratorPanel() {
   const [adminNotes, setAdminNotes] = useState<Record<string, string>>({});
   const [isModerator, setIsModerator] = useState(false);
   const [checkingAccess, setCheckingAccess] = useState(true);
+  const [stats, setStats] = useState<ModeratorStats>({
+    openReports: 0,
+    openDisputes: 0,
+    openTickets: 0,
+    productsToReview: 0,
+  });
 
   // Check moderator access
   useEffect(() => {
@@ -96,8 +117,30 @@ export default function ModeratorPanel() {
   useEffect(() => {
     if (isModerator) {
       fetchData();
+      fetchStats();
     }
   }, [isModerator]);
+
+  const fetchStats = async () => {
+    try {
+      const [reportsResult, ticketsResult, disputesResult] = await Promise.all([
+        supabase.from('reports').select('id').in('status', ['pending', 'under_review']),
+        supabase.from('support_tickets').select('id, type').eq('status', 'open'),
+        supabase.from('support_tickets').select('id').eq('type', 'supplier_question').eq('status', 'open').not('related_order_id', 'is', null),
+      ]);
+
+      const techTickets = (ticketsResult.data || []).filter(t => t.type === 'tech_support');
+
+      setStats({
+        openReports: reportsResult.data?.length || 0,
+        openDisputes: disputesResult.data?.length || 0,
+        openTickets: techTickets.length,
+        productsToReview: 0,
+      });
+    } catch (err) {
+      console.error('Error fetching stats:', err);
+    }
+  };
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -148,6 +191,7 @@ export default function ModeratorPanel() {
 
       toast.success(status === 'resolved' ? 'Скаргу вирішено' : 'Скаргу відхилено');
       setReports(prev => prev.filter(r => r.id !== reportId));
+      fetchStats();
     } catch (err) {
       console.error('Error resolving report:', err);
       toast.error('Помилка обробки скарги');
@@ -217,10 +261,14 @@ export default function ModeratorPanel() {
                 <Shield className="h-5 w-5 text-primary" />
                 Панель модератора
               </h1>
-              <p className="text-xs text-muted-foreground">Модерація контенту</p>
+              <p className="text-xs text-muted-foreground">Модерація та підтримка користувачів</p>
             </div>
           </div>
-          <Button variant="outline" size="sm" onClick={fetchData}>
+          <Button variant="outline" size="sm" onClick={() => {
+            fetchData();
+            fetchStats();
+            toast.success('Дані оновлено');
+          }}>
             <RefreshCw className="h-4 w-4" />
           </Button>
         </div>
@@ -235,8 +283,34 @@ export default function ModeratorPanel() {
                 <Flag className="h-5 w-5 text-destructive" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-foreground">{reports.length}</p>
+                <p className="text-2xl font-bold text-foreground">{stats.openReports}</p>
                 <p className="text-xs text-muted-foreground">Скарг</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-warning/20 flex items-center justify-center">
+                <Scale className="h-5 w-5 text-warning" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-foreground">{stats.openDisputes}</p>
+                <p className="text-xs text-muted-foreground">Спорів</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
+                <Headphones className="h-5 w-5 text-blue-500" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-foreground">{stats.openTickets}</p>
+                <p className="text-xs text-muted-foreground">Тех. тікетів</p>
               </div>
             </div>
           </CardContent>
@@ -258,26 +332,53 @@ export default function ModeratorPanel() {
 
       {/* Tabs */}
       <div className="p-4">
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="w-full grid grid-cols-2 mb-4">
-            <TabsTrigger value="reports" className="gap-2">
-              <Flag className="h-4 w-4" />
-              Скарги
-              {reports.length > 0 && (
-                <Badge variant="destructive" className="ml-1">
-                  {reports.length}
-                </Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="products" className="gap-2">
-              <Package className="h-4 w-4" />
-              Товари
-            </TabsTrigger>
-          </TabsList>
+        <Tabs value={activeTab} onValueChange={(value) => {
+          hapticSelection();
+          setActiveTab(value);
+        }}>
+          <ScrollArea className="w-full pb-2">
+            <TabsList className="w-max flex gap-1 mb-4">
+              <TabsTrigger value="reports" className="gap-1 text-xs px-3">
+                <Flag className="h-4 w-4" />
+                Скарги
+                {stats.openReports > 0 && (
+                  <Badge variant="destructive" className="ml-1 h-4 px-1 text-[10px]">
+                    {stats.openReports}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="disputes" className="gap-1 text-xs px-3">
+                <Scale className="h-4 w-4" />
+                Спори
+                {stats.openDisputes > 0 && (
+                  <Badge variant="secondary" className="ml-1 h-4 px-1 text-[10px]">
+                    {stats.openDisputes}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="support" className="gap-1 text-xs px-3">
+                <Headphones className="h-4 w-4" />
+                Підтримка
+                {stats.openTickets > 0 && (
+                  <Badge className="ml-1 h-4 px-1 text-[10px]">
+                    {stats.openTickets}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="bonuses" className="gap-1 text-xs px-3">
+                <Gift className="h-4 w-4" />
+                Бонуси
+              </TabsTrigger>
+              <TabsTrigger value="products" className="gap-1 text-xs px-3">
+                <Package className="h-4 w-4" />
+                Товари
+              </TabsTrigger>
+            </TabsList>
+          </ScrollArea>
 
           {/* Reports Tab */}
           <TabsContent value="reports">
-            <ScrollArea className="h-[calc(100vh-340px)]">
+            <ScrollArea className="h-[calc(100vh-380px)]">
               <div className="space-y-4 pr-4">
                 {isLoading ? (
                   <div className="flex items-center justify-center py-12">
@@ -286,7 +387,7 @@ export default function ModeratorPanel() {
                 ) : reports.length === 0 ? (
                   <div className="text-center py-12">
                     <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
-                      <Check className="h-8 w-8 text-success" />
+                      <Check className="h-8 w-8 text-green-500" />
                     </div>
                     <p className="font-medium text-foreground">Немає активних скарг</p>
                     <p className="text-sm text-muted-foreground">Всі скарги оброблені</p>
@@ -371,9 +472,24 @@ export default function ModeratorPanel() {
             </ScrollArea>
           </TabsContent>
 
+          {/* Disputes Tab */}
+          <TabsContent value="disputes">
+            <DisputesManager />
+          </TabsContent>
+
+          {/* Tech Support Tab */}
+          <TabsContent value="support">
+            <TechSupportQueue />
+          </TabsContent>
+
+          {/* Individual Bonuses Tab */}
+          <TabsContent value="bonuses">
+            <IndividualBonusManager />
+          </TabsContent>
+
           {/* Products Tab */}
           <TabsContent value="products">
-            <ScrollArea className="h-[calc(100vh-340px)]">
+            <ScrollArea className="h-[calc(100vh-380px)]">
               <div className="space-y-3 pr-4">
                 {pendingProducts.length === 0 ? (
                   <div className="text-center py-12">
@@ -401,9 +517,19 @@ export default function ModeratorPanel() {
                               {formatDate(product.created_at)}
                             </p>
                           </div>
-                          <Badge variant={product.in_stock ? 'default' : 'secondary'}>
-                            {product.in_stock ? 'В наявності' : 'Немає'}
-                          </Badge>
+                          <div className="flex flex-col items-end gap-2">
+                            <Badge variant={product.in_stock ? 'default' : 'secondary'}>
+                              {product.in_stock ? 'В наявності' : 'Немає'}
+                            </Badge>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => navigate(`/product/${product.id}`)}
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              Переглянути
+                            </Button>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>

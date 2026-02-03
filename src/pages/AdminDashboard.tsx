@@ -17,13 +17,15 @@ import {
   Shield,
   UserCog,
   Megaphone,
-  Settings,
   AlertTriangle,
   RefreshCw,
   Crown,
   Tag,
   Gift,
   Brain,
+  MessageSquare,
+  Trophy,
+  UserPlus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -43,6 +45,9 @@ import { hapticSelection } from '@/lib/haptics';
 import { PromoCodesManager } from '@/components/admin/PromoCodesManager';
 import { BonusesManager } from '@/components/admin/BonusesManager';
 import { AIInsightsDashboard } from '@/components/admin/AIInsightsDashboard';
+import { ManualSupplierForm } from '@/components/admin/ManualSupplierForm';
+import { SupportChatsViewer } from '@/components/admin/SupportChatsViewer';
+import { GiveawaysManager } from '@/components/admin/GiveawaysManager';
 
 interface SupplierApplication {
   id: string;
@@ -69,6 +74,7 @@ interface OrderStats {
   totalRevenue: number;
   totalMargin: number;
   pendingOrders: number;
+  openTickets: number;
 }
 
 interface UserWithRole {
@@ -106,13 +112,16 @@ export default function AdminDashboard() {
     totalRevenue: 0,
     totalMargin: 0,
     pendingOrders: 0,
+    openTickets: 0,
   });
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [usersWithRoles, setUsersWithRoles] = useState<UserWithRole[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [checkingAccess, setCheckingAccess] = useState(true);
+  const [newUserSearch, setNewUserSearch] = useState('');
+  const [searchResults, setSearchResults] = useState<UserWithRole[]>([]);
 
-  // Check admin access
+  // Check admin access - ONLY admin role (not moderator)
   useEffect(() => {
     const checkAdminAccess = async () => {
       if (!profile?.id) {
@@ -128,10 +137,8 @@ export default function AdminDashboard() {
 
         if (error) throw error;
 
-        const hasAdminAccess = roles?.some(r => 
-          r.role === 'admin' || r.role === 'moderator'
-        );
-        
+        // ONLY admin has access to admin dashboard
+        const hasAdminAccess = roles?.some(r => r.role === 'admin');
         setIsAdmin(hasAdminAccess || false);
       } catch (err) {
         console.error('Error checking admin access:', err);
@@ -175,27 +182,20 @@ export default function AdminDashboard() {
 
   const fetchOrderStats = async () => {
     try {
-      const { data: orders, error } = await supabase
-        .from('orders')
-        .select(`
-          id,
-          total,
-          subtotal,
-          status,
-          order_items (
-            price,
-            quantity,
-            product_id
-          )
-        `);
+      const [ordersResult, ticketsResult] = await Promise.all([
+        supabase.from('orders').select('id, total, subtotal, status'),
+        supabase.from('support_tickets').select('id').eq('status', 'open'),
+      ]);
 
-      if (error) throw error;
+      const orders = ordersResult.data || [];
+      const tickets = ticketsResult.data || [];
 
       const stats: OrderStats = {
-        totalOrders: orders?.length || 0,
-        totalRevenue: orders?.reduce((sum, o) => sum + (o.total || 0), 0) || 0,
+        totalOrders: orders.length,
+        totalRevenue: orders.reduce((sum, o) => sum + (o.total || 0), 0),
         totalMargin: 0,
-        pendingOrders: orders?.filter((o) => o.status === 'pending').length || 0,
+        pendingOrders: orders.filter((o) => o.status === 'pending').length,
+        openTickets: tickets.length,
       };
 
       stats.totalMargin = Math.round(stats.totalRevenue * 0.2);
@@ -221,7 +221,6 @@ export default function AdminDashboard() {
 
   const fetchUsersWithRoles = async () => {
     try {
-      // Get all profiles
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('id, first_name, last_name, email, telegram_username')
@@ -229,14 +228,12 @@ export default function AdminDashboard() {
 
       if (profilesError) throw profilesError;
 
-      // Get all roles
       const { data: roles, error: rolesError } = await supabase
         .from('user_roles')
         .select('user_id, role');
 
       if (rolesError) throw rolesError;
 
-      // Merge profiles with roles
       const usersWithRolesList: UserWithRole[] = (profiles || []).map(p => ({
         ...p,
         roles: (roles || [])
@@ -244,11 +241,36 @@ export default function AdminDashboard() {
           .map(r => r.role),
       }));
 
-      // Only show users who have roles (moderators, suppliers, admins)
       const usersWithAnyRole = usersWithRolesList.filter(u => u.roles.length > 0);
       setUsersWithRoles(usersWithAnyRole);
     } catch (err) {
       console.error('Error fetching users with roles:', err);
+    }
+  };
+
+  const searchUsers = async (query: string) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    try {
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, email, telegram_username')
+        .or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%,telegram_username.ilike.%${query}%`)
+        .limit(10);
+
+      const { data: roles } = await supabase.from('user_roles').select('user_id, role');
+
+      const results: UserWithRole[] = (profiles || []).map(p => ({
+        ...p,
+        roles: (roles || []).filter(r => r.user_id === p.id).map(r => r.role),
+      }));
+
+      setSearchResults(results);
+    } catch (err) {
+      console.error('Error searching users:', err);
     }
   };
 
@@ -345,6 +367,8 @@ export default function AdminDashboard() {
 
       toast.success(`Роль "${role}" додано`);
       fetchUsersWithRoles();
+      setSearchResults([]);
+      setNewUserSearch('');
     } catch (err) {
       console.error('Error adding role:', err);
       toast.error('Помилка додавання ролі');
@@ -397,7 +421,7 @@ export default function AdminDashboard() {
           </div>
           <h1 className="text-xl font-bold text-foreground">Доступ заборонено</h1>
           <p className="text-muted-foreground">
-            Ця сторінка доступна лише адміністраторам та модераторам
+            Ця сторінка доступна лише адміністраторам
           </p>
           <Button onClick={() => navigate('/')}>
             На головну
@@ -421,7 +445,7 @@ export default function AdminDashboard() {
                 <Crown className="h-5 w-5 text-warning" />
                 Адмін-панель
               </h1>
-              <p className="text-xs text-muted-foreground">Управління платформою Taverna</p>
+              <p className="text-xs text-muted-foreground">Повний контроль платформи Taverna</p>
             </div>
           </div>
           <Button variant="outline" size="sm" onClick={() => {
@@ -470,13 +494,11 @@ export default function AdminDashboard() {
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
-                <TrendingUp className="h-5 w-5 text-blue-500" />
+                <MessageSquare className="h-5 w-5 text-blue-500" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-foreground">
-                  {orderStats.totalRevenue.toLocaleString()} ₴
-                </p>
-                <p className="text-xs text-muted-foreground">Оборот</p>
+                <p className="text-2xl font-bold text-foreground">{orderStats.openTickets}</p>
+                <p className="text-xs text-muted-foreground">Тікетів</p>
               </div>
             </div>
           </CardContent>
@@ -485,11 +507,11 @@ export default function AdminDashboard() {
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center">
-                <Clock className="h-5 w-5 text-amber-500" />
+                <Package className="h-5 w-5 text-amber-500" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-foreground">{orderStats.pendingOrders}</p>
-                <p className="text-xs text-muted-foreground">Очікують</p>
+                <p className="text-2xl font-bold text-foreground">{suppliers.length}</p>
+                <p className="text-xs text-muted-foreground">Партнерів</p>
               </div>
             </div>
           </CardContent>
@@ -502,31 +524,51 @@ export default function AdminDashboard() {
           hapticSelection();
           setActiveTab(value);
         }}>
-          <TabsList className="w-full grid grid-cols-6 mb-4">
-            <TabsTrigger value="moderation" className="text-xs px-1">
-              <Users className="h-4 w-4" />
-              {applications.length > 0 && (
-                <Badge variant="destructive" className="ml-1 h-4 w-4 p-0 flex items-center justify-center text-[10px]">
-                  {applications.length}
-                </Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="suppliers" className="text-xs px-1">
-              <Package className="h-4 w-4" />
-            </TabsTrigger>
-            <TabsTrigger value="promos" className="text-xs px-1">
-              <Tag className="h-4 w-4" />
-            </TabsTrigger>
-            <TabsTrigger value="bonuses" className="text-xs px-1">
-              <Gift className="h-4 w-4" />
-            </TabsTrigger>
-            <TabsTrigger value="ai-insights" className="text-xs px-1">
-              <Brain className="h-4 w-4" />
-            </TabsTrigger>
-            <TabsTrigger value="roles" className="text-xs px-1">
-              <UserCog className="h-4 w-4" />
-            </TabsTrigger>
-          </TabsList>
+          <ScrollArea className="w-full pb-2">
+            <TabsList className="w-max flex gap-1 mb-4">
+              <TabsTrigger value="moderation" className="text-xs px-3 gap-1">
+                <Users className="h-4 w-4" />
+                Заявки
+                {applications.length > 0 && (
+                  <Badge variant="destructive" className="ml-1 h-4 px-1 text-[10px]">
+                    {applications.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="suppliers" className="text-xs px-3 gap-1">
+                <Package className="h-4 w-4" />
+                Партнери
+              </TabsTrigger>
+              <TabsTrigger value="register" className="text-xs px-3 gap-1">
+                <UserPlus className="h-4 w-4" />
+                Реєстрація
+              </TabsTrigger>
+              <TabsTrigger value="chats" className="text-xs px-3 gap-1">
+                <MessageSquare className="h-4 w-4" />
+                Чати
+              </TabsTrigger>
+              <TabsTrigger value="giveaways" className="text-xs px-3 gap-1">
+                <Trophy className="h-4 w-4" />
+                Розіграші
+              </TabsTrigger>
+              <TabsTrigger value="promos" className="text-xs px-3 gap-1">
+                <Tag className="h-4 w-4" />
+                Промо
+              </TabsTrigger>
+              <TabsTrigger value="bonuses" className="text-xs px-3 gap-1">
+                <Gift className="h-4 w-4" />
+                Бонуси
+              </TabsTrigger>
+              <TabsTrigger value="ai-insights" className="text-xs px-3 gap-1">
+                <Brain className="h-4 w-4" />
+                AI
+              </TabsTrigger>
+              <TabsTrigger value="roles" className="text-xs px-3 gap-1">
+                <UserCog className="h-4 w-4" />
+                Ролі
+              </TabsTrigger>
+            </TabsList>
+          </ScrollArea>
 
           {/* Moderation Tab */}
           <TabsContent value="moderation">
@@ -550,7 +592,6 @@ export default function AdminDashboard() {
                   applications.map((app) => (
                     <Card key={app.id} className="overflow-hidden">
                       <CardContent className="p-4 space-y-4">
-                        {/* Header */}
                         <div className="flex items-start justify-between">
                           <div>
                             <h3 className="font-semibold text-foreground">{app.shop_name}</h3>
@@ -561,7 +602,6 @@ export default function AdminDashboard() {
                           </Badge>
                         </div>
 
-                        {/* Contact Info */}
                         <div className="grid grid-cols-2 gap-2 text-sm">
                           <div>
                             <span className="text-muted-foreground">Email:</span>
@@ -573,28 +613,22 @@ export default function AdminDashboard() {
                           </div>
                         </div>
 
-                        {/* AI Analysis */}
                         {(app.reseller_probability !== null || app.plagiarism_score !== null) && (
                           <div className="flex gap-2 flex-wrap">
                             {app.reseller_probability !== null && (
-                              <Badge
-                                variant={app.reseller_probability > 50 ? 'destructive' : 'secondary'}
-                              >
+                              <Badge variant={app.reseller_probability > 50 ? 'destructive' : 'secondary'}>
                                 <AlertTriangle className="h-3 w-3 mr-1" />
                                 Ресейлер: {app.reseller_probability}%
                               </Badge>
                             )}
                             {app.plagiarism_score !== null && (
-                              <Badge
-                                variant={app.plagiarism_score > 30 ? 'destructive' : 'secondary'}
-                              >
+                              <Badge variant={app.plagiarism_score > 30 ? 'destructive' : 'secondary'}>
                                 Плагіат: {app.plagiarism_score}%
                               </Badge>
                             )}
                           </div>
                         )}
 
-                        {/* Expand Toggle */}
                         <button
                           onClick={() => setExpandedId(expandedId === app.id ? null : app.id)}
                           className="flex items-center gap-1 text-sm text-primary"
@@ -608,7 +642,6 @@ export default function AdminDashboard() {
                           )}
                         </button>
 
-                        {/* Expanded Details */}
                         {expandedId === app.id && (
                           <div className="space-y-4 pt-2 border-t border-border">
                             <div>
@@ -649,7 +682,6 @@ export default function AdminDashboard() {
                               Заявка від: {formatDate(app.created_at)}
                             </p>
 
-                            {/* Markup Setting */}
                             <div className="space-y-2">
                               <Label className="text-sm">Націнка (%)</Label>
                               <Input
@@ -665,12 +697,8 @@ export default function AdminDashboard() {
                                 }
                                 className="w-24"
                               />
-                              <p className="text-xs text-muted-foreground">
-                                Рекомендовано: 33% (до 1000₴), 28% (1-10к₴), 23% (10к+₴)
-                              </p>
                             </div>
 
-                            {/* Role Selection */}
                             <div className="space-y-2">
                               <Label className="text-sm">Призначити роль при схваленні</Label>
                               <Select
@@ -685,14 +713,10 @@ export default function AdminDashboard() {
                                   <SelectItem value="moderator">Модератор (moderator)</SelectItem>
                                 </SelectContent>
                               </Select>
-                              <p className="text-xs text-muted-foreground">
-                                Модератор може переглядати заявки та керувати товарами
-                              </p>
                             </div>
 
-                            {/* Rejection Reason */}
                             <div className="space-y-2">
-                              <Label className="text-sm">Причина відхилення (якщо потрібно)</Label>
+                              <Label className="text-sm">Причина відхилення</Label>
                               <Textarea
                                 value={rejectionReason}
                                 onChange={(e) => setRejectionReason(e.target.value)}
@@ -703,7 +727,6 @@ export default function AdminDashboard() {
                           </div>
                         )}
 
-                        {/* Action Buttons */}
                         <div className="flex gap-2">
                           <Button
                             variant="outline"
@@ -776,24 +799,98 @@ export default function AdminDashboard() {
             </ScrollArea>
           </TabsContent>
 
+          {/* Manual Registration Tab */}
+          <TabsContent value="register">
+            <ScrollArea className="h-[calc(100vh-380px)]">
+              <div className="pr-4">
+                <ManualSupplierForm onSuccess={fetchSuppliers} />
+              </div>
+            </ScrollArea>
+          </TabsContent>
+
+          {/* Support Chats Tab */}
+          <TabsContent value="chats">
+            <SupportChatsViewer />
+          </TabsContent>
+
+          {/* Giveaways Tab */}
+          <TabsContent value="giveaways">
+            <GiveawaysManager />
+          </TabsContent>
+
+          {/* Promo Codes Tab */}
+          <TabsContent value="promos">
+            <PromoCodesManager />
+          </TabsContent>
+
+          {/* Bonuses Tab */}
+          <TabsContent value="bonuses">
+            <BonusesManager />
+          </TabsContent>
+
+          {/* AI Insights Tab */}
+          <TabsContent value="ai-insights">
+            <AIInsightsDashboard />
+          </TabsContent>
+
           {/* Roles Tab */}
           <TabsContent value="roles">
             <ScrollArea className="h-[calc(100vh-380px)]">
-              <div className="space-y-3 pr-4">
-                <Card className="mb-4">
+              <div className="space-y-4 pr-4">
+                <Card>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm flex items-center gap-2">
                       <Shield className="h-4 w-4" />
                       Керування ролями
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="space-y-4">
                     <p className="text-xs text-muted-foreground">
                       <strong>admin</strong> — повний доступ до системи<br/>
-                      <strong>moderator</strong> — модерація заявок та товарів<br/>
+                      <strong>moderator</strong> — модерація заявок, спорів, підтримка<br/>
                       <strong>supplier</strong> — доступ до панелі постачальника<br/>
                       <strong>customer</strong> — звичайний покупець
                     </p>
+
+                    {/* Add new role to user */}
+                    <div className="space-y-2">
+                      <Label className="text-sm">Додати роль користувачу</Label>
+                      <Input
+                        value={newUserSearch}
+                        onChange={(e) => {
+                          setNewUserSearch(e.target.value);
+                          searchUsers(e.target.value);
+                        }}
+                        placeholder="Пошук за ім'ям або @username..."
+                      />
+                      {searchResults.length > 0 && (
+                        <div className="border rounded-lg p-2 space-y-1">
+                          {searchResults.map(user => (
+                            <div key={user.id} className="flex items-center justify-between p-2 hover:bg-muted rounded">
+                              <div>
+                                <p className="text-sm font-medium">
+                                  {user.first_name} {user.last_name}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {user.telegram_username ? `@${user.telegram_username}` : user.email}
+                                </p>
+                              </div>
+                              <Select onValueChange={(v: 'admin' | 'moderator' | 'supplier' | 'customer') => handleAddRole(user.id, v)}>
+                                <SelectTrigger className="w-32">
+                                  <SelectValue placeholder="Роль..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="admin">admin</SelectItem>
+                                  <SelectItem value="moderator">moderator</SelectItem>
+                                  <SelectItem value="supplier">supplier</SelectItem>
+                                  <SelectItem value="customer">customer</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
 
@@ -850,21 +947,6 @@ export default function AdminDashboard() {
                 )}
               </div>
             </ScrollArea>
-          </TabsContent>
-
-          {/* Promos Tab */}
-          <TabsContent value="promos">
-            <PromoCodesManager />
-          </TabsContent>
-
-          {/* Bonuses Tab */}
-          <TabsContent value="bonuses">
-            <BonusesManager />
-          </TabsContent>
-
-          {/* AI Insights Tab */}
-          <TabsContent value="ai-insights">
-            <AIInsightsDashboard />
           </TabsContent>
         </Tabs>
       </div>
