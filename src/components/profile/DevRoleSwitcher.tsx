@@ -19,8 +19,9 @@ interface DevRoleSwitcherProps {
   profileId?: string | null;
 }
 
-// Development mode flag - set to true during development, false for production
-const DEV_MODE = true;
+// Development mode flag - keep false to enforce real admin check via database.
+// (Role simulation is controlled higher-level and only enabled for real admins in dev env.)
+const DEV_MODE = false;
 
 export const DevRoleSwitcher = ({ currentRole, onRoleChange, profileId }: DevRoleSwitcherProps) => {
   const [isOpen, setIsOpen] = useState(false);
