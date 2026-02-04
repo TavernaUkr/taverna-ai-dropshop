@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, ReactNode } from 'react';
 import { useTelegramAuth } from '@/hooks/useTelegramAuth';
 import { Button } from '@/components/ui/button';
 import {
@@ -10,14 +10,47 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Loader2, ShieldCheck, User } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+
+type AppRole = 'admin' | 'moderator' | 'supplier' | 'customer';
+type TestRole = 'guest' | AppRole;
+
+const DEV_ROLE_STORAGE_KEY = 'taverna_dev_role_override';
+
+const isDevEnv = () => {
+  try {
+    return import.meta.env.DEV || window.location.hostname.includes('lovable.app');
+  } catch {
+    return false;
+  }
+};
+
+const isTestRole = (value: unknown): value is TestRole => {
+  return (
+    value === 'guest' ||
+    value === 'customer' ||
+    value === 'supplier' ||
+    value === 'moderator' ||
+    value === 'admin'
+  );
+};
 
 interface TelegramAuthContextType {
   isAuthenticated: boolean;
+  isRealAuthenticated: boolean;
   isLoading: boolean;
+  rolesLoading: boolean;
   profile: any;
+  realProfile: any;
   addresses: any[];
   sessionToken: string | null;
   error: string | null;
+  roles: AppRole[];
+  realRoles: AppRole[];
+  effectiveRole: TestRole;
+  devRoleOverride: TestRole | null;
+  canUseDevRoleSwitcher: boolean;
+  setDevRoleOverride: (role: TestRole | null) => void;
   logout: () => Promise<void>;
   updateProfile: (updates: any) => Promise<any>;
   addAddress: (address: any) => Promise<any>;
@@ -44,6 +77,103 @@ export function TelegramAuthProvider({ children }: TelegramAuthProviderProps) {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [pendingAuth, setPendingAuth] = useState(false);
   const [telegramData, setTelegramData] = useState<any>(null);
+
+  // Real roles (from secure user_roles table)
+  const [realRoles, setRealRoles] = useState<AppRole[]>([]);
+  const [rolesLoading, setRolesLoading] = useState(false);
+
+  // DEV role simulation (only active for real admins in dev env)
+  const [devRoleOverride, setDevRoleOverrideState] = useState<TestRole | null>(null);
+
+  const isRealAuthenticated = auth.isAuthenticated;
+
+  useEffect(() => {
+    const fetchRoles = async () => {
+      if (!auth.profile?.id || !auth.isAuthenticated) {
+        setRealRoles([]);
+        return;
+      }
+
+      setRolesLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', auth.profile.id);
+
+        if (error) throw error;
+        setRealRoles((data?.map((r: any) => r.role) || []) as AppRole[]);
+      } catch (err) {
+        console.error('Error fetching user roles:', err);
+        setRealRoles([]);
+      } finally {
+        setRolesLoading(false);
+      }
+    };
+
+    fetchRoles();
+  }, [auth.isAuthenticated, auth.profile?.id]);
+
+  const isRealAdmin = realRoles.includes('admin');
+  const canUseDevRoleSwitcher = useMemo(() => isDevEnv() && isRealAdmin, [isRealAdmin]);
+
+  // Load stored override only when allowed
+  useEffect(() => {
+    if (!canUseDevRoleSwitcher) {
+      setDevRoleOverrideState(null);
+      return;
+    }
+
+    try {
+      const stored = localStorage.getItem(DEV_ROLE_STORAGE_KEY);
+      if (stored && isTestRole(stored)) {
+        setDevRoleOverrideState(stored);
+      }
+    } catch {
+      // ignore
+    }
+  }, [canUseDevRoleSwitcher]);
+
+  // Persist override only when allowed
+  useEffect(() => {
+    if (!canUseDevRoleSwitcher) return;
+
+    try {
+      if (devRoleOverride) {
+        localStorage.setItem(DEV_ROLE_STORAGE_KEY, devRoleOverride);
+      } else {
+        localStorage.removeItem(DEV_ROLE_STORAGE_KEY);
+      }
+    } catch {
+      // ignore
+    }
+  }, [devRoleOverride, canUseDevRoleSwitcher]);
+
+  const derivedRealRole: TestRole = useMemo(() => {
+    if (!auth.isAuthenticated) return 'guest';
+    if (realRoles.includes('admin')) return 'admin';
+    if (realRoles.includes('moderator')) return 'moderator';
+    if (realRoles.includes('supplier')) return 'supplier';
+    return 'customer';
+  }, [auth.isAuthenticated, realRoles]);
+
+  // IMPORTANT: override is honored ONLY for real admins in dev env
+  const effectiveRole: TestRole = canUseDevRoleSwitcher && devRoleOverride ? devRoleOverride : derivedRealRole;
+
+  const roles: AppRole[] = useMemo(() => {
+    if (effectiveRole === 'guest' || effectiveRole === 'customer') return [];
+    return [effectiveRole] as AppRole[];
+  }, [effectiveRole]);
+
+  const isAuthenticated = effectiveRole !== 'guest' && (canUseDevRoleSwitcher ? true : auth.isAuthenticated);
+  const profile = effectiveRole === 'guest' ? null : auth.profile;
+  const addresses = effectiveRole === 'guest' ? [] : auth.addresses;
+
+  const setDevRoleOverride = (role: TestRole | null) => {
+    if (!canUseDevRoleSwitcher) return;
+    if (role && !isTestRole(role)) return;
+    setDevRoleOverrideState(role);
+  };
 
   // Check for Telegram WebApp on mount
   useEffect(() => {
@@ -104,12 +234,21 @@ export function TelegramAuthProvider({ children }: TelegramAuthProviderProps) {
 
   return (
     <TelegramAuthContext.Provider value={{
-      isAuthenticated: auth.isAuthenticated,
+      isAuthenticated,
+      isRealAuthenticated,
       isLoading: auth.isLoading,
-      profile: auth.profile,
-      addresses: auth.addresses,
+      rolesLoading,
+      profile,
+      realProfile: auth.profile,
+      addresses,
       sessionToken: auth.sessionToken,
       error: auth.error,
+      roles,
+      realRoles,
+      effectiveRole,
+      devRoleOverride: canUseDevRoleSwitcher ? devRoleOverride : null,
+      canUseDevRoleSwitcher,
+      setDevRoleOverride,
       logout: auth.logout,
       updateProfile: auth.updateProfile,
       addAddress: auth.addAddress,

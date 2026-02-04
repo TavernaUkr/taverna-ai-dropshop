@@ -23,7 +23,6 @@ import { useProducts } from "@/hooks/useProducts";
 import { toast } from "sonner";
 import { getCategoryGradient } from "@/lib/categoryColors";
 import { ProductGridSkeleton } from "@/components/ui/product-skeleton";
-import { supabase } from "@/integrations/supabase/client";
 
 // Fallback product images
 import tacticalGloves from "@/assets/products/tactical-gloves.jpg";
@@ -232,40 +231,9 @@ const LiveTab = () => (
 
 const AccountTab = () => {
   const navigate = useNavigate();
-  const { isAuthenticated, profile } = useTelegramAuthContext();
-  const [userRoles, setUserRoles] = useState<string[]>([]);
+  const { isAuthenticated, roles } = useTelegramAuthContext();
 
-  // Fetch user roles from secure user_roles table
-  useEffect(() => {
-    const fetchUserRoles = async () => {
-      if (!profile?.id) {
-        setUserRoles([]);
-        return;
-      }
-      
-      try {
-        const { data: roles, error } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', profile.id);
-        
-        if (error) {
-          console.error('Error fetching user roles:', error);
-          setUserRoles([]);
-        } else {
-          setUserRoles(roles?.map(r => r.role) || []);
-        }
-      } catch (err) {
-        console.error('Error fetching user roles:', err);
-        setUserRoles([]);
-      }
-    };
-    
-    fetchUserRoles();
-  }, [profile?.id]);
-
-  const isPartnerUser =
-    userRoles.includes("supplier") || userRoles.includes("admin") || userRoles.includes("moderator");
+  const isPartnerUser = roles.includes("supplier") || roles.includes("admin") || roles.includes("moderator");
   
   return (
     <div className="space-y-4 pb-28 animate-fade-in">

@@ -25,7 +25,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { useTelegramAuth } from '@/hooks/useTelegramAuth';
+import { useTelegramAuthContext } from '@/components/TelegramAuthProvider';
 import { hapticSelection } from '@/lib/haptics';
 import { DisputesManager } from '@/components/moderator/DisputesManager';
 import { IndividualBonusManager } from '@/components/moderator/IndividualBonusManager';
@@ -66,15 +66,13 @@ interface ModeratorStats {
 
 export default function ModeratorPanel() {
   const navigate = useNavigate();
-  const { profile } = useTelegramAuth();
+  const { isLoading: authLoading, rolesLoading, isAuthenticated, roles } = useTelegramAuthContext();
   const [activeTab, setActiveTab] = useState('reports');
   const [reports, setReports] = useState<Report[]>([]);
   const [pendingProducts, setPendingProducts] = useState<PendingProduct[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [adminNotes, setAdminNotes] = useState<Record<string, string>>({});
-  const [isModerator, setIsModerator] = useState(false);
-  const [checkingAccess, setCheckingAccess] = useState(true);
   const [stats, setStats] = useState<ModeratorStats>({
     openReports: 0,
     openDisputes: 0,
@@ -82,44 +80,15 @@ export default function ModeratorPanel() {
     productsToReview: 0,
   });
 
-  // Check moderator access
-  useEffect(() => {
-    const checkAccess = async () => {
-      if (!profile?.id) {
-        setCheckingAccess(false);
-        return;
-      }
-
-      try {
-        const { data: roles, error } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', profile.id);
-
-        if (error) throw error;
-
-        const hasAccess = roles?.some(r => 
-          r.role === 'admin' || r.role === 'moderator'
-        );
-        
-        setIsModerator(hasAccess || false);
-      } catch (err) {
-        console.error('Error checking access:', err);
-        setIsModerator(false);
-      } finally {
-        setCheckingAccess(false);
-      }
-    };
-
-    checkAccess();
-  }, [profile?.id]);
+  const hasModeratorAccess =
+    isAuthenticated && (roles.includes('admin') || roles.includes('moderator'));
 
   useEffect(() => {
-    if (isModerator) {
+    if (hasModeratorAccess) {
       fetchData();
       fetchStats();
     }
-  }, [isModerator]);
+  }, [hasModeratorAccess]);
 
   const fetchStats = async () => {
     try {
@@ -220,7 +189,7 @@ export default function ModeratorPanel() {
     });
   };
 
-  if (checkingAccess) {
+  if (authLoading || rolesLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -228,7 +197,7 @@ export default function ModeratorPanel() {
     );
   }
 
-  if (!isModerator) {
+  if (!hasModeratorAccess) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
         <div className="text-center space-y-4">

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -29,15 +29,21 @@ import { CustomerGuideModal } from "@/components/CustomerGuideModal";
 import { hapticSelection } from "@/lib/haptics";
 import { DevRoleSwitcher } from "@/components/profile/DevRoleSwitcher";
 import { AccountSettings } from "@/components/AccountSettings";
-import { supabase } from "@/integrations/supabase/client";
 
 type TestRole = "guest" | "customer" | "supplier" | "moderator" | "admin";
 
 export const ProfileDashboard = () => {
   const navigate = useNavigate();
   const { 
-    isAuthenticated: realIsAuthenticated, 
-    profile: realProfile, 
+    isAuthenticated,
+    isRealAuthenticated,
+    effectiveRole,
+    canUseDevRoleSwitcher,
+    setDevRoleOverride,
+    roles,
+    realProfile,
+    realRoles,
+    profile,
     addresses,
     logout,
     updateProfile,
@@ -50,69 +56,17 @@ export const ProfileDashboard = () => {
   const [showSupplierGuide, setShowSupplierGuide] = useState(false);
   const [showCustomerGuide, setShowCustomerGuide] = useState(false);
   const [showAccountSettings, setShowAccountSettings] = useState(false);
-  const [realUserRoles, setRealUserRoles] = useState<string[]>([]);
-  
-  // DEV MODE: Test role switcher (only for real admins)
-  const [testRole, setTestRole] = useState<TestRole>("guest");
-  const isDevMode = import.meta.env.DEV || window.location.hostname.includes("lovable.app");
-  
-  // Fetch real user roles from secure user_roles table
-  useEffect(() => {
-    const fetchUserRoles = async () => {
-      if (!realProfile?.id) {
-        setRealUserRoles([]);
-        return;
-      }
-      
-      try {
-        const { data: roles, error } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', realProfile.id);
-        
-        if (error) {
-          console.error('Error fetching user roles:', error);
-          setRealUserRoles([]);
-        } else {
-          setRealUserRoles(roles?.map(r => r.role) || []);
-        }
-      } catch (err) {
-        console.error('Error fetching user roles:', err);
-        setRealUserRoles([]);
-      }
-    };
-    
-    fetchUserRoles();
-  }, [realProfile?.id]);
-  
-  // Check if user is a real admin for showing DevRoleSwitcher
-  const isRealAdmin = realUserRoles.includes('admin');
-  
-  // DEV_MODE flag to allow role switcher during development
-  const DEV_MODE_SWITCHER = true; // Set to false in production
-  const showDevSwitcher = isDevMode && (DEV_MODE_SWITCHER || isRealAdmin);
-  
-  // Determine effective auth state based on test role (for dev testing)
-  const isAuthenticated = showDevSwitcher && testRole !== "guest" 
-    ? true 
-    : realIsAuthenticated;
-  
-  const profile = showDevSwitcher && testRole !== "guest" 
-    ? { 
-        ...realProfile, 
-        first_name: `Test ${testRole.charAt(0).toUpperCase() + testRole.slice(1)}`,
-        roles: testRole === "customer" ? [] : [testRole]
-      } 
-    : { ...realProfile, roles: realUserRoles };
 
-  // Check roles from secure user_roles table (not from profile.user_type to prevent privilege escalation)
-  const userRoles = showDevSwitcher && testRole !== "guest" 
-    ? (testRole === "customer" ? [] : [testRole])
-    : realUserRoles;
-    
-  const isSupplier = userRoles.includes('supplier') || userRoles.includes('admin');
-  const isAdmin = userRoles.includes('admin');
-  const isModerator = userRoles.includes('moderator');
+  const isSupplier = roles.includes('supplier') || roles.includes('admin');
+  const isAdmin = roles.includes('admin');
+  const isModerator = roles.includes('moderator');
+
+  useEffect(() => {
+    // If we simulate Guest, ensure sensitive modals are closed.
+    if (!isAuthenticated) {
+      setShowAccountSettings(false);
+    }
+  }, [isAuthenticated]);
 
   // Affiliate data (mock)
   const affiliateData = {
@@ -183,10 +137,10 @@ export const ProfileDashboard = () => {
             <div className="flex items-center gap-2">
               <h3 className="font-semibold text-foreground">{getDisplayName()}</h3>
               {/* DEV Role Switcher - inline next to profile name */}
-              {showDevSwitcher && (
+              {canUseDevRoleSwitcher && (
                 <DevRoleSwitcher
-                  currentRole={testRole}
-                  onRoleChange={setTestRole}
+                  currentRole={effectiveRole as TestRole}
+                  onRoleChange={(r) => setDevRoleOverride(r as TestRole)}
                   profileId={realProfile?.id}
                 />
               )}
@@ -606,15 +560,6 @@ export const ProfileDashboard = () => {
           onAddAddress={addAddress}
           onUpdateAddress={updateAddress}
           onDeleteAddress={deleteAddress}
-        />
-      )}
-
-      {/* ADMIN ONLY: Role Switcher for testing UI states */}
-      {isDevMode && isRealAdmin && (
-        <DevRoleSwitcher 
-          currentRole={testRole} 
-          onRoleChange={setTestRole}
-          profileId={realProfile?.id}
         />
       )}
     </div>

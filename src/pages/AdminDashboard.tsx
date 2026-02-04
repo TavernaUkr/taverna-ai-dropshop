@@ -40,7 +40,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { useTelegramAuth } from '@/hooks/useTelegramAuth';
+import { useTelegramAuthContext } from '@/components/TelegramAuthProvider';
 import { hapticSelection } from '@/lib/haptics';
 import { PromoCodesManager } from '@/components/admin/PromoCodesManager';
 import { BonusesManager } from '@/components/admin/BonusesManager';
@@ -98,7 +98,14 @@ interface Supplier {
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
-  const { profile, sessionToken, isAuthenticated } = useTelegramAuth();
+  const {
+    isLoading: authLoading,
+    rolesLoading,
+    isAuthenticated,
+    roles,
+    sessionToken,
+    realProfile,
+  } = useTelegramAuthContext();
   const [activeTab, setActiveTab] = useState('moderation');
   const [applications, setApplications] = useState<SupplierApplication[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -116,40 +123,10 @@ export default function AdminDashboard() {
   });
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [usersWithRoles, setUsersWithRoles] = useState<UserWithRole[]>([]);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [checkingAccess, setCheckingAccess] = useState(true);
   const [newUserSearch, setNewUserSearch] = useState('');
   const [searchResults, setSearchResults] = useState<UserWithRole[]>([]);
 
-  // Check admin access - ONLY admin role (not moderator)
-  useEffect(() => {
-    const checkAdminAccess = async () => {
-      if (!profile?.id) {
-        setCheckingAccess(false);
-        return;
-      }
-
-      try {
-        const { data: roles, error } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', profile.id);
-
-        if (error) throw error;
-
-        // ONLY admin has access to admin dashboard
-        const hasAdminAccess = roles?.some(r => r.role === 'admin');
-        setIsAdmin(hasAdminAccess || false);
-      } catch (err) {
-        console.error('Error checking admin access:', err);
-        setIsAdmin(false);
-      } finally {
-        setCheckingAccess(false);
-      }
-    };
-
-    checkAdminAccess();
-  }, [profile?.id]);
+  const isAdmin = isAuthenticated && roles.includes('admin');
 
   // Fetch data
   useEffect(() => {
@@ -404,7 +381,7 @@ export default function AdminDashboard() {
   };
 
   // Access denied screen
-  if (checkingAccess) {
+  if (authLoading || rolesLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
