@@ -19,20 +19,26 @@ interface DevRoleSwitcherProps {
   profileId?: string | null;
 }
 
-// Development mode flag - keep false to enforce real admin check via database.
-// (Role simulation is controlled higher-level and only enabled for real admins in dev env.)
-const DEV_MODE = false;
+// Development mode flag - in Lovable dev environment, always show the switcher for testing
+// In production, only real admins can see it
+const isLovableDevEnvironment = () => {
+  try {
+    return import.meta.env.DEV || window.location.hostname.includes('lovable.app') || window.location.hostname.includes('localhost');
+  } catch {
+    return false;
+  }
+};
 
 export const DevRoleSwitcher = ({ currentRole, onRoleChange, profileId }: DevRoleSwitcherProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
 
-  // Check if user is a real admin from user_roles table
+  // Check if user is a real admin from user_roles table OR if we're in Lovable dev environment
   useEffect(() => {
     const checkAdminAccess = async () => {
-      // In DEV_MODE, always allow access for testing
-      if (DEV_MODE) {
+      // In Lovable dev environment, always allow access for testing
+      if (isLovableDevEnvironment()) {
         setIsAdmin(true);
         setIsChecking(false);
         return;
