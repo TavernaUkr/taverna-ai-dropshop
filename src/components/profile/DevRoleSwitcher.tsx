@@ -19,11 +19,12 @@ interface DevRoleSwitcherProps {
   profileId?: string | null;
 }
 
-// Development mode flag - in Lovable dev environment, always show the switcher for testing
-// In production, only real admins can see it
+// Check if we're in Lovable.dev environment (for always-available testing)
 const isLovableDevEnvironment = () => {
   try {
-    return import.meta.env.DEV || window.location.hostname.includes('lovable.app') || window.location.hostname.includes('localhost');
+    return window.location.hostname.includes('lovable.app') || 
+           window.location.hostname.includes('lovableproject.com') ||
+           window.location.hostname.includes('id-preview--');
   } catch {
     return false;
   }

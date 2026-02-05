@@ -17,9 +17,23 @@ type TestRole = 'guest' | AppRole;
 
 const DEV_ROLE_STORAGE_KEY = 'taverna_dev_role_override';
 
+// Check if we're in Lovable.dev environment (for always-available testing)
+const isLovableDevEnvironment = () => {
+  try {
+    return window.location.hostname.includes('lovable.app') || 
+           window.location.hostname.includes('lovableproject.com') ||
+           window.location.hostname.includes('id-preview--');
+  } catch {
+    return false;
+  }
+};
+
+// Check if we're in any development environment (localhost, dev mode)
 const isDevEnv = () => {
   try {
-    return import.meta.env.DEV || window.location.hostname.includes('lovable.app');
+    return import.meta.env.DEV || 
+           window.location.hostname.includes('localhost') ||
+           window.location.hostname === '127.0.0.1';
   } catch {
     return false;
   }
@@ -115,7 +129,17 @@ export function TelegramAuthProvider({ children }: TelegramAuthProviderProps) {
   }, [auth.isAuthenticated, auth.profile?.id]);
 
   const isRealAdmin = realRoles.includes('admin');
-  const canUseDevRoleSwitcher = useMemo(() => isDevEnv() && isRealAdmin, [isRealAdmin]);
+  
+  // IMPORTANT: In Lovable.dev - ALWAYS show switcher for testing
+  // In production/local - only show for real admins
+  const canUseDevRoleSwitcher = useMemo(() => {
+    // Always available in Lovable.dev sandbox for testing
+    if (isLovableDevEnvironment()) {
+      return true;
+    }
+    // In other dev environments or production - only for real admins
+    return isDevEnv() && isRealAdmin;
+  }, [isRealAdmin]);
 
   // Load stored override only when allowed
   useEffect(() => {
@@ -158,7 +182,10 @@ export function TelegramAuthProvider({ children }: TelegramAuthProviderProps) {
   }, [auth.isAuthenticated, realRoles]);
 
   // IMPORTANT: override is honored ONLY for real admins in dev env
-  const effectiveRole: TestRole = canUseDevRoleSwitcher && devRoleOverride ? devRoleOverride : derivedRealRole;
+  // OR in Lovable.dev environment for testing
+  const effectiveRole: TestRole = canUseDevRoleSwitcher && devRoleOverride 
+    ? devRoleOverride 
+    : derivedRealRole;
 
   const roles: AppRole[] = useMemo(() => {
     if (effectiveRole === 'guest' || effectiveRole === 'customer') return [];
