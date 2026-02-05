@@ -17,6 +17,7 @@ import {
   Flag,
   MessageSquare,
   MapPin,
+  Megaphone,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -58,6 +59,7 @@ export const ProfileDashboard = () => {
   const [showAccountSettings, setShowAccountSettings] = useState(false);
 
   const isSupplier = roles.includes('supplier') || roles.includes('admin');
+  const isOnlySupplier = roles.includes('supplier');
   const isAdmin = roles.includes('admin');
   const isModerator = roles.includes('moderator');
 
@@ -198,7 +200,65 @@ export const ProfileDashboard = () => {
       )}
 
       {/* Partner Panel Button - Only for suppliers/admins/moderators */}
-      {isAuthenticated && (isSupplier || isAdmin || isModerator) && (
+      {/* Admin Panel Button - Only for Admins */}
+      {isAuthenticated && isAdmin && (
+        <button
+          onClick={() => navigate("/admin-dashboard")}
+          className="w-full flex items-center gap-4 p-4 rounded-xl border transition-all bg-gradient-to-r from-warning/10 to-amber-500/10 border-warning/30 hover:border-warning"
+        >
+          <div className="w-12 h-12 rounded-full flex items-center justify-center bg-warning/20">
+            <Shield className="h-6 w-6 text-warning" />
+          </div>
+          <div className="flex-1 text-left">
+            <h4 className="font-semibold text-foreground">Адмін-панель</h4>
+            <p className="text-xs text-muted-foreground">
+              Повний контроль платформи
+            </p>
+          </div>
+          <ChevronRight className="h-5 w-5 text-warning" />
+        </button>
+      )}
+
+      {/* Moderator Panel Button - Only for Moderators (not Admins) */}
+      {isAuthenticated && isModerator && !isAdmin && (
+        <button
+          onClick={() => navigate("/moderator")}
+          className="w-full flex items-center gap-4 p-4 rounded-xl border transition-all bg-gradient-to-r from-orange-500/10 to-amber-500/10 border-orange-500/30 hover:border-orange-500"
+        >
+          <div className="w-12 h-12 rounded-full flex items-center justify-center bg-orange-500/20">
+            <Flag className="h-6 w-6 text-orange-500" />
+          </div>
+          <div className="flex-1 text-left">
+            <h4 className="font-semibold text-foreground">Панель модератора</h4>
+            <p className="text-xs text-muted-foreground">
+              Скарги, чати, бонуси
+            </p>
+          </div>
+          <ChevronRight className="h-5 w-5 text-orange-500" />
+        </button>
+      )}
+
+      {/* Promotion Panel Button - For Admins and Moderators */}
+      {isAuthenticated && (isAdmin || isModerator) && (
+        <button
+          onClick={() => navigate("/manager")}
+          className="w-full flex items-center gap-4 p-4 rounded-xl border transition-all bg-gradient-to-r from-accent/10 to-primary/10 border-accent/30 hover:border-accent"
+        >
+          <div className="w-12 h-12 rounded-full flex items-center justify-center bg-accent/20">
+            <Megaphone className="h-6 w-6 text-accent" />
+          </div>
+          <div className="flex-1 text-left">
+            <h4 className="font-semibold text-foreground">Просування</h4>
+            <p className="text-xs text-muted-foreground">
+              Постити та рекламувати будь-який товар
+            </p>
+          </div>
+          <ChevronRight className="h-5 w-5 text-accent" />
+        </button>
+      )}
+
+      {/* Partner Panel Button - ONLY for Suppliers (not Admin/Moderator) */}
+      {isAuthenticated && isOnlySupplier && !isAdmin && !isModerator && (
         <button
           onClick={handlePartnerClick}
           className="w-full flex items-center gap-4 p-4 rounded-xl border transition-all bg-gradient-to-r from-primary/10 to-accent/10 border-primary/30 hover:border-primary"
@@ -209,10 +269,29 @@ export const ProfileDashboard = () => {
           <div className="flex-1 text-left">
             <h4 className="font-semibold text-foreground">Панель партнера</h4>
             <p className="text-xs text-muted-foreground">
-              Керуйте товарами та замовленнями
+              Керуйте своїми товарами
             </p>
           </div>
           <ChevronRight className="h-5 w-5 text-primary" />
+        </button>
+      )}
+
+      {/* Become Partner Button - For Customers (not suppliers/admin/moderator) */}
+      {isAuthenticated && !isOnlySupplier && !isAdmin && !isModerator && (
+        <button
+          onClick={() => navigate("/partner")}
+          className="w-full flex items-center gap-4 p-4 rounded-xl border transition-all bg-card border-border hover:border-primary/50"
+        >
+          <div className="w-12 h-12 rounded-full flex items-center justify-center bg-muted">
+            <Store className="h-6 w-6 text-muted-foreground" />
+          </div>
+          <div className="flex-1 text-left">
+            <h4 className="font-semibold text-foreground">Стати партнером</h4>
+            <p className="text-xs text-muted-foreground">
+              Зареєструйтесь як постачальник
+            </p>
+          </div>
+          <ChevronRight className="h-5 w-5 text-muted-foreground" />
         </button>
       )}
 
