@@ -64,7 +64,7 @@ serve(async (req) => {
     // Fetch some products for context
     const { data: products } = await supabase
       .from('products')
-      .select('id, name, price, sizes, colors, in_stock')
+      .select('id, name, price, sizes, colors, in_stock, brand, category:categories(name)')
       .eq('in_stock', true)
       .limit(50);
     
@@ -73,48 +73,79 @@ serve(async (req) => {
     if (profile) {
       const { data: orders } = await supabase
         .from('orders')
-        .select('id, order_number, status, total, created_at')
+        .select(`
+          id, order_number, status, total, created_at, delivery_tracking, delivery_service,
+          items:order_items(product_name, quantity, price, size, color)
+        `)
         .eq('profile_id', profile.id)
         .order('created_at', { ascending: false })
-        .limit(5);
+        .limit(10);
       userOrders = orders;
     }
+
+    // Fetch suppliers list
+    const { data: suppliers } = await supabase
+      .from('suppliers_public')
+      .select('id, shop_name, is_active')
+      .eq('is_active', true)
+      .limit(20);
     
     const userName = profile?.first_name || 'шановний клієнте';
     
     // Build context for AI
-    const productContext = products?.slice(0, 20).map(p => 
-      `- ${p.name}: ${p.price}₴, розміри: ${p.sizes?.join(', ') || 'н/д'}, кольори: ${p.colors?.join(', ') || 'н/д'}`
+    const productContext = products?.slice(0, 30).map(p => 
+      `- ${p.name}: ${p.price}₴, бренд: ${p.brand || 'н/д'}, категорія: ${(p.category as any)?.name || 'н/д'}, розміри: ${p.sizes?.join(', ') || 'н/д'}`
     ).join('\n') || '';
     
-    const ordersContext = userOrders?.map(o => 
-      `- Замовлення ${o.order_number}: статус "${o.status}", сума ${o.total}₴, дата ${new Date(o.created_at).toLocaleDateString('uk-UA')}`
-    ).join('\n') || '';
+    const ordersContext = userOrders?.map(o => {
+      const items = (o as any).items?.map((i: any) => `${i.product_name} x${i.quantity}`).join(', ') || '';
+      return `- Замовлення ${o.order_number}: статус "${o.status}", сума ${o.total}₴, доставка: ${o.delivery_service || 'н/д'}, ТТН: ${o.delivery_tracking || 'не вказано'}, товари: ${items}, дата: ${new Date(o.created_at).toLocaleDateString('uk-UA')}`;
+    }).join('\n') || '';
+
+    const suppliersContext = suppliers?.map(s => `- ${s.shop_name}`).join('\n') || '';
     
     const systemPrompt = `Ти — AI-асистент маркетплейсу Taverna, спеціалізованого на тактичному та військовому спорядженні.
     
+Твої можливості:
+1. Пошук товарів за описом, фото, характеристиками
+2. Перевірка статусу замовлень користувача
+3. Допомога з поверненням товарів (через фото)
+4. Підбір розмірів одягу та взуття
+5. Пошук постачальників за типом товару
+6. З'єднання клієнта з постачальником
+
 Правила:
 1. Відповідай ТІЛЬКИ українською мовою
 2. Будь дружнім та професійним
-3. Використовуй емодзі помірковано
+3. Використовуй емодзі помірковано для наочності
 4. Якщо користувач питає про товар — шукай у наявному каталозі
-5. Якщо питає про замовлення — перевір статус в історії
-6. Для підбору розміру — проси виміри (груди, талія, стопа)
-7. Для повернення — поясни процедуру та запитай фото товару
+5. Якщо питає про замовлення — надай статус та деталі з історії
+6. Для підбору розміру — проси виміри (груди, талія, стопа в см)
+7. Для повернення — поясни процедуру та попроси фото товару
 8. НЕ вигадуй інформацію, якої не маєш
+9. Якщо отримав фото — аналізуй його детально та допомагай
 
 Користувач: ${userName}
-${userOrders?.length ? `\nЙого замовлення:\n${ordersContext}` : ''}
+${userOrders?.length ? `\n📦 Його замовлення:\n${ordersContext}` : '\n(Замовлень немає або користувач не авторизований)'}
 
-Доступні товари (приклад):\n${productContext}
+🛍️ Приклади доступних товарів:\n${productContext}
 
-Процедура повернення:
+🏪 Доступні постачальники:\n${suppliersContext}
+
+📋 Процедура повернення:
 1. Товар можна повернути протягом 14 днів
 2. Товар має бути в оригінальній упаковці
 3. Надішліть фото товару для перевірки
 4. Ми створимо ТТН на повернення через Нову Пошту
 
-ВАЖЛИВО: Відповідай коротко (до 3-4 речень), якщо не потрібно більше деталей.`;
+📐 Розміри (орієнтовно):
+- S: груди 88-92см, талія 73-77см
+- M: груди 96-100см, талія 81-85см  
+- L: груди 104-108см, талія 89-93см
+- XL: груди 112-116см, талія 97-101см
+- Взуття: вказуйте довжину стопи в см
+
+ВАЖЛИВО: Відповідай коротко (до 4-5 речень), якщо не потрібно більше деталей. Якщо отримав фото — аналізуй що на ньому та пропонуй відповідні дії.`;
 
     // Prepare messages for AI
     const messages: any[] = [

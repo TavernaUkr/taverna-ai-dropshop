@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect } from "react";
-import { Bot, X, Send, Loader2, Package, HelpCircle, Sparkles, MapPin, Paperclip, Image as ImageIcon, RotateCcw } from "lucide-react";
+import { Bot, X, Send, Loader2, Package, HelpCircle, Sparkles, MapPin, Paperclip, Camera, Image as ImageIcon, RotateCcw, User, Store, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useTelegramAuthContext } from "@/components/TelegramAuthProvider";
+import { useNavigate } from "react-router-dom";
+import { hapticImpact } from "@/lib/haptics";
 
 interface Message {
   id: string;
@@ -12,23 +14,30 @@ interface Message {
   content: string;
   timestamp: Date;
   image?: string;
+  actions?: Array<{
+    type: "order" | "supplier" | "product" | "support";
+    label: string;
+    data: string;
+  }>;
 }
 
 const quickActions = [
-  { icon: Package, label: "Де моє замовлення?", prompt: "Де моє замовлення?" },
+  { icon: Package, label: "Де моє замовлення?", prompt: "Де моє замовлення? Покажи мої останні замовлення" },
   { icon: HelpCircle, label: "Допоможи обрати розмір", prompt: "Допоможи обрати правильний розмір" },
-  { icon: Sparkles, label: "Акції дня", prompt: "Які зараз є акції та знижки?" },
-  { icon: RotateCcw, label: "Повернення товару", prompt: "Як повернути або обміняти товар?" },
+  { icon: Store, label: "Знайти постачальника", prompt: "Допоможи знайти постачальника тактичного спорядження" },
+  { icon: RotateCcw, label: "Повернення товару", prompt: "Хочу повернути або обміняти товар. Як це зробити?" },
+  { icon: Search, label: "Знайти товар", prompt: "Допоможи знайти потрібний товар" },
 ];
 
 export const AIChatAssistant = () => {
+  const navigate = useNavigate();
   const { sessionToken, profile } = useTelegramAuthContext();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "welcome",
       role: "assistant",
-      content: "Вітаю! 👋 Я ваш AI-асистент Taverna. Чим можу допомогти? Можу знайти товари, перевірити статус замовлення, підібрати розмір або допомогти з поверненням.",
+      content: "Вітаю! 👋 Я ваш AI-асистент Taverna. Чим можу допомогти?\n\n📦 Перевірити замовлення\n🔍 Знайти товар або постачальника\n📐 Підібрати розмір\n↩️ Допомогти з поверненням\n📸 Надішліть фото — я розпізнаю товар!",
       timestamp: new Date(),
     },
   ]);
@@ -39,6 +48,7 @@ export const AIChatAssistant = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -60,11 +70,32 @@ export const AIChatAssistant = () => {
       setMessages([{
         id: "welcome",
         role: "assistant",
-        content: `Вітаю, ${profile.first_name}! 👋 Я ваш AI-асистент Taverna. Чим можу допомогти? Можу знайти товари, перевірити ваші замовлення, підібрати розмір або допомогти з поверненням.`,
+        content: `Вітаю, ${profile.first_name}! 👋 Я ваш AI-асистент Taverna.\n\n📦 Перевірити ваші замовлення\n🔍 Знайти товар або постачальника\n📐 Підібрати розмір\n↩️ Допомогти з поверненням\n📸 Надішліть фото — я розпізнаю товар!`,
         timestamp: new Date(),
       }]);
     }
   }, [profile?.first_name]);
+
+  // Camera capture handler
+  const handleCameraCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
+    hapticImpact("light");
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error('Файл занадто великий (макс. 10MB)');
+        return;
+      }
+      
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSelectedImage(reader.result as string);
+        setSelectedFileName("Фото з камери");
+        toast.success('Фото готове до відправки');
+      };
+      reader.readAsDataURL(file);
+    }
+    e.target.value = '';
+  };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -323,12 +354,38 @@ export const AIChatAssistant = () => {
           {/* Input */}
           <form onSubmit={handleSubmit} className="p-4 border-t border-border">
             <div className="flex items-center gap-2">
+              {/* Camera Button - Direct camera capture */}
+              <button
+                type="button"
+                onClick={() => {
+                  hapticImpact("light");
+                  cameraInputRef.current?.click();
+                }}
+                className="h-11 w-11 rounded-xl flex items-center justify-center bg-gradient-to-br from-primary/20 to-accent/20 hover:from-primary/30 hover:to-accent/30 text-primary hover:text-accent-foreground transition-all"
+                disabled={isTyping}
+                title="Зробити фото"
+              >
+                <Camera className="h-5 w-5" />
+              </button>
+              <input
+                ref={cameraInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handleCameraCapture}
+                className="hidden"
+              />
+
               {/* File Upload Button */}
               <button
                 type="button"
-                onClick={() => fileInputRef.current?.click()}
+                onClick={() => {
+                  hapticImpact("light");
+                  fileInputRef.current?.click();
+                }}
                 className="h-11 w-11 rounded-xl flex items-center justify-center bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors"
                 disabled={isTyping}
+                title="Додати файл"
               >
                 <Paperclip className="h-5 w-5" />
               </button>
@@ -369,8 +426,13 @@ export const AIChatAssistant = () => {
               </Button>
             </div>
             
+            {/* Photo hint */}
+            <p className="text-[10px] text-center text-muted-foreground mt-2">
+              📸 Сфоткайте товар для пошуку або повернення
+            </p>
+            
             {/* Disclaimer */}
-            <p className="text-[10px] text-center text-muted-foreground mt-3">
+            <p className="text-[10px] text-center text-muted-foreground mt-1 opacity-70">
               Працює на базі Google Gemini AI • Дані захищені
             </p>
           </form>
