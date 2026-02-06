@@ -1,11 +1,13 @@
-import { ShoppingCart, Heart, Package, Star, TrendingUp } from "lucide-react";
+import { ShoppingCart, Heart, Package, Star, TrendingUp, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LowStockBadge } from "./product/LowStockBadge";
 import { VerifiedBadge } from "./ui/verified-badge";
 import { VariantSelectionModal } from "./product/VariantSelectionModal";
+import { FindSimilarButton } from "./product/FindSimilarButton";
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { hapticImpact } from "@/lib/haptics";
+
 interface ProductCardProps {
   id: string;
   name: string;
@@ -25,6 +27,7 @@ interface ProductCardProps {
   viewsCount?: number;
   supplierRating?: number;
   supplierVerified?: boolean;
+  aiTags?: string[];
   onClick?: () => void;
   onAddToCart?: (size?: string, color?: string) => void;
   onToggleFavorite?: () => void;
@@ -159,6 +162,7 @@ export const ProductCard = ({
   viewsCount,
   supplierRating,
   supplierVerified = false,
+  aiTags,
   onClick,
   onAddToCart,
   onToggleFavorite
@@ -349,6 +353,16 @@ export const ProductCard = ({
                 {hasMoreColors && <span className="text-[9px] text-muted-foreground">+{colors!.length - 4}</span>}
               </div>}
           </div>
+        </div>
+
+        {/* Find Similar Button */}
+        <div className="mt-2 pt-2 border-t border-border/50">
+          <FindSimilarButton
+            productName={name}
+            productCategory={category}
+            productTags={aiTags}
+            variant="chip"
+          />
         </div>
       </div>
 
