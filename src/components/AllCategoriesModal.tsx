@@ -4,9 +4,12 @@ import { Shield, Shirt, Watch, Footprints, Backpack, Target, Car, Gamepad, Gift,
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
+import { getCategoryGradient } from "@/lib/categoryColors";
+import { motion } from "framer-motion";
 
 interface Category {
   id: string;
+  slug: string;
   name: string;
   icon: React.ReactNode;
   count: number;
@@ -20,13 +23,31 @@ interface AllCategoriesModalProps {
   onSelectCategory: (categoryId: string, subcategoryId?: string) => void;
 }
 
+// Icon mapping by slug
+const iconMap: Record<string, React.ReactNode> = {
+  'military': <Shield className="h-5 w-5" />,
+  'clothing': <Shirt className="h-5 w-5" />,
+  'accessories': <Watch className="h-5 w-5" />,
+  'footwear': <Footprints className="h-5 w-5" />,
+  'bags': <Backpack className="h-5 w-5" />,
+  'tactical': <Target className="h-5 w-5" />,
+  'auto': <Car className="h-5 w-5" />,
+  'gaming': <Gamepad className="h-5 w-5" />,
+  'gifts': <Gift className="h-5 w-5" />,
+  'home': <Home className="h-5 w-5" />,
+  'electronics': <Smartphone className="h-5 w-5" />,
+  'kids': <Baby className="h-5 w-5" />,
+};
+
+// Fallback static categories (using getCategoryGradient for consistency)
 const allCategories: Category[] = [
   { 
     id: "military", 
+    slug: "military",
     name: "Мілітарі", 
-    icon: <Shield className="h-5 w-5" />, 
+    icon: iconMap['military'], 
     count: 156, 
-    gradient: "from-[#4a5d23] to-[#6b7b3e]",
+    gradient: getCategoryGradient('military'),
     subcategories: [
       { id: "military-clothes", name: "Одяг", count: 45 },
       { id: "military-boots", name: "Взуття", count: 32 },
@@ -37,10 +58,11 @@ const allCategories: Category[] = [
   },
   { 
     id: "clothing", 
+    slug: "clothing",
     name: "Одяг", 
-    icon: <Shirt className="h-5 w-5" />, 
+    icon: iconMap['clothing'], 
     count: 234, 
-    gradient: "from-primary to-primary/70",
+    gradient: getCategoryGradient('clothing'),
     subcategories: [
       { id: "clothing-men", name: "Чоловічий", count: 120 },
       { id: "clothing-women", name: "Жіночий", count: 80 },
@@ -49,10 +71,11 @@ const allCategories: Category[] = [
   },
   { 
     id: "accessories", 
+    slug: "accessories",
     name: "Аксесуари", 
-    icon: <Watch className="h-5 w-5" />, 
+    icon: iconMap['accessories'], 
     count: 89, 
-    gradient: "from-accent to-accent/70",
+    gradient: getCategoryGradient('accessories'),
     subcategories: [
       { id: "accessories-watches", name: "Годинники", count: 25 },
       { id: "accessories-glasses", name: "Окуляри", count: 18 },
@@ -62,10 +85,11 @@ const allCategories: Category[] = [
   },
   { 
     id: "footwear", 
+    slug: "footwear",
     name: "Взуття", 
-    icon: <Footprints className="h-5 w-5" />, 
+    icon: iconMap['footwear'], 
     count: 67, 
-    gradient: "from-[#5a4a3a] to-[#7a6a5a]",
+    gradient: getCategoryGradient('footwear'),
     subcategories: [
       { id: "footwear-boots", name: "Берці", count: 25 },
       { id: "footwear-sneakers", name: "Кросівки", count: 22 },
@@ -74,65 +98,24 @@ const allCategories: Category[] = [
   },
   { 
     id: "bags", 
+    slug: "bags",
     name: "Сумки та рюкзаки", 
-    icon: <Backpack className="h-5 w-5" />, 
+    icon: iconMap['bags'], 
     count: 45, 
-    gradient: "from-[#3a4a5a] to-[#5a6a7a]",
+    gradient: getCategoryGradient('bags'),
     subcategories: [
       { id: "bags-backpacks", name: "Рюкзаки", count: 25 },
       { id: "bags-tactical", name: "Тактичні сумки", count: 12 },
       { id: "bags-everyday", name: "Повсякденні", count: 8 },
     ]
   },
-  { 
-    id: "tactical", 
-    name: "Тактика", 
-    icon: <Target className="h-5 w-5" />, 
-    count: 112, 
-    gradient: "from-[#2a3a2a] to-[#4a5a4a]" 
-  },
-  { 
-    id: "auto", 
-    name: "Авто", 
-    icon: <Car className="h-5 w-5" />, 
-    count: 78, 
-    gradient: "from-[#3a3a4a] to-[#5a5a6a]" 
-  },
-  { 
-    id: "gaming", 
-    name: "Ігри та розваги", 
-    icon: <Gamepad className="h-5 w-5" />, 
-    count: 56, 
-    gradient: "from-[#4a3a5a] to-[#6a5a7a]" 
-  },
-  { 
-    id: "gifts", 
-    name: "Подарунки", 
-    icon: <Gift className="h-5 w-5" />, 
-    count: 43, 
-    gradient: "from-warning to-warning/70" 
-  },
-  { 
-    id: "home", 
-    name: "Дім та сад", 
-    icon: <Home className="h-5 w-5" />, 
-    count: 98, 
-    gradient: "from-[#4a5a3a] to-[#6a7a5a]" 
-  },
-  { 
-    id: "electronics", 
-    name: "Електроніка", 
-    icon: <Smartphone className="h-5 w-5" />, 
-    count: 134, 
-    gradient: "from-[#3a4a5a] to-[#5a6a7a]" 
-  },
-  { 
-    id: "kids", 
-    name: "Дитячі товари", 
-    icon: <Baby className="h-5 w-5" />, 
-    count: 67, 
-    gradient: "from-[#5a4a6a] to-[#7a6a8a]" 
-  },
+  { id: "tactical", slug: "tactical", name: "Тактика", icon: iconMap['tactical'], count: 112, gradient: getCategoryGradient('tactical') },
+  { id: "auto", slug: "auto", name: "Авто", icon: iconMap['auto'], count: 78, gradient: getCategoryGradient('auto') },
+  { id: "gaming", slug: "gaming", name: "Ігри та розваги", icon: iconMap['gaming'], count: 56, gradient: getCategoryGradient('gaming') },
+  { id: "gifts", slug: "gifts", name: "Подарунки", icon: iconMap['gifts'], count: 43, gradient: getCategoryGradient('gifts') },
+  { id: "home", slug: "home", name: "Дім та сад", icon: iconMap['home'], count: 98, gradient: getCategoryGradient('home') },
+  { id: "electronics", slug: "electronics", name: "Електроніка", icon: iconMap['electronics'], count: 134, gradient: getCategoryGradient('electronics') },
+  { id: "kids", slug: "kids", name: "Дитячі товари", icon: iconMap['kids'], count: 67, gradient: getCategoryGradient('kids') },
 ];
 
 export const AllCategoriesModal = ({ isOpen, onClose, onSelectCategory }: AllCategoriesModalProps) => {
@@ -165,43 +148,13 @@ export const AllCategoriesModal = ({ isOpen, onClose, onSelectCategory }: AllCat
               .filter(c => c.parent_id === parent.id)
               .map(c => ({ id: c.id, name: c.name, count: c.product_count || 0 }));
             
-            // Map to icon based on slug
-            const iconMap: Record<string, React.ReactNode> = {
-              'military': <Shield className="h-5 w-5" />,
-              'clothing': <Shirt className="h-5 w-5" />,
-              'accessories': <Watch className="h-5 w-5" />,
-              'footwear': <Footprints className="h-5 w-5" />,
-              'bags': <Backpack className="h-5 w-5" />,
-              'tactical': <Target className="h-5 w-5" />,
-              'auto': <Car className="h-5 w-5" />,
-              'gaming': <Gamepad className="h-5 w-5" />,
-              'gifts': <Gift className="h-5 w-5" />,
-              'home': <Home className="h-5 w-5" />,
-              'electronics': <Smartphone className="h-5 w-5" />,
-              'kids': <Baby className="h-5 w-5" />,
-            };
-            
-            const gradientMap: Record<string, string> = {
-              'military': 'from-[#4a5d23] to-[#6b7b3e]',
-              'clothing': 'from-primary to-primary/70',
-              'accessories': 'from-accent to-accent/70',
-              'footwear': 'from-[#5a4a3a] to-[#7a6a5a]',
-              'bags': 'from-[#3a4a5a] to-[#5a6a7a]',
-              'tactical': 'from-[#2a3a2a] to-[#4a5a4a]',
-              'auto': 'from-[#3a3a4a] to-[#5a5a6a]',
-              'gaming': 'from-[#4a3a5a] to-[#6a5a7a]',
-              'gifts': 'from-warning to-warning/70',
-              'home': 'from-[#4a5a3a] to-[#6a7a5a]',
-              'electronics': 'from-[#3a4a5a] to-[#5a6a7a]',
-              'kids': 'from-[#5a4a6a] to-[#7a6a8a]',
-            };
-            
             return {
               id: parent.id,
+              slug: parent.slug,
               name: parent.name,
               icon: iconMap[parent.slug] || <Target className="h-5 w-5" />,
               count: parent.product_count || 0,
-              gradient: gradientMap[parent.slug] || 'from-primary to-primary/70',
+              gradient: getCategoryGradient(parent.slug),
               subcategories: subs.length > 0 ? subs : undefined,
             };
           });
@@ -310,38 +263,43 @@ export const AllCategoriesModal = ({ isOpen, onClose, onSelectCategory }: AllCat
           ) : (
             // All Categories View
             <div className="grid grid-cols-2 gap-3">
-              {categoriesToShow.map((category) => (
-                <button
+              {categoriesToShow.map((category, index) => (
+                <motion.button
                   key={category.id}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.03, duration: 0.3 }}
+                  whileHover={{ scale: 1.03, y: -2 }}
+                  whileTap={{ scale: 0.97 }}
                   onClick={() => handleCategoryClick(category)}
                   className={cn(
-                    "relative overflow-hidden rounded-xl p-4 text-left",
+                    "relative overflow-hidden rounded-2xl p-4 text-left",
                     "bg-gradient-to-br",
                     category.gradient,
-                    "text-white",
-                    "hover:scale-[1.02] active:scale-[0.98]",
-                    "transition-transform duration-200",
-                    "shadow-md hover:shadow-lg",
-                    "min-h-[100px]"
+                    "text-primary-foreground",
+                    "shadow-lg hover:shadow-xl",
+                    "min-h-[110px]",
+                    "transform-gpu"
                   )}
                 >
-                  {/* Background Pattern */}
-                  <div className="absolute inset-0 opacity-10">
-                    <div className="absolute -right-4 -bottom-4 w-20 h-20 rounded-full bg-white/20" />
+                  {/* Premium Background Pattern */}
+                  <div className="absolute inset-0 opacity-[0.12]">
+                    <div className="absolute -right-6 -bottom-6 w-28 h-28 rounded-full bg-white blur-sm" />
+                    <div className="absolute -right-10 -top-10 w-24 h-24 rounded-full bg-white/80 blur-md" />
                   </div>
 
                   {/* Content */}
                   <div className="relative z-10">
-                    <div className="w-10 h-10 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center mb-2">
+                    <div className="w-11 h-11 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-3 shadow-inner border border-white/10">
                       {category.icon}
                     </div>
-                    <h3 className="font-semibold text-sm">{category.name}</h3>
-                    <p className="text-xs opacity-80 mt-0.5">{category.count} товарів</p>
+                    <h3 className="font-bold text-sm tracking-tight">{category.name}</h3>
+                    <p className="text-xs opacity-75 mt-1 font-medium">{category.count} товарів</p>
                     {category.subcategories && (
-                      <ChevronRight className="absolute top-4 right-3 h-4 w-4 opacity-60" />
+                      <ChevronRight className="absolute top-4 right-3 h-4 w-4 opacity-70" />
                     )}
                   </div>
-                </button>
+                </motion.button>
               ))}
             </div>
           )}
