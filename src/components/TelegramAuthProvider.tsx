@@ -77,7 +77,31 @@ const TelegramAuthContext = createContext<TelegramAuthContextType | null>(null);
 export function useTelegramAuthContext() {
   const context = useContext(TelegramAuthContext);
   if (!context) {
-    throw new Error('useTelegramAuthContext must be used within TelegramAuthProvider');
+    // Return a safe default context for SSR or when provider is not available
+    // This prevents crashes during hot reload or initial render
+    console.warn('useTelegramAuthContext called outside of TelegramAuthProvider, returning defaults');
+    return {
+      isAuthenticated: false,
+      isRealAuthenticated: false,
+      isLoading: true,
+      rolesLoading: true,
+      profile: null,
+      realProfile: null,
+      addresses: [],
+      sessionToken: null,
+      error: null,
+      roles: [] as AppRole[],
+      realRoles: [] as AppRole[],
+      effectiveRole: 'guest' as TestRole,
+      devRoleOverride: null,
+      canUseDevRoleSwitcher: false,
+      setDevRoleOverride: () => {},
+      logout: async () => {},
+      updateProfile: async () => null,
+      addAddress: async () => null,
+      updateAddress: async () => null,
+      deleteAddress: async () => false,
+    };
   }
   return context;
 }
