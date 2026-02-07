@@ -213,23 +213,28 @@ export const ProductCard = ({
   };
   return <motion.div initial={{
     opacity: 0,
-    y: 20
+    y: 16,
+    scale: 0.98
   }} animate={{
     opacity: 1,
-    y: 0
+    y: 0,
+    scale: 1
   }} whileHover={{
-    scale: 1.02
+    y: -4,
+    scale: 1.01
   }} whileTap={{
     scale: 0.98
   }} transition={{
-    duration: 0.3
-  }} className={cn("group relative bg-card rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 border border-border/50", isBoosted && "ring-2 ring-primary/50 shadow-primary/20 shadow-lg")} onClick={onClick}>
+    duration: 0.35,
+    ease: [0.16, 1, 0.3, 1]
+  }} className={cn("group relative bg-card rounded-2xl overflow-hidden shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-xl)] transition-all duration-400 border border-border/40", isBoosted && "ring-2 ring-accent/60 shadow-[var(--shadow-glow)]")} onClick={onClick}>
       {/* Image with Video Preview on Hover */}
       <div className="relative aspect-square overflow-hidden bg-muted">
         {/* Boosted Badge - Inside image container at top */}
-        {isBoosted && <div className="absolute top-0 left-0 right-0 z-20 bg-gradient-to-r from-primary via-primary/80 to-accent text-primary-foreground text-[10px] font-bold py-1.5 text-center flex items-center justify-center gap-1">
-            <TrendingUp className="h-3 w-3" />
-            ТОП ПРОПОЗИЦІЯ
+        {isBoosted && <div className="absolute top-0 left-0 right-0 z-20 bg-gradient-to-r from-accent via-accent/90 to-primary text-accent-foreground text-[10px] font-bold py-1.5 text-center flex items-center justify-center gap-1.5 shadow-lg">
+            <TrendingUp className="h-3 w-3 animate-pulse" />
+            <span className="tracking-wide">ТОП ПРОПОЗИЦІЯ</span>
+            <Sparkles className="h-3 w-3" />
           </div>}
         
         {/* Video Preview (shows on hover if video exists) */}
@@ -245,22 +250,26 @@ export const ProductCard = ({
           </div>}
 
         {/* Badges Stack - Top left, below boosted banner */}
-        <div className={cn("absolute left-3 flex-col gap-1 z-10 flex items-start justify-start", isBoosted ? "top-10" : "top-3")}>
-          {/* Discount Badge - Smaller size */}
-          {discount > 0 && inStock && <div className="bg-live text-live-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-md shadow-lg">
+        <div className={cn("absolute left-3 flex-col gap-1.5 z-10 flex items-start justify-start", isBoosted ? "top-11" : "top-3")}>
+          {/* Discount Badge - Premium style */}
+          {discount > 0 && inStock && <div className="bg-gradient-to-r from-live to-live/90 text-live-foreground text-[10px] font-bold px-2 py-1 rounded-lg shadow-lg backdrop-blur-sm">
               -{discount}%
             </div>}
 
           {/* Savings Badge */}
-          {savings >= 100 && inStock && <div className="bg-accent text-accent-foreground text-[10px] font-medium px-2 py-0.5 rounded-full shadow-md">
+          {savings >= 100 && inStock && <div className="bg-gradient-to-r from-accent/95 to-success/80 text-accent-foreground text-[10px] font-semibold px-2.5 py-1 rounded-full shadow-md backdrop-blur-sm">
               Економія {savings.toLocaleString()} ₴
             </div>}
         </div>
 
         {/* Favorite Button - Top right, with offset for boosted */}
-        <button onClick={handleToggleFavorite} className={cn("absolute right-3 w-9 h-9 rounded-full flex items-center justify-center transition-all shadow-lg backdrop-blur-sm z-20", isBoosted ? "top-10" : "top-3", isFavorite ? "bg-live/90 text-live-foreground scale-110" : "bg-background/80 text-muted-foreground hover:text-live hover:bg-background hover:scale-110")}>
-          <Heart className={cn("h-4 w-4", isFavorite && "fill-current")} />
-        </button>
+        <motion.button 
+          onClick={handleToggleFavorite} 
+          whileHover={{ scale: 1.15 }}
+          whileTap={{ scale: 0.9 }}
+          className={cn("absolute right-3 w-10 h-10 rounded-xl flex items-center justify-center transition-all shadow-lg backdrop-blur-md z-20 border border-white/20", isBoosted ? "top-11" : "top-3", isFavorite ? "bg-live text-live-foreground" : "bg-background/70 text-muted-foreground hover:text-live hover:bg-background/90")}>
+          <Heart className={cn("h-4 w-4 transition-transform", isFavorite && "fill-current scale-110")} />
+        </motion.button>
 
         {/* Verified Supplier Badge - Next to favorite */}
         {isVerifiedSupplier && <div className={cn("absolute right-14 z-20", isBoosted ? "top-10" : "top-3")}>
@@ -280,48 +289,55 @@ export const ProductCard = ({
           </div>}
 
         {/* Quick Add Button - Always visible on mobile, hover on desktop */}
-        {inStock && <motion.button onClick={handleAddToCart} initial={{
-        opacity: 1
-      }} whileHover={{
-        scale: 1.1
-      }} whileTap={{
-        scale: 0.95
-      }} className={cn("absolute bottom-3 right-3 w-11 h-11 rounded-full z-30", "bg-accent text-accent-foreground shadow-lg", "flex items-center justify-center", "opacity-100 md:opacity-0 md:group-hover:opacity-100", "transition-opacity duration-300")}>
-            <ShoppingCart className="h-5 w-5" />
+        {inStock && <motion.button 
+          onClick={handleAddToCart} 
+          initial={{ opacity: 1, scale: 1 }}
+          whileHover={{ scale: 1.12 }}
+          whileTap={{ scale: 0.92 }}
+          transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+          className={cn(
+            "absolute bottom-3 right-3 w-12 h-12 rounded-xl z-30",
+            "bg-gradient-to-br from-accent to-accent/90 text-accent-foreground",
+            "shadow-lg shadow-accent/30 hover:shadow-xl hover:shadow-accent/40",
+            "flex items-center justify-center",
+            "opacity-100 md:opacity-0 md:group-hover:opacity-100",
+            "transition-all duration-300 border border-white/20"
+          )}>
+            <ShoppingCart className="h-5 w-5 drop-shadow-sm" />
           </motion.button>}
       </div>
 
       {/* Info */}
-      <div className="p-3">
-        <h3 className="text-sm font-medium text-card-foreground line-clamp-2 min-h-[40px] leading-snug">
+      <div className="p-4">
+        <h3 className="text-sm font-semibold text-card-foreground line-clamp-2 min-h-[42px] leading-snug tracking-tight">
           {name}
         </h3>
         
         {/* Rating */}
-        {rating !== undefined && rating > 0 && <div className="flex items-center gap-1 mt-1">
+        {rating !== undefined && rating > 0 && <div className="flex items-center gap-1.5 mt-1.5">
             <div className="flex items-center gap-0.5">
-              {[1, 2, 3, 4, 5].map(star => <Star key={star} className={cn("h-3 w-3", star <= Math.round(rating) ? "text-warning fill-warning" : "text-muted")} />)}
+              {[1, 2, 3, 4, 5].map(star => <Star key={star} className={cn("h-3.5 w-3.5 transition-colors", star <= Math.round(rating) ? "text-warning fill-warning drop-shadow-sm" : "text-muted/50")} />)}
             </div>
-            {reviewCount !== undefined && reviewCount > 0 && <span className="text-[10px] text-muted-foreground">
+            {reviewCount !== undefined && reviewCount > 0 && <span className="text-[11px] text-muted-foreground font-medium">
                 ({reviewCount})
               </span>}
           </div>}
         
         {/* Price and Variants Row */}
-        <div className="mt-2 flex items-start justify-between gap-2">
+        <div className="mt-3 flex items-start justify-between gap-2">
           {/* Price Column */}
-          <div className="flex flex-col gap-0.5">
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-lg font-bold text-primary">
+          <div className="flex flex-col gap-1">
+            <div className="flex items-baseline gap-2">
+              <span className="text-xl font-bold text-primary tracking-tight">
                 {price.toLocaleString()} ₴
               </span>
-              {inStock && <span className="text-[10px] font-medium text-live bg-live/10 px-1 py-0.5 rounded">
+              {inStock && <span className="text-[10px] font-bold text-live bg-gradient-to-r from-live/15 to-live/10 px-1.5 py-0.5 rounded-md border border-live/20">
                   Акція
                 </span>}
             </div>
             
             {/* Marketing "old price" */}
-            {inStock && <span className="text-xs text-muted-foreground line-through">
+            {inStock && <span className="text-xs text-muted-foreground/70 line-through decoration-muted-foreground/40">
                 {marketingOldPrice.toLocaleString()} ₴
               </span>}
           </div>
@@ -356,7 +372,7 @@ export const ProductCard = ({
         </div>
 
         {/* Find Similar Button */}
-        <div className="mt-2 pt-2 border-t border-border/50">
+        <div className="mt-3 pt-3 border-t border-border/30">
           <FindSimilarButton
             productName={name}
             productCategory={category}
