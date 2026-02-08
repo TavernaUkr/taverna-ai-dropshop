@@ -230,30 +230,10 @@ const LiveTab = () => (
 );
 
 const AccountTab = () => {
-  const navigate = useNavigate();
-  const { isAuthenticated, roles } = useTelegramAuthContext();
-
-  const isPartnerUser = roles.includes("supplier") || roles.includes("admin") || roles.includes("moderator");
-  
   return (
     <div className="space-y-4 pb-28 animate-fade-in">
-      {/* Profile Dashboard with full functionality */}
+      {/* Profile Dashboard with full functionality - no duplicate buttons */}
       <ProfileDashboard />
-      
-      {/* Partner Banner - Available for ALL users (guest, client, supplier, moderator, admin) */}
-      <PartnerBanner onClick={() => navigate("/partner")} />
-      
-      {/* Partner Panel Link - Only for suppliers/moderators/admins */}
-      {isAuthenticated && isPartnerUser && (
-        <div className="mt-2">
-          <Link 
-            to="/manager" 
-            className="w-full flex items-center justify-center gap-2 p-3 bg-primary/10 rounded-xl text-primary hover:bg-primary/20 transition-colors text-sm font-medium"
-          >
-            🔧 Панель партнера
-          </Link>
-        </div>
-      )}
     </div>
   );
 };

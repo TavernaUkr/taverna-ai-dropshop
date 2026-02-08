@@ -70,12 +70,6 @@ export const ProfileDashboard = () => {
     }
   }, [isAuthenticated]);
 
-  // Affiliate data (mock)
-  const affiliateData = {
-    balance: 150,
-    referralCount: 3,
-    referralLink: `https://t.me/TavernaBot/app?startapp=ref_${profile?.id?.slice(0, 8) || "guest"}`,
-  };
 
   const handleLogout = async () => {
     await logout();
@@ -322,133 +316,50 @@ export const ProfileDashboard = () => {
         </button>
       )}
 
-      {/* Tabs - Only show full tabs when authenticated */}
+      {/* Personal Bonuses Button - For all authenticated users */}
+      {isAuthenticated && (
+        <button
+          onClick={() => {
+            hapticSelection();
+            navigate("/personal-bonuses");
+          }}
+          className="w-full flex items-center gap-4 p-4 rounded-xl border transition-all bg-gradient-to-r from-accent/5 to-primary/5 border-accent/20 hover:border-accent hover:from-accent/10 hover:to-primary/10"
+        >
+          <div className="w-12 h-12 rounded-full flex items-center justify-center bg-gradient-to-br from-accent/20 to-primary/20">
+            <Gift className="h-6 w-6 text-accent" />
+          </div>
+          <div className="flex-1 text-left">
+            <h4 className="font-semibold text-foreground">Персональні бонуси</h4>
+            <p className="text-xs text-muted-foreground">
+              Унікальні пропозиції під ваші вподобання
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium bg-accent/10 text-accent px-2 py-1 rounded-full">
+              Нове
+            </span>
+            <ChevronRight className="h-5 w-5 text-accent" />
+          </div>
+        </button>
+      )}
+
+      {/* Tabs - Only show tabs when authenticated (Orders & Settings only) */}
       {isAuthenticated ? (
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="w-full grid grid-cols-3 h-12">
+          <TabsList className="w-full grid grid-cols-2 h-12">
             <TabsTrigger value="orders" className="flex items-center gap-2">
               <Package className="h-4 w-4" />
-              <span className="hidden sm:inline">Замовлення</span>
-            </TabsTrigger>
-            <TabsTrigger value="affiliate" className="flex items-center gap-2">
-              <Gift className="h-4 w-4" />
-              <span className="hidden sm:inline">Бонуси</span>
+              <span>Замовлення</span>
             </TabsTrigger>
             <TabsTrigger value="settings" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
-              <span className="hidden sm:inline">Налаштування</span>
+              <span>Налаштування</span>
             </TabsTrigger>
           </TabsList>
 
           {/* Orders Tab */}
           <TabsContent value="orders" className="mt-4">
             <OrdersHistory />
-          </TabsContent>
-
-          {/* Bonuses Tab */}
-          <TabsContent value="affiliate" className="mt-4 space-y-4">
-            {/* Balance Card */}
-            <div className="bg-gradient-to-br from-primary/20 to-accent/20 rounded-xl p-5 border border-primary/20">
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-sm text-muted-foreground">Мій бонусний баланс</span>
-                <Gift className="h-5 w-5 text-primary" />
-              </div>
-              <div className="text-3xl font-bold text-foreground">
-                {affiliateData.balance} ₴
-              </div>
-              <p className="text-sm text-muted-foreground mt-1">
-                Можна використати при наступному замовленні
-              </p>
-            </div>
-
-            {/* Personalized Offers Section */}
-            <div className="bg-card rounded-xl border border-border overflow-hidden">
-              <div className="p-4 border-b border-border">
-                <h4 className="font-semibold text-foreground flex items-center gap-2">
-                  <Gift className="h-4 w-4 text-primary" />
-                  Персональні пропозиції
-                </h4>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Спеціально підібрані бонуси на основі ваших вподобань
-                </p>
-              </div>
-              
-              {/* Personalized Bonus Items */}
-              <div className="divide-y divide-border">
-                {/* Cashback offer */}
-                <div className="p-4 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                    <span className="text-lg">💰</span>
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium text-foreground text-sm">Кешбек 5%</p>
-                    <p className="text-xs text-muted-foreground">На наступне замовлення</p>
-                  </div>
-                  <span className="text-xs font-medium bg-primary/10 text-primary px-2 py-1 rounded-full">
-                    Активний
-                  </span>
-                </div>
-
-                {/* Category discount */}
-                <div className="p-4 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center">
-                    <span className="text-lg">🎯</span>
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium text-foreground text-sm">-10% на улюблену категорію</p>
-                    <p className="text-xs text-muted-foreground">Тактичне спорядження</p>
-                  </div>
-                  <span className="text-xs font-medium bg-accent/10 text-accent px-2 py-1 rounded-full">
-                    Новий
-                  </span>
-                </div>
-
-                {/* Free delivery */}
-                <div className="p-4 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                    <span className="text-lg">🚚</span>
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium text-foreground text-sm">Безкоштовна доставка</p>
-                    <p className="text-xs text-muted-foreground">При замовленні від 1500₴</p>
-                  </div>
-                  <span className="text-xs font-medium bg-muted text-muted-foreground px-2 py-1 rounded-full">
-                    Доступно
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Promo Codes Section */}
-            <div className="bg-card rounded-xl border border-border overflow-hidden">
-              <div className="p-4 border-b border-border">
-                <h4 className="font-semibold text-foreground flex items-center gap-2">
-                  <span className="text-lg">🏷️</span>
-                  Мої промокоди
-                </h4>
-              </div>
-              
-              <div className="p-4 text-center text-muted-foreground">
-                <p className="text-sm">Поки що у вас немає активних промокодів</p>
-                <Button 
-                  variant="link" 
-                  className="mt-2 text-primary"
-                  onClick={() => navigate("/promos")}
-                >
-                  Переглянути акції
-                </Button>
-              </div>
-            </div>
-
-            {/* Info about earning bonuses */}
-            <div className="bg-muted/50 rounded-xl p-4 border border-border">
-              <h4 className="font-medium text-foreground text-sm mb-2">Як отримати більше бонусів?</h4>
-              <ul className="text-xs text-muted-foreground space-y-1">
-                <li>• Запрошуйте друзів — отримуйте 100₴ за кожного</li>
-                <li>• Робіть покупки — накопичуйте кешбек</li>
-                <li>• Залишайте відгуки — отримуйте бали</li>
-              </ul>
-            </div>
           </TabsContent>
 
           {/* Settings Tab */}
