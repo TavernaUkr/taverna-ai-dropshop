@@ -1,14 +1,12 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Gift, Users, Copy, Check, Share2, Coins, ArrowRight, Sparkles } from "lucide-react";
+import { Gift, Users, Copy, Check, Share2, Coins, ArrowRight, Sparkles, ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTelegramAuthContext } from "@/components/TelegramAuthProvider";
 import { useBonuses } from "@/hooks/useBonuses";
 import { supabase } from "@/integrations/supabase/client";
 import { hapticNotification, hapticSelection } from "@/lib/haptics";
-import { Header } from "@/components/Header";
-import { BottomNavigation } from "@/components/BottomNavigation";
 import { useNavigate } from "react-router-dom";
 
 interface ReferralStats {
@@ -97,31 +95,28 @@ export default function Referrals() {
     }
   };
 
-  const handleTabChange = (tab: string) => {
+
+  const handleBack = () => {
     hapticSelection();
-    switch (tab) {
-      case "catalog":
-        navigate("/");
-        break;
-      case "suppliers":
-        navigate("/suppliers");
-        break;
-      case "live":
-        navigate("/promos");
-        break;
-      case "support":
-        navigate("/support");
-        break;
-      case "account":
-        navigate("/");
-        break;
-    }
+    navigate(-1);
   };
 
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-background flex flex-col">
-        <Header />
+        {/* Header with back button */}
+        <header className="sticky top-0 z-40 bg-card/95 backdrop-blur-md border-b border-border shadow-sm">
+          <div className="flex items-center h-14 px-4">
+            <button
+              onClick={handleBack}
+              className="w-10 h-10 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all mr-3"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <h1 className="text-lg font-semibold text-foreground">Реферальна програма</h1>
+          </div>
+        </header>
+        
         <div className="flex-1 flex items-center justify-center p-4">
           <Card className="w-full max-w-md text-center">
             <CardContent className="pt-6">
@@ -136,14 +131,24 @@ export default function Referrals() {
             </CardContent>
           </Card>
         </div>
-        <BottomNavigation activeTab="account" onTabChange={handleTabChange} />
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-background flex flex-col pb-safe">
-      <Header />
+      {/* Header with back button */}
+      <header className="sticky top-0 z-40 bg-card/95 backdrop-blur-md border-b border-border shadow-sm">
+        <div className="flex items-center h-14 px-4">
+          <button
+            onClick={handleBack}
+            className="w-10 h-10 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all mr-3"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <h1 className="text-lg font-semibold text-foreground">Реферальна програма</h1>
+        </div>
+      </header>
 
       <main className="flex-1 overflow-y-auto scrollbar-hide">
         {/* Hero Section */}
@@ -312,8 +317,6 @@ export default function Referrals() {
           </motion.div>
         </div>
       </main>
-
-      <BottomNavigation activeTab="account" onTabChange={handleTabChange} />
     </div>
   );
 }

@@ -21,6 +21,7 @@ import Support from "./pages/Support";
 import Promos from "./pages/Promos";
 import ModeratorPanel from "./pages/ModeratorPanel";
 import Referrals from "./pages/Referrals";
+import PersonalBonuses from "./pages/PersonalBonuses";
 import SupportChat from "./components/SupportChat";
 import NotFound from "./pages/NotFound";
 
@@ -103,6 +104,7 @@ function AnimatedRoutes() {
             <Route path="/promos" element={<Promos />} />
             <Route path="/moderator" element={<ModeratorPanel />} />
             <Route path="/referrals" element={<Referrals />} />
+            <Route path="/personal-bonuses" element={<PersonalBonuses />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
