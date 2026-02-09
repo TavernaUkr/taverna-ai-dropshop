@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { X, Loader2, Check, ChevronRight, ShoppingBag, Truck, User, Gift, Tag, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -115,6 +115,10 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
     }
   }, [isAuthenticated, profile]);
 
+  // Count unique suppliers
+  const uniqueSuppliers = new Set(items.map(i => i.supplierId).filter(Boolean));
+  const isMultiSupplier = uniqueSuppliers.size > 1;
+
   // Reset state when modal opens and load promo from storage
   useEffect(() => {
     if (isOpen) {
@@ -136,11 +140,16 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
       if (!isAuthenticated) {
         setContactData({ firstName: '', lastName: '', phone: '' });
       }
+
+      // Auto-select fulfillment for multi-supplier orders
+      const autoService: DeliveryService = 'nova_poshta';
+      const autoType: DeliveryType = isMultiSupplier ? 'fulfillment' : 'warehouse';
+
       // Pre-fill delivery data from saved profile if available
       if (isAuthenticated && profile) {
         setDeliveryData({
-          service: 'nova_poshta',
-          deliveryType: 'warehouse',
+          service: autoService,
+          deliveryType: autoType,
           city: profile.last_city || '',
           cityRef: profile.last_city_ref || '',
           warehouse: profile.last_warehouse || '',
@@ -151,8 +160,8 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
         });
       } else {
         setDeliveryData({ 
-          service: 'nova_poshta',
-          deliveryType: 'warehouse',
+          service: autoService,
+          deliveryType: autoType,
           city: '', 
           cityRef: '', 
           warehouse: '', 
@@ -165,7 +174,7 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
       setPaymentMethod('cash');
       setOrderNotes('');
     }
-  }, [isOpen, isAuthenticated, profile]);
+  }, [isOpen, isAuthenticated, profile, isMultiSupplier]);
 
   if (!isOpen) return null;
 
@@ -397,6 +406,26 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
           <p className="text-xs text-muted-foreground">Оберіть службу та спосіб отримання</p>
         </div>
       </div>
+
+      {/* Multi-supplier auto-fulfillment warning */}
+      {isMultiSupplier && deliveryData.deliveryType !== 'fulfillment' && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 space-y-2">
+          <p className="text-sm font-medium text-foreground flex items-center gap-2">
+            ⚠️ Товари від {uniqueSuppliers.size} постачальників
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Обрано окрему доставку — кожна посилка оплачується окремо. 
+            Рекомендуємо Фулфілмент НП для економії.
+          </p>
+          <button
+            type="button"
+            onClick={() => setDeliveryData(prev => ({ ...prev, service: 'nova_poshta', deliveryType: 'fulfillment' }))}
+            className="text-xs font-medium text-primary hover:underline"
+          >
+            Обрати Фулфілмент НП →
+          </button>
+        </div>
+      )}
 
       <DeliveryServiceSelect
         value={deliveryData.service}
