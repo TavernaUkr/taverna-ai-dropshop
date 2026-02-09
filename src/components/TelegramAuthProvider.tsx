@@ -217,8 +217,40 @@ export function TelegramAuthProvider({ children }: TelegramAuthProviderProps) {
   }, [effectiveRole]);
 
   const isAuthenticated = effectiveRole !== 'guest' && (canUseDevRoleSwitcher ? true : auth.isAuthenticated);
-  const profile = effectiveRole === 'guest' ? null : auth.profile;
-  const addresses = effectiveRole === 'guest' ? [] : auth.addresses;
+  const profile = effectiveRole === 'guest' ? null : (auth.profile || (canUseDevRoleSwitcher ? {
+    id: 'dev-test-user',
+    telegram_id: 123456789,
+    first_name: 'Тест',
+    last_name: 'Користувач',
+    phone: '380501234567',
+    user_type: 'customer',
+    is_active: true,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  } : null));
+
+  // Provide test addresses in dev environment when real addresses are empty
+  const testAddresses = canUseDevRoleSwitcher && auth.addresses.length === 0 ? [
+    {
+      id: 'test-addr-1',
+      profile_id: 'dev-test-user',
+      is_default: true,
+      recipient_name: 'Тест Користувач',
+      phone: '380501234567',
+      delivery_service: 'nova_poshta',
+      city: 'Київ',
+      city_ref: 'e718a680-4b33-11e4-ab6d-005056801329',
+      delivery_type: 'warehouse',
+      warehouse_number: '1',
+      warehouse_ref: '',
+      street_address: null,
+      building_number: null,
+      apartment: null,
+      postal_code: null,
+      notes: 'Тестова адреса',
+    },
+  ] : [];
+  const addresses = effectiveRole === 'guest' ? [] : (auth.addresses.length > 0 ? auth.addresses : testAddresses);
 
   const setDevRoleOverride = (role: TestRole | null) => {
     if (!canUseDevRoleSwitcher) return;

@@ -1,14 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, MapPin, Search, ChevronDown } from "lucide-react";
+import { Loader2, MapPin, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 
 interface City {
   Ref: string;
   Description: string;
-  DescriptionRu: string;
   Present: string;
   Warehouses?: number;
 }
@@ -20,6 +19,35 @@ interface CitySearchProps {
   label?: string;
   required?: boolean;
   error?: string;
+}
+
+// Parse the Nova Poshta API response into a flat City array
+function parseCityResponse(data: any): City[] {
+  if (!data?.data) return [];
+
+  const raw = data.data;
+
+  // If it's already a flat array of cities
+  if (Array.isArray(raw) && raw.length > 0 && raw[0]?.MainDescription) {
+    return raw.map((c: any) => ({
+      Ref: c.Ref ?? '',
+      Description: c.MainDescription ?? c.Description ?? '',
+      Present: c.Present ?? '',
+      Warehouses: c.Warehouses ?? 0,
+    }));
+  }
+
+  // Nova Poshta wraps in [{Addresses: [...]}]
+  if (Array.isArray(raw) && raw.length > 0 && Array.isArray(raw[0]?.Addresses)) {
+    return raw[0].Addresses.map((c: any) => ({
+      Ref: c.Ref ?? '',
+      Description: c.MainDescription ?? c.Description ?? '',
+      Present: c.Present ?? '',
+      Warehouses: c.Warehouses ?? 0,
+    }));
+  }
+
+  return [];
 }
 
 export const CitySearch = ({
@@ -36,6 +64,13 @@ export const CitySearch = ({
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Sync external value changes
+  useEffect(() => {
+    if (value && value !== search) {
+      setSearch(value);
+    }
+  }, [value]);
+
   // Search cities
   useEffect(() => {
     const searchStr = search ?? '';
@@ -49,12 +84,13 @@ export const CitySearch = ({
       setIsLoading(true);
       try {
         const { data, error } = await supabase.functions.invoke("nova-poshta", {
-          body: { action: "searchCity", params: { query: search } },
+          body: { action: "searchCity", params: { query: searchStr } },
         });
 
-        if (!error && data?.data) {
-          setCities(data.data);
-          setIsOpen(true);
+        if (!error && data) {
+          const parsed = parseCityResponse(data);
+          setCities(parsed);
+          if (parsed.length > 0) setIsOpen(true);
         }
       } catch (err) {
         console.error("City search error:", err);
@@ -74,7 +110,6 @@ export const CitySearch = ({
         setIsOpen(false);
       }
     };
-
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
@@ -104,7 +139,7 @@ export const CitySearch = ({
           value={search}
           onChange={(e) => {
             setSearch(e.target.value);
-            if (e.target.value !== value) {
+            if (e.target.value !== (value ?? '')) {
               setIsOpen(true);
             }
           }}
@@ -123,18 +158,18 @@ export const CitySearch = ({
           </div>
         )}
 
-        {/* Dropdown */}
+        {/* Floating dropdown */}
         {isOpen && cities.length > 0 && (
-          <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+          <div className="absolute z-[100] w-full mt-1 bg-popover border border-border rounded-xl shadow-xl max-h-64 overflow-y-auto animate-in fade-in-0 zoom-in-95 duration-150">
             {cities.map((city) => (
               <button
                 key={city.Ref}
                 type="button"
                 onClick={() => handleSelect(city)}
-                className="w-full px-4 py-3 text-left hover:bg-muted transition-colors border-b border-border last:border-0"
+                className="w-full px-4 py-3 text-left hover:bg-primary/5 transition-colors border-b border-border/50 last:border-0"
               >
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                <div className="flex items-center gap-2.5">
+                  <MapPin className="h-4 w-4 text-primary/60 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-foreground text-sm truncate">
                       {city.Description}
@@ -143,8 +178,8 @@ export const CitySearch = ({
                       {city.Present}
                     </p>
                   </div>
-                  {city.Warehouses && (
-                    <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
+                  {city.Warehouses != null && city.Warehouses > 0 && (
+                    <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
                       {city.Warehouses} відд.
                     </span>
                   )}
