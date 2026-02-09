@@ -38,7 +38,9 @@ export const CitySearch = ({
 
   // Search cities
   useEffect(() => {
-    if (search.length < 2 || search === value) {
+    const searchStr = search ?? '';
+    const valueStr = value ?? '';
+    if (searchStr.length < 2 || searchStr === valueStr) {
       setCities([]);
       return;
     }
