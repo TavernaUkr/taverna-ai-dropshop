@@ -30,7 +30,7 @@ export const CitySearch = ({
   required = true,
   error,
 }: CitySearchProps) => {
-  const [search, setSearch] = useState(value);
+  const [search, setSearch] = useState(value || '');
   const [cities, setCities] = useState<City[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
