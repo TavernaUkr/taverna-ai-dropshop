@@ -2,6 +2,7 @@ import { X, Minus, Plus, Trash2, ShoppingBag, Package, Truck } from "lucide-reac
 import { cn } from "@/lib/utils";
 import { MultiSupplierWarning } from "./cart/MultiSupplierWarning";
 import { CartItemEditor } from "./cart/CartItemEditor";
+import { SavedAddressToggle } from "./cart/SavedAddressToggle";
 import { useMemo, useState } from "react";
 import { hapticImpact } from "@/lib/haptics";
 import { toast } from "sonner";
@@ -42,6 +43,7 @@ export const CartModal = ({
   onUpdateVariant,
 }: CartModalProps) => {
   const [localVariants, setLocalVariants] = useState<Record<string, { size?: string; color?: string }>>({});
+  const [savedAddress, setSavedAddress] = useState<any>(null);
   
   const totalPrice = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
@@ -128,6 +130,12 @@ export const CartModal = ({
               <MultiSupplierWarning 
                 supplierCount={supplierCount}
                 hasFulfillmentOption={true}
+              />
+
+              {/* Saved Address Toggle */}
+              <SavedAddressToggle
+                onAddressSelected={setSavedAddress}
+                selectedAddressId={savedAddress?.id || null}
               />
               
               {/* Grouped by Supplier */}

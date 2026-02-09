@@ -141,8 +141,11 @@ export function DeliveryServiceSelect({
             <div>
               <p className="font-medium text-sm text-foreground">Фулфілмент-центр НП</p>
               <p className="text-xs text-muted-foreground mt-1">
-                Товари будуть зібрані на складі Нової Пошти та відправлені однією посилкою. 
+                Товари зберуться на фулфілмент-складі НП та відправляться <strong>однією посилкою</strong> на обране вами відділення. 
                 Це зручніше та економніше при замовленні від різних постачальників.
+              </p>
+              <p className="text-xs text-primary font-medium mt-2">
+                ↓ Оберіть відділення для отримання нижче
               </p>
             </div>
           </div>
