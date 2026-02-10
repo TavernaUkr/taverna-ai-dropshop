@@ -141,11 +141,11 @@ export function DeliveryServiceSelect({
             <div>
               <p className="font-medium text-sm text-foreground">Фулфілмент-центр НП</p>
               <p className="text-xs text-muted-foreground mt-1">
-                Товари зберуться на фулфілмент-складі НП та відправляться <strong>однією посилкою</strong> на обране вами відділення. 
-                Це зручніше та економніше при замовленні від різних постачальників.
+                Товари від різних постачальників зберуться на фулфілмент-складі НП 
+                (визначається автоматично) та відправляться <strong>однією посилкою</strong> на обране вами відділення.
               </p>
               <p className="text-xs text-primary font-medium mt-2">
-                ↓ Оберіть відділення для отримання нижче
+                ↓ Оберіть ваше відділення для отримання нижче
               </p>
             </div>
           </div>
@@ -209,7 +209,7 @@ export function DeliveryFields({
             error={errors.warehouse}
             disabled={!cityRef}
             type="branch"
-            label={deliveryType === 'fulfillment' ? 'Фулфілмент-склад' : 'Відділення'}
+            label={deliveryType === 'fulfillment' ? 'Відділення для отримання' : 'Відділення'}
           />
         )}
         {deliveryType === 'postomat' && (
