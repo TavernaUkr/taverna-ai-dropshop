@@ -29,8 +29,6 @@ interface UserProfile {
   id: string;
   first_name: string | null;
   last_name: string | null;
-  telegram_username: string | null;
-  phone: string | null;
   bonus_balance?: number;
 }
 
@@ -86,21 +84,21 @@ export function IndividualBonusManager() {
     setIsSearching(true);
     try {
       const { data: profiles, error } = await supabase
-        .from("profiles")
-        .select("id, first_name, last_name, telegram_username, phone")
-        .or(`first_name.ilike.%${searchQuery}%,last_name.ilike.%${searchQuery}%,telegram_username.ilike.%${searchQuery}%,phone.ilike.%${searchQuery}%`)
+        .from("profiles_safe" as any)
+        .select("id, first_name, last_name")
+        .or(`first_name.ilike.%${searchQuery}%,last_name.ilike.%${searchQuery}%`)
         .limit(10);
 
       if (error) throw error;
 
       // Fetch bonuses for found users
-      const userIds = (profiles || []).map(p => p.id);
+      const userIds = ((profiles || []) as any[]).map((p: any) => p.id);
       const { data: bonuses } = await supabase
         .from("user_bonuses")
         .select("profile_id, balance")
         .in("profile_id", userIds);
 
-      const usersWithBonuses = (profiles || []).map(p => ({
+      const usersWithBonuses: UserProfile[] = ((profiles || []) as any[]).map((p: any) => ({
         ...p,
         bonus_balance: bonuses?.find(b => b.profile_id === p.id)?.balance || 0,
       }));
@@ -250,7 +248,7 @@ export function IndividualBonusManager() {
                         {user.first_name || ""} {user.last_name || ""}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {user.telegram_username ? `@${user.telegram_username}` : user.phone || "—"}
+                        ID: {user.id.slice(0, 8)}…
                       </p>
                     </div>
                   </div>

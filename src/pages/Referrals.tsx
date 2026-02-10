@@ -47,9 +47,9 @@ export default function Referrals() {
           .eq("id", profile.id);
       }
 
-      // Fetch invited friends count
+      // Fetch invited friends count using safe view
       const { count } = await supabase
-        .from("profiles")
+        .from("profiles_safe" as any)
         .select("id", { count: "exact", head: true })
         .eq("referred_by", profile.id);
 

@@ -81,8 +81,6 @@ interface UserWithRole {
   id: string;
   first_name: string | null;
   last_name: string | null;
-  email: string | null;
-  telegram_username: string | null;
   roles: string[];
 }
 
@@ -199,8 +197,8 @@ export default function AdminDashboard() {
   const fetchUsersWithRoles = async () => {
     try {
       const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, first_name, last_name, email, telegram_username')
+        .from('profiles_safe' as any)
+        .select('id, first_name, last_name')
         .limit(100);
 
       if (profilesError) throw profilesError;
@@ -211,7 +209,7 @@ export default function AdminDashboard() {
 
       if (rolesError) throw rolesError;
 
-      const usersWithRolesList: UserWithRole[] = (profiles || []).map(p => ({
+      const usersWithRolesList: UserWithRole[] = ((profiles || []) as any[]).map((p: any) => ({
         ...p,
         roles: (roles || [])
           .filter(r => r.user_id === p.id)
@@ -233,14 +231,14 @@ export default function AdminDashboard() {
 
     try {
       const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, first_name, last_name, email, telegram_username')
-        .or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%,telegram_username.ilike.%${query}%`)
+        .from('profiles_safe' as any)
+        .select('id, first_name, last_name')
+        .or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%`)
         .limit(10);
 
       const { data: roles } = await supabase.from('user_roles').select('user_id, role');
 
-      const results: UserWithRole[] = (profiles || []).map(p => ({
+      const results: UserWithRole[] = ((profiles || []) as any[]).map((p: any) => ({
         ...p,
         roles: (roles || []).filter(r => r.user_id === p.id).map(r => r.role),
       }));
@@ -849,7 +847,7 @@ export default function AdminDashboard() {
                                   {user.first_name} {user.last_name}
                                 </p>
                                 <p className="text-xs text-muted-foreground">
-                                  {user.telegram_username ? `@${user.telegram_username}` : user.email}
+                                  ID: {user.id.slice(0, 8)}…
                                 </p>
                               </div>
                               <Select onValueChange={(v: 'admin' | 'moderator' | 'supplier' | 'customer') => handleAddRole(user.id, v)}>
@@ -885,7 +883,7 @@ export default function AdminDashboard() {
                             {user.first_name || ''} {user.last_name || ''}
                           </h3>
                           <p className="text-sm text-muted-foreground">
-                            {user.telegram_username ? `@${user.telegram_username}` : user.email || 'Без контактів'}
+                            ID: {user.id.slice(0, 8)}…
                           </p>
                         </div>
                         
