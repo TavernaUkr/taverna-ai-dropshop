@@ -428,26 +428,25 @@ export const reviewsApi = {
 
   async create(review: {
     productId: string;
-    profileId?: string;
-    authorName: string;
+    sessionToken: string;
     rating: number;
     title?: string;
     content?: string;
   }) {
-    const { data, error } = await supabase
-      .from("reviews")
-      .insert({
+    const { data, error } = await supabase.functions.invoke('telegram-auth', {
+      body: {
+        action: 'create_review',
+        session_token: review.sessionToken,
         product_id: review.productId,
-        profile_id: review.profileId,
-        author_name: review.authorName,
         rating: review.rating,
         title: review.title,
         content: review.content,
-      })
-      .select()
-      .single();
+      },
+    });
 
-    if (error) throw error;
-    return data;
+    if (error || !data?.success) {
+      throw new Error(data?.error || 'Failed to create review');
+    }
+    return data.review;
   },
 };

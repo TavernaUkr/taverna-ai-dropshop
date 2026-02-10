@@ -182,6 +182,12 @@ const SupplierProfile = () => {
     
     setIsSubmittingReview(true);
     try {
+      const sessionToken = localStorage.getItem('taverna_session_token');
+      if (!sessionToken) {
+        toast.error("Увійдіть, щоб залишити відгук");
+        return;
+      }
+
       // Get first product of this supplier for the review
       const { data: firstProduct } = await supabase
         .from("products")
@@ -191,22 +197,27 @@ const SupplierProfile = () => {
         .single();
 
       if (firstProduct) {
-        const { error } = await supabase.from("reviews").insert({
-          product_id: firstProduct.id,
-          author_name: "Клієнт Taverna",
-          rating: newReview.rating,
-          content: newReview.content,
+        const { data, error } = await supabase.functions.invoke('telegram-auth', {
+          body: {
+            action: 'create_review',
+            session_token: sessionToken,
+            product_id: firstProduct.id,
+            rating: newReview.rating,
+            content: newReview.content || null,
+          },
         });
 
-        if (error) throw error;
+        if (error || !data?.success) {
+          throw new Error(data?.error || 'Failed to create review');
+        }
 
         toast.success("Відгук додано!");
         setNewReview({ rating: 5, content: "" });
         fetchReviews();
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error submitting review:", err);
-      toast.error("Помилка додавання відгуку");
+      toast.error(err?.message === 'You already reviewed this product' ? 'Ви вже залишали відгук' : "Помилка додавання відгуку");
     } finally {
       setIsSubmittingReview(false);
     }

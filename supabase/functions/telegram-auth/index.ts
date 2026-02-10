@@ -432,6 +432,71 @@ serve(async (req) => {
       );
     }
     
+    // Handle create review
+    if (action === 'create_review' && session_token) {
+      const session = await validateSession(supabase, session_token);
+      if (!session) {
+        return new Response(
+          JSON.stringify({ error: 'Authentication required' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { product_id, rating, title, content } = body;
+
+      if (!product_id || !rating || rating < 1 || rating > 5) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid review data' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Check duplicate
+      const { data: existing } = await supabase
+        .from('reviews')
+        .select('id')
+        .eq('product_id', product_id)
+        .eq('profile_id', session.profile.id)
+        .maybeSingle();
+
+      if (existing) {
+        return new Response(
+          JSON.stringify({ error: 'You already reviewed this product' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Check verified purchase
+      const { data: purchase } = await supabase
+        .from('order_items')
+        .select('id, order:orders!inner(profile_id)')
+        .eq('product_id', product_id)
+        .eq('orders.profile_id', session.profile.id)
+        .limit(1)
+        .maybeSingle();
+
+      const { data: review, error: reviewError } = await supabase
+        .from('reviews')
+        .insert({
+          product_id,
+          profile_id: session.profile.id,
+          author_name: session.profile.first_name || session.profile.telegram_username || 'User',
+          rating: Math.round(rating),
+          title: typeof title === 'string' ? title.slice(0, 200) : null,
+          content: typeof content === 'string' ? content.slice(0, 2000) : null,
+          is_verified_purchase: !!purchase,
+        })
+        .select()
+        .single();
+
+      if (reviewError) throw reviewError;
+
+      return new Response(
+        JSON.stringify({ success: true, review }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Handle login/authentication
     let telegramUser: any;
     const isProduction = Deno.env.get('DENO_ENV') === 'production';

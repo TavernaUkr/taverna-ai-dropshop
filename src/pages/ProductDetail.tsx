@@ -209,22 +209,33 @@ const ProductDetail = () => {
     
     setIsSubmittingReview(true);
     try {
-      const { error } = await supabase.from("reviews").insert({
-        product_id: id,
-        author_name: "Гість",
-        rating: newReview.rating,
-        title: newReview.title || null,
-        content: newReview.content || null,
+      const sessionToken = localStorage.getItem('taverna_session_token');
+      if (!sessionToken) {
+        toast.error("Увійдіть, щоб залишити відгук");
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke('telegram-auth', {
+        body: {
+          action: 'create_review',
+          session_token: sessionToken,
+          product_id: id,
+          rating: newReview.rating,
+          title: newReview.title || null,
+          content: newReview.content || null,
+        },
       });
 
-      if (error) throw error;
+      if (error || !data?.success) {
+        throw new Error(data?.error || 'Failed to create review');
+      }
 
       toast.success("Відгук додано!");
       setNewReview({ rating: 5, title: "", content: "" });
       fetchReviews();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error submitting review:", err);
-      toast.error("Помилка додавання відгуку");
+      toast.error(err?.message === 'You already reviewed this product' ? 'Ви вже залишали відгук' : "Помилка додавання відгуку");
     } finally {
       setIsSubmittingReview(false);
     }
