@@ -63,7 +63,6 @@ export function VariantSelectionModal({
     
     hapticImpact("medium");
     onAddToCart(selectedSize || undefined, selectedColor || undefined);
-    toast.success(`${productName} додано до кошика`);
     
     // Reset selections and close modal
     setSelectedSize(null);
