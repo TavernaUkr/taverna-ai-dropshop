@@ -66,8 +66,8 @@ export function TechSupportQueue() {
       // Fetch profiles for users
       const userIds = (ticketsData || []).map(t => t.user_id);
       const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id, first_name, last_name, telegram_username")
+        .from("profiles_safe" as any)
+        .select("id, first_name, last_name")
         .in("id", userIds);
 
       // Fetch last messages
@@ -91,13 +91,13 @@ export function TechSupportQueue() {
 
       // Combine data
       const ticketsWithData: TechTicket[] = (ticketsData || []).map(t => {
-        const profile = profiles?.find(p => p.id === t.user_id);
+        const profile = ((profiles || []) as any[]).find((p: any) => p.id === t.user_id);
         const messageData = messagesByTicket[t.id] || { last: null, unread: 0 };
 
         return {
           ...t,
           user_name: [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || "Користувач",
-          telegram_username: profile?.telegram_username || null,
+          telegram_username: null,
           last_message: messageData.last,
           unread_count: messageData.unread,
         };

@@ -24,7 +24,6 @@ interface Ticket {
   profile?: {
     first_name: string | null;
     last_name: string | null;
-    telegram_username: string | null;
   };
   messages_count?: number;
 }
@@ -63,8 +62,8 @@ export function SupportChatsViewer() {
       // Fetch profiles
       const userIds = (ticketsData || []).map(t => t.user_id);
       const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id, first_name, last_name, telegram_username")
+        .from("profiles_safe" as any)
+        .select("id, first_name, last_name")
         .in("id", userIds);
 
       // Fetch message counts
@@ -81,11 +80,11 @@ export function SupportChatsViewer() {
       // Merge data
       const ticketsWithData = (ticketsData || []).map(ticket => ({
         ...ticket,
-        profile: profiles?.find(p => p.id === ticket.user_id),
+        profile: ((profiles || []) as any[]).find((p: any) => p.id === ticket.user_id),
         messages_count: countMap[ticket.id] || 0,
       }));
 
-      setTickets(ticketsWithData);
+      setTickets(ticketsWithData as Ticket[]);
     } catch (err) {
       console.error("Error fetching tickets:", err);
       toast.error("Помилка завантаження чатів");

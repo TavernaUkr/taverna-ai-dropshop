@@ -73,10 +73,10 @@ export function ManualSupplierForm({ onSuccess }: ManualSupplierFormProps) {
       // If transfer to user is enabled and telegram ID provided
       if (formData.transfer_to_user && formData.target_telegram_id) {
         // Find user by telegram_id
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("id")
-          .eq("telegram_id", parseInt(formData.target_telegram_id))
+        const { data: profile } = await (supabase
+          .from("profiles_safe" as any)
+          .select("id") as any)
+          .eq("id", formData.target_telegram_id)
           .single();
 
         if (profile) {

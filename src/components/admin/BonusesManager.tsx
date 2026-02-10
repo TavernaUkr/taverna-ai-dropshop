@@ -26,9 +26,7 @@ interface UserBonus {
   profile?: {
     first_name: string | null;
     last_name: string | null;
-    telegram_username: string | null;
-    phone: string | null;
-  };
+  } | null;
 }
 
 export function BonusesManager() {
@@ -58,16 +56,16 @@ export function BonusesManager() {
       // Fetch profiles separately
       const profileIds = (bonusesData || []).map(b => b.profile_id);
       const { data: profilesData } = await supabase
-        .from("profiles")
-        .select("id, first_name, last_name, telegram_username, phone")
+        .from("profiles_safe" as any)
+        .select("id, first_name, last_name")
         .in("id", profileIds);
 
       // Merge data
       const bonusesWithProfiles = (bonusesData || []).map(bonus => ({
         ...bonus,
-        profile: profilesData?.find(p => p.id === bonus.profile_id) || null,
+        profile: ((profilesData || []) as any[]).find((p: any) => p.id === bonus.profile_id) || null,
       }));
-      setBonuses(bonusesWithProfiles as UserBonus[]);
+      setBonuses(bonusesWithProfiles as unknown as UserBonus[]);
     } catch (err) {
       console.error("Error fetching bonuses:", err);
       toast.error("Помилка завантаження бонусів");
@@ -128,9 +126,7 @@ export function BonusesManager() {
     const search = searchQuery.toLowerCase();
     return (
       b.profile?.first_name?.toLowerCase().includes(search) ||
-      b.profile?.last_name?.toLowerCase().includes(search) ||
-      b.profile?.telegram_username?.toLowerCase().includes(search) ||
-      b.profile?.phone?.includes(search)
+      b.profile?.last_name?.toLowerCase().includes(search)
     );
   });
 
@@ -181,9 +177,7 @@ export function BonusesManager() {
                           {bonus.profile?.first_name || ""} {bonus.profile?.last_name || ""}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          {bonus.profile?.telegram_username 
-                            ? `@${bonus.profile.telegram_username}` 
-                            : bonus.profile?.phone || "Без контактів"}
+                          ID: {bonus.profile_id.slice(0, 8)}…
                         </p>
                       </div>
                     </div>
