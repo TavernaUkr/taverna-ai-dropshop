@@ -95,6 +95,8 @@ export function useTelegramAuth() {
       });
       
       if (error || !data?.success) {
+        // Clear stale token on validation failure
+        storeToken(null);
         return false;
       }
       
@@ -109,9 +111,11 @@ export function useTelegramAuth() {
       
       return true;
     } catch {
+      // Clear stale token on any error (including 401)
+      storeToken(null);
       return false;
     }
-  }, []);
+  }, [storeToken]);
 
   const authenticate = useCallback(async () => {
     try {
