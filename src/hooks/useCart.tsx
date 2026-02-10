@@ -39,11 +39,17 @@ interface CartItemDB {
   } | null;
 }
 
+// UUID regex for validation
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export function useCart() {
   const { isAuthenticated, profile } = useTelegramAuthContext();
   const [items, setItems] = useState<CartItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Only treat as DB-authenticated if profile ID is a valid UUID
+  const isDbAuthenticated = isAuthenticated && !!profile?.id && UUID_REGEX.test(profile.id);
 
   // Map DB cart item to frontend format
   const mapCartItem = (dbItem: CartItemDB): CartItem | null => {
@@ -65,7 +71,7 @@ export function useCart() {
 
   // Fetch cart items from database
   const fetchCart = useCallback(async () => {
-    if (!isAuthenticated || !profile?.id) {
+    if (!isDbAuthenticated || !profile?.id) {
       setItems([]);
       return;
     }
@@ -105,7 +111,7 @@ export function useCart() {
     } finally {
       setIsLoading(false);
     }
-  }, [isAuthenticated, profile?.id]);
+  }, [isDbAuthenticated, profile?.id]);
 
   // Add item to cart
   const addItem = useCallback(async (
@@ -116,7 +122,7 @@ export function useCart() {
     size?: string,
     color?: string
   ) => {
-    if (!isAuthenticated || !profile?.id) {
+    if (!isDbAuthenticated || !profile?.id) {
       // For non-authenticated users, store in local state only
       const existingIndex = items.findIndex(
         item => item.productId === productId && item.size === size && item.color === color
@@ -190,7 +196,7 @@ export function useCart() {
       setError('Помилка додавання до кошика');
       return false;
     }
-  }, [isAuthenticated, profile?.id, items, fetchCart]);
+  }, [isDbAuthenticated, profile?.id, items, fetchCart]);
 
   // Update item quantity
   const updateQuantity = useCallback(async (cartItemId: string, quantity: number) => {
@@ -204,7 +210,7 @@ export function useCart() {
       return true;
     }
 
-    if (!isAuthenticated || !profile?.id) return false;
+    if (!isDbAuthenticated || !profile?.id) return false;
 
     try {
       setError(null);
@@ -230,7 +236,7 @@ export function useCart() {
       setError('Помилка оновлення кількості');
       return false;
     }
-  }, [isAuthenticated, profile?.id]);
+  }, [isDbAuthenticated, profile?.id]);
 
   // Remove item from cart
   const removeItem = useCallback(async (cartItemId: string) => {
@@ -240,7 +246,7 @@ export function useCart() {
       return true;
     }
 
-    if (!isAuthenticated || !profile?.id) return false;
+    if (!isDbAuthenticated || !profile?.id) return false;
 
     try {
       setError(null);
@@ -260,11 +266,11 @@ export function useCart() {
       setError('Помилка видалення з кошика');
       return false;
     }
-  }, [isAuthenticated, profile?.id]);
+  }, [isDbAuthenticated, profile?.id]);
 
   // Clear entire cart
   const clearCart = useCallback(async () => {
-    if (!isAuthenticated || !profile?.id) {
+    if (!isDbAuthenticated || !profile?.id) {
       setItems([]);
       return true;
     }
@@ -286,23 +292,23 @@ export function useCart() {
       setError('Помилка очищення кошика');
       return false;
     }
-  }, [isAuthenticated, profile?.id]);
+  }, [isDbAuthenticated, profile?.id]);
 
   // Calculate totals
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
-  // Fetch cart when authenticated
+  // Fetch cart when authenticated with valid DB profile
   useEffect(() => {
-    if (isAuthenticated && profile?.id) {
+    if (isDbAuthenticated && profile?.id) {
       fetchCart();
     }
-  }, [isAuthenticated, profile?.id, fetchCart]);
+  }, [isDbAuthenticated, profile?.id, fetchCart]);
 
   // Sync local cart to database when user authenticates
   useEffect(() => {
     const syncLocalCart = async () => {
-      if (!isAuthenticated || !profile?.id) return;
+      if (!isDbAuthenticated || !profile?.id) return;
       
       const localItems = items.filter(item => item.id.startsWith('local-'));
       if (localItems.length === 0) return;
@@ -314,7 +320,7 @@ export function useCart() {
     };
 
     syncLocalCart();
-  }, [isAuthenticated, profile?.id]);
+  }, [isDbAuthenticated, profile?.id]);
 
   return {
     items,

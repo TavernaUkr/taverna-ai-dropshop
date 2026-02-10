@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { X, Loader2, Check, ChevronRight, ShoppingBag, Truck, User, Gift, Tag, Info } from 'lucide-react';
+import { X, Loader2, Check, ChevronRight, ShoppingBag, Truck, User, Gift, Tag, Info, MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -59,7 +59,7 @@ interface ActivePromo {
 }
 
 export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: CheckoutModalProps) {
-  const { isAuthenticated, profile, sessionToken } = useTelegramAuthContext();
+  const { isAuthenticated, profile, sessionToken, addresses: savedAddresses } = useTelegramAuthContext();
   
   // Step management
   const [currentStep, setCurrentStep] = useState<CheckoutStep>('contact');
@@ -94,6 +94,9 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
   const [bonusesToUse, setBonusesToUse] = useState(0);
   const [userBonusBalance] = useState(150); // Mock - will come from useBonuses hook
   
+  // Saved address selection
+  const [selectedSavedAddressId, setSelectedSavedAddressId] = useState<string | null>(null);
+  
   // UI state
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -119,6 +122,37 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
   const uniqueSuppliers = new Set(items.map(i => i.supplierId).filter(Boolean));
   const isMultiSupplier = uniqueSuppliers.size > 1;
 
+  // Auto-fill from saved address
+  const handleSelectSavedAddress = (addressId: string | null) => {
+    setSelectedSavedAddressId(addressId);
+    
+    if (!addressId) return;
+    
+    const address = savedAddresses.find(a => a.id === addressId);
+    if (!address) return;
+    
+    // Auto-fill contact data from saved address
+    if (address.recipient_name) {
+      const nameParts = address.recipient_name.split(' ');
+      setContactData(prev => ({
+        firstName: nameParts[0] || prev.firstName,
+        lastName: nameParts.slice(1).join(' ') || prev.lastName,
+        phone: address.phone || prev.phone,
+      }));
+    }
+    
+    // Auto-fill delivery data
+    setDeliveryData(prev => ({
+      ...prev,
+      service: (address.delivery_service as DeliveryService) || prev.service,
+      deliveryType: (address.delivery_type as DeliveryType) || prev.deliveryType,
+      city: address.city || prev.city,
+      cityRef: address.city_ref || prev.cityRef,
+      warehouse: address.warehouse_number || prev.warehouse,
+      warehouseRef: address.warehouse_ref || prev.warehouseRef,
+    }));
+  };
+
   // Reset state when modal opens and load promo from storage
   useEffect(() => {
     if (isOpen) {
@@ -126,6 +160,7 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
       setCompletedSteps([]);
       setErrors({});
       setBonusesToUse(0);
+      setSelectedSavedAddressId(null);
       
       // Load promo from localStorage
       const storedPromo = localStorage.getItem(PROMO_STORAGE_KEY);
@@ -145,15 +180,52 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
       const autoService: DeliveryService = 'nova_poshta';
       const autoType: DeliveryType = isMultiSupplier ? 'fulfillment' : 'warehouse';
 
-      // Pre-fill delivery data from saved profile if available
-      if (isAuthenticated && profile) {
+      // Pre-fill from default saved address if available
+      const defaultAddress = savedAddresses.find(a => a.is_default) || savedAddresses[0];
+      
+      if (defaultAddress) {
+        setSelectedSavedAddressId(defaultAddress.id);
+        
+        // Auto-fill contact from saved address
+        if (defaultAddress.recipient_name) {
+          const nameParts = defaultAddress.recipient_name.split(' ');
+          setContactData({
+            firstName: nameParts[0] || profile?.first_name || '',
+            lastName: nameParts.slice(1).join(' ') || profile?.last_name || '',
+            phone: defaultAddress.phone || profile?.phone || '',
+          });
+        } else if (isAuthenticated && profile) {
+          setContactData({
+            firstName: profile.first_name || '',
+            lastName: profile.last_name || '',
+            phone: profile.phone || '',
+          });
+        }
+        
+        setDeliveryData({
+          service: (defaultAddress.delivery_service as DeliveryService) || autoService,
+          deliveryType: isMultiSupplier ? 'fulfillment' : (defaultAddress.delivery_type as DeliveryType) || autoType,
+          city: defaultAddress.city || '',
+          cityRef: defaultAddress.city_ref || '',
+          warehouse: defaultAddress.warehouse_number || '',
+          warehouseRef: defaultAddress.warehouse_ref || '',
+          postalCode: '',
+          pickupPoint: '',
+          courierAddress: '',
+        });
+      } else if (isAuthenticated && profile) {
+        setContactData({
+          firstName: profile.first_name || '',
+          lastName: profile.last_name || '',
+          phone: profile.phone || '',
+        });
         setDeliveryData({
           service: autoService,
           deliveryType: autoType,
-          city: profile.last_city || '',
-          cityRef: profile.last_city_ref || '',
-          warehouse: profile.last_warehouse || '',
-          warehouseRef: profile.last_warehouse_ref || '',
+          city: (profile as any).last_city || '',
+          cityRef: (profile as any).last_city_ref || '',
+          warehouse: (profile as any).last_warehouse || '',
+          warehouseRef: (profile as any).last_warehouse_ref || '',
           postalCode: '',
           pickupPoint: '',
           courierAddress: '',
@@ -174,7 +246,7 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
       setPaymentMethod('cash');
       setOrderNotes('');
     }
-  }, [isOpen, isAuthenticated, profile, isMultiSupplier]);
+  }, [isOpen, isAuthenticated, profile, isMultiSupplier, savedAddresses]);
 
   if (!isOpen) return null;
 
@@ -407,9 +479,53 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
         </div>
       </div>
 
+      {/* Saved addresses quick select */}
+      {savedAddresses.length > 0 && (
+        <div className="space-y-2">
+          <Label className="text-sm font-medium text-foreground flex items-center gap-2">
+            <MapPin className="h-4 w-4" />
+            Збережені адреси
+          </Label>
+          <div className="space-y-2">
+            {savedAddresses.map((addr) => (
+              <button
+                key={addr.id}
+                type="button"
+                onClick={() => handleSelectSavedAddress(addr.id)}
+                className={cn(
+                  "w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left",
+                  selectedSavedAddressId === addr.id
+                    ? "border-primary bg-primary/10"
+                    : "border-border hover:border-primary/40"
+                )}
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="text-xs font-medium text-primary">
+                      {addr.delivery_service === 'nova_poshta' ? 'Нова Пошта' : addr.delivery_service}
+                    </span>
+                    {addr.is_default && (
+                      <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">Основна</span>
+                    )}
+                  </div>
+                  <p className="text-sm text-foreground truncate">
+                    {addr.city}
+                    {addr.warehouse_number && `, Відділення №${addr.warehouse_number}`}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{addr.recipient_name}</p>
+                </div>
+                {selectedSavedAddressId === addr.id && (
+                  <Check className="h-5 w-5 text-primary shrink-0" />
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Multi-supplier auto-fulfillment warning */}
       {isMultiSupplier && deliveryData.deliveryType !== 'fulfillment' && (
-        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 space-y-2">
+        <div className="bg-warning/10 border border-warning/30 rounded-xl p-3 space-y-2">
           <p className="text-sm font-medium text-foreground flex items-center gap-2">
             ⚠️ Товари від {uniqueSuppliers.size} постачальників
           </p>
