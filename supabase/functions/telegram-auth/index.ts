@@ -289,6 +289,28 @@ serve(async (req) => {
       );
     }
     
+    // Handle get addresses
+    if (action === 'get_addresses' && session_token) {
+      const session = await validateSession(supabase, session_token);
+      if (!session) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Invalid or expired session' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data: addresses } = await supabase
+        .from('delivery_addresses')
+        .select('*')
+        .eq('profile_id', session.profile.id)
+        .order('is_default', { ascending: false });
+
+      return new Response(
+        JSON.stringify({ success: true, addresses: addresses || [] }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Handle get orders
     if (action === 'get_orders' && session_token) {
       const session = await validateSession(supabase, session_token);
