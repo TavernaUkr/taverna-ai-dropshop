@@ -21,7 +21,7 @@ interface Promo {
 // Promo storage key
 const PROMO_STORAGE_KEY = "taverna_active_promo";
 
-// Mock data for promos - will be managed by admin
+// Mock data for promos - only actual promo codes/discounts (no referral/bonus duplicates)
 const mockPromos: Promo[] = [
   {
     id: "1",
@@ -45,18 +45,15 @@ const mockPromos: Promo[] = [
     isActive: true,
   },
   {
-    id: "3",
-    title: "Бонус за перше замовлення",
-    description: "Отримай 100 грн на бонусний рахунок",
-    type: "bonus",
+    id: "5",
+    title: "-10% на всі рукавиці",
+    description: "Тактичні рукавиці зі знижкою",
+    type: "discount",
+    code: "GLOVES10",
+    discountPercent: 10,
+    validUntil: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
     isActive: true,
-  },
-  {
-    id: "4",
-    title: "Приведи друга - отримай 200 грн",
-    description: "За кожного запрошеного друга, який зробить замовлення",
-    type: "referral",
-    isActive: true,
+    categoryFilter: "Рукавиці",
   },
 ];
 
