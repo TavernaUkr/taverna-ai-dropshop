@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Gift, Users, Copy, Check, Share2, Sparkles, ChevronLeft, Wallet, ChevronRight } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTelegramAuthContext } from "@/components/TelegramAuthProvider";
@@ -60,7 +61,7 @@ export default function Referrals() {
   const handleShare = () => {
     hapticSelection();
     const botUsername = "TavernaBot";
-    const shareText = `🎁 Приєднуйся до Taverna та отримай 100₴ бонусів!\n\nВикористай мій код: ${referralCode}\n\n`;
+    const shareText = `🎁 Приєднуйся до Taverna та отримай бонуси!\n\nВикористай мій код: ${referralCode}\n\n`;
     const shareUrl = `https://t.me/${botUsername}/app?startapp=ref_${referralCode}`;
 
     if (window.Telegram?.WebApp?.openTelegramLink) {
@@ -124,10 +125,10 @@ export default function Referrals() {
               <Users className="w-10 h-10 text-primary-foreground" />
             </motion.div>
             <h1 className="text-2xl font-bold mb-2">
-              Запроси друга — отримай <span className="text-emerald-500">100₴</span>
+              Запроси друга — отримай бонуси!
             </h1>
             <p className="text-muted-foreground max-w-sm mx-auto">
-              Поділіться своїм кодом з друзями. Коли вони зроблять перше замовлення, ви обидва отримаєте бонуси!
+              Чим більше друзів — тим більше бонусів за кожного наступного!
             </p>
           </div>
         </motion.div>
@@ -166,7 +167,50 @@ export default function Referrals() {
                 <Users className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
                 <p className="text-3xl font-bold text-emerald-500">{invitedCount}</p>
                 <p className="text-sm text-muted-foreground">Запрошених друзів</p>
-                <p className="text-xs text-muted-foreground mt-1">Зароблено: {invitedCount * 100}₴ з рефералів</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Поточна ставка: {invitedCount >= 50 ? 500 : invitedCount >= 20 ? 400 : invitedCount >= 10 ? 300 : invitedCount >= 5 ? 200 : 100}₴ за друга
+                </p>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Progression Tiers */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg">Прогресія бонусів</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {[
+                  { threshold: 0, reward: 100, label: "Старт" },
+                  { threshold: 5, reward: 200, label: "5 друзів" },
+                  { threshold: 10, reward: 300, label: "10 друзів" },
+                  { threshold: 20, reward: 400, label: "20 друзів" },
+                  { threshold: 50, reward: 500, label: "50 друзів" },
+                ].map((tier, idx) => {
+                  const isActive = invitedCount >= tier.threshold;
+                  const isCurrentTier = idx === [0, 5, 10, 20, 50].filter(t => invitedCount >= t).length - 1;
+                  return (
+                    <div key={tier.threshold} className={cn(
+                      "flex items-center justify-between p-3 rounded-lg border transition-all",
+                      isCurrentTier ? "border-emerald-500 bg-emerald-500/10" :
+                      isActive ? "border-emerald-500/30 bg-muted/30" : "border-border opacity-60"
+                    )}>
+                      <div className="flex items-center gap-3">
+                        <div className={cn(
+                          "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold",
+                          isActive ? "bg-emerald-500 text-white" : "bg-muted text-muted-foreground"
+                        )}>
+                          {isActive ? <Check className="w-4 h-4" /> : tier.threshold}
+                        </div>
+                        <span className="text-sm font-medium">{tier.label}</span>
+                      </div>
+                      <span className={cn("text-sm font-bold", isActive ? "text-emerald-500" : "text-muted-foreground")}>
+                        {tier.reward}₴/друг
+                      </span>
+                    </div>
+                  );
+                })}
               </CardContent>
             </Card>
           </motion.div>

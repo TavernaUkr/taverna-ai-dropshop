@@ -9,6 +9,7 @@ import { CartItem } from '@/hooks/useCart';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { hapticNotification } from '@/lib/haptics';
+import { useBonuses } from '@/hooks/useBonuses';
 
 // Import new checkout components
 import { CheckoutSteps, CheckoutStep } from './checkout/CheckoutSteps';
@@ -17,6 +18,7 @@ import { CitySearch } from './checkout/CitySearch';
 import { WarehouseSelect } from './checkout/WarehouseSelect';
 import { PaymentMethodSelect, PaymentMethod } from './checkout/PaymentMethodSelect';
 import { OrderSummary } from './checkout/OrderSummary';
+import { CheckoutDiscounts } from './checkout/CheckoutDiscounts';
 import { 
   DeliveryServiceSelect, 
   DeliveryFields, 
@@ -52,10 +54,14 @@ interface DeliveryData {
   courierAddress: string;
 }
 
-interface ActivePromo {
-  code: string;
+interface PersonalBonus {
+  id: string;
+  title: string;
+  description: string;
+  value: string;
   discountPercent?: number;
-  title?: string;
+  discountAmount?: number;
+  icon: string;
 }
 
 export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: CheckoutModalProps) {
@@ -89,10 +95,15 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
   const [orderNotes, setOrderNotes] = useState('');
   
-  // Promo & Bonuses
-  const [activePromo, setActivePromo] = useState<ActivePromo | null>(null);
+  // Promo & Bonuses - real data
+  const { balance: bonusBalance, spendBonuses } = useBonuses();
+  const [promoCode, setPromoCode] = useState('');
+  const [promoApplied, setPromoApplied] = useState(false);
+  const [promoDiscount, setPromoDiscount] = useState(0);
+  const [promoDbId, setPromoDbId] = useState<string | null>(null);
   const [bonusesToUse, setBonusesToUse] = useState(0);
-  const [userBonusBalance] = useState(150); // Mock - will come from useBonuses hook
+  const [personalBonuses, setPersonalBonuses] = useState<PersonalBonus[]>([]);
+  const [selectedPersonalBonus, setSelectedPersonalBonus] = useState<PersonalBonus | null>(null);
   
   // Saved address selection
   const [selectedSavedAddressId, setSelectedSavedAddressId] = useState<string | null>(null);
@@ -104,8 +115,137 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
   // Calculate totals with discounts
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const deliveryCost = 70;
-  const promoDiscount = activePromo?.discountPercent ? Math.round(subtotal * activePromo.discountPercent / 100) : 0;
-  const total = Math.max(0, subtotal + deliveryCost - promoDiscount - bonusesToUse);
+  const personalBonusDiscount = selectedPersonalBonus?.discountPercent
+    ? Math.round(subtotal * selectedPersonalBonus.discountPercent / 100)
+    : selectedPersonalBonus?.discountAmount || 0;
+  const total = Math.max(0, subtotal + deliveryCost - promoDiscount - bonusesToUse - personalBonusDiscount);
+
+  // Load personal bonuses for checkout
+  useEffect(() => {
+    const loadPersonalBonuses = async () => {
+      if (!isAuthenticated || !profile?.id) return;
+      try {
+        const { data: orders } = await supabase
+          .from("orders")
+          .select("id, total")
+          .eq("profile_id", profile.id)
+          .limit(20);
+
+        const totalOrders = orders?.length || 0;
+        const totalSpending = orders?.reduce((sum, o) => sum + (o.total || 0), 0) || 0;
+        const bonuses: PersonalBonus[] = [];
+        const cashbackRate = Math.min(5 + totalOrders, 15);
+
+        bonuses.push({
+          id: "cashback",
+          title: `Кешбек ${cashbackRate}%`,
+          description: "На це замовлення",
+          value: `-${cashbackRate}%`,
+          discountPercent: cashbackRate,
+          icon: "💰",
+        });
+
+        if (totalSpending > 5000) {
+          bonuses.push({
+            id: "delivery",
+            title: "Безкоштовна доставка",
+            description: "VIP-привілей",
+            value: "-70₴",
+            discountAmount: 70,
+            icon: "🚚",
+          });
+        }
+
+        if (totalOrders < 3) {
+          bonuses.push({
+            id: "welcome",
+            title: "-20% на замовлення",
+            description: `Залишилось: ${3 - totalOrders}`,
+            value: "-20%",
+            discountPercent: 20,
+            icon: "🎁",
+          });
+        }
+
+        bonuses.push({
+          id: "category",
+          title: "-10% на улюблену категорію",
+          description: "Тактичне спорядження",
+          value: "-10%",
+          discountPercent: 10,
+          icon: "🎯",
+        });
+
+        if (totalOrders >= 10) {
+          bonuses.push({
+            id: "vip",
+            title: "VIP -15%",
+            description: "Ексклюзивна знижка",
+            value: "-15%",
+            discountPercent: 15,
+            icon: "👑",
+          });
+        }
+
+        setPersonalBonuses(bonuses);
+      } catch (err) {
+        console.error("Error loading personal bonuses:", err);
+      }
+    };
+    loadPersonalBonuses();
+  }, [isAuthenticated, profile?.id]);
+
+  // Apply promo code from DB
+  const handleApplyPromo = async () => {
+    if (!promoCode.trim()) return;
+    try {
+      const { data, error } = await supabase
+        .from("promo_codes")
+        .select("*")
+        .eq("code", promoCode.trim())
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (!data) {
+        toast.error("Промокод не знайдено або він неактивний");
+        return;
+      }
+      if (data.max_uses && (data.current_uses || 0) >= data.max_uses) {
+        toast.error("Промокод вичерпано");
+        return;
+      }
+      if (data.min_order_amount && subtotal < data.min_order_amount) {
+        toast.error(`Мінімальна сума замовлення: ${data.min_order_amount}₴`);
+        return;
+      }
+      if (data.valid_until && new Date(data.valid_until) < new Date()) {
+        toast.error("Термін дії промокоду вичерпано");
+        return;
+      }
+
+      const discount = data.discount_percent
+        ? Math.round(subtotal * data.discount_percent / 100)
+        : data.discount_amount || 0;
+
+      setPromoDiscount(discount);
+      setPromoApplied(true);
+      setPromoDbId(data.id);
+      hapticNotification("success");
+      toast.success(`Промокод застосовано! Знижка: ${discount}₴`);
+    } catch (err) {
+      console.error("Promo error:", err);
+      toast.error("Помилка перевірки промокоду");
+    }
+  };
+
+  const handleRemovePromo = () => {
+    setPromoCode("");
+    setPromoDiscount(0);
+    setPromoApplied(false);
+    setPromoDbId(null);
+    localStorage.removeItem(PROMO_STORAGE_KEY);
+  };
 
   // Initialize with user data if authenticated
   useEffect(() => {
@@ -166,11 +306,18 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
       const storedPromo = localStorage.getItem(PROMO_STORAGE_KEY);
       if (storedPromo) {
         try {
-          setActivePromo(JSON.parse(storedPromo));
+          const parsed = JSON.parse(storedPromo);
+          if (parsed.code) {
+            setPromoCode(parsed.code);
+          }
         } catch {
-          setActivePromo(null);
+          // ignore
         }
       }
+      setPromoApplied(false);
+      setPromoDiscount(0);
+      setPromoDbId(null);
+      setSelectedPersonalBonus(null);
       
       if (!isAuthenticated) {
         setContactData({ firstName: '', lastName: '', phone: '' });
@@ -374,6 +521,22 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
         if (error) throw error;
 
         if (data?.success && data?.order) {
+          // Spend bonuses if used
+          if (bonusesToUse > 0) {
+            await spendBonuses(bonusesToUse);
+          }
+          // Track promo usage
+          if (promoApplied && promoDbId && profile?.id) {
+            await supabase.from("used_promo_codes").insert({
+              profile_id: profile.id,
+              promo_code_id: promoDbId,
+              order_id: data.order.id,
+            });
+            await supabase.from("promo_codes").update({
+              current_uses: (await supabase.from("promo_codes").select("current_uses").eq("id", promoDbId).single()).data?.current_uses! + 1,
+            }).eq("id", promoDbId);
+            localStorage.removeItem(PROMO_STORAGE_KEY);
+          }
           toast.success(`Замовлення #${data.order.order_number} створено!`);
           onOrderComplete(data.order.id);
         } else {
@@ -622,64 +785,23 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
         onChange={setPaymentMethod}
       />
 
-      {/* Promo Code Display */}
-      {activePromo && (
-        <div className="bg-success/10 border border-success/30 rounded-xl p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Tag className="h-5 w-5 text-success" />
-              <div>
-                <p className="font-medium text-foreground">Промокод: {activePromo.code}</p>
-                <p className="text-sm text-success">-{activePromo.discountPercent}% знижка</p>
-              </div>
-            </div>
-            <button 
-              onClick={() => {
-                setActivePromo(null);
-                localStorage.removeItem(PROMO_STORAGE_KEY);
-              }}
-              className="text-xs text-muted-foreground hover:text-destructive"
-            >
-              Видалити
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Bonus Points */}
-      {isAuthenticated && userBonusBalance > 0 && (
-        <div className="bg-primary/10 border border-primary/30 rounded-xl p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Gift className="h-5 w-5 text-primary" />
-              <span className="font-medium text-foreground">Бонуси</span>
-            </div>
-            <span className="text-sm text-muted-foreground">Доступно: {userBonusBalance} ₴</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Input
-              type="number"
-              min={0}
-              max={Math.min(userBonusBalance, subtotal)}
-              value={bonusesToUse || ''}
-              onChange={(e) => setBonusesToUse(Math.min(Number(e.target.value) || 0, userBonusBalance, subtotal))}
-              placeholder="0"
-              className="flex-1"
-            />
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => setBonusesToUse(Math.min(userBonusBalance, subtotal))}
-            >
-              Макс
-            </Button>
-          </div>
-          <p className="text-xs text-muted-foreground flex items-center gap-1">
-            <Info className="h-3 w-3" />
-            Бонуси можна використовувати разом з промокодом
-          </p>
-        </div>
-      )}
+      {/* Discounts & Bonuses Section */}
+      <CheckoutDiscounts
+        subtotal={subtotal}
+        bonusBalance={bonusBalance}
+        bonusesToUse={bonusesToUse}
+        onBonusesChange={setBonusesToUse}
+        promoCode={promoCode}
+        promoDiscount={promoDiscount}
+        promoApplied={promoApplied}
+        onPromoCodeChange={setPromoCode}
+        onApplyPromo={handleApplyPromo}
+        onRemovePromo={handleRemovePromo}
+        personalBonuses={personalBonuses}
+        selectedPersonalBonus={selectedPersonalBonus}
+        onSelectPersonalBonus={setSelectedPersonalBonus}
+        isAuthenticated={isAuthenticated}
+      />
 
       <div className="space-y-2">
         <Label className="text-sm font-medium text-foreground">Коментар до замовлення</Label>
