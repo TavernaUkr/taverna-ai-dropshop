@@ -46,7 +46,17 @@ export default function BonusAccount() {
           .select("id", { count: "exact", head: true })
           .eq("referred_by", profile.id);
         setInvitedCount(count || 0);
-        setReferralEarned((count || 0) * 100);
+        // Calculate referral earnings with progression tiers
+        const invited = count || 0;
+        let earned = 0;
+        for (let i = 0; i < invited; i++) {
+          if (i >= 50) earned += 500;
+          else if (i >= 20) earned += 400;
+          else if (i >= 10) earned += 300;
+          else if (i >= 5) earned += 200;
+          else earned += 100;
+        }
+        setReferralEarned(earned);
 
         // Orders for bonus count calculation
         const { data: orders } = await supabase
