@@ -35,6 +35,8 @@ interface CheckoutDiscountsProps {
   onSelectPersonalBonus: (bonus: PersonalBonus | null) => void;
   // Auth
   isAuthenticated: boolean;
+  // Order count for progressive bonus cap
+  orderCount?: number;
 }
 
 export function CheckoutDiscounts({
@@ -52,10 +54,13 @@ export function CheckoutDiscounts({
   selectedPersonalBonus,
   onSelectPersonalBonus,
   isAuthenticated,
+  orderCount = 0,
 }: CheckoutDiscountsProps) {
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
 
-  const maxBonuses = Math.floor(subtotal * 0.2); // 20% max
+  // Progressive bonus cap based on order count
+  const bonusCapPercent = orderCount >= 50 ? 20 : orderCount >= 25 ? 15 : orderCount >= 10 ? 12 : 10;
+  const maxBonuses = Math.floor(subtotal * bonusCapPercent / 100);
   const effectiveMaxBonuses = Math.min(bonusBalance, maxBonuses);
 
   const toggleSection = (section: string) => {
@@ -120,7 +125,7 @@ export function CheckoutDiscounts({
               </div>
               <p className="text-xs text-muted-foreground flex items-center gap-1">
                 <Info className="h-3 w-3 shrink-0" />
-                Максимум 20% від суми замовлення ({maxBonuses}₴)
+                Максимум {bonusCapPercent}% від суми замовлення ({maxBonuses}₴)
               </p>
             </div>
           )}
