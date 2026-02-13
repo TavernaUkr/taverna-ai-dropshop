@@ -420,6 +420,12 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
   const validateDelivery = (): boolean => {
     const newErrors: Record<string, string> = {};
     
+    // If a saved address is selected with valid data, skip detailed validation
+    if (selectedSavedAddressId && deliveryData.cityRef && deliveryData.warehouseRef) {
+      setErrors(newErrors);
+      return true;
+    }
+    
     // Common validation for all services
     if (deliveryData.service === 'nova_poshta') {
       if (!deliveryData.cityRef) {
