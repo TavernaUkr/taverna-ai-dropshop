@@ -82,6 +82,7 @@ export const WarehouseSelect = ({
   };
 
   const selectedWarehouse = warehouses.find((w) => w.Ref === value);
+  const hasSavedValue = value && warehouseNumber && !isLoading && !selectedWarehouse;
 
   if (!cityRef) {
     return (
@@ -119,7 +120,7 @@ export const WarehouseSelect = ({
         >
           <SelectTrigger className={cn(error ? "border-destructive" : "")}>
             <SelectValue placeholder="Оберіть відділення">
-              {selectedWarehouse && (
+              {selectedWarehouse ? (
                 <div className="flex items-center gap-2">
                   {(() => {
                     const Icon = getIcon(selectedWarehouse.TypeOfWarehouse);
@@ -127,7 +128,12 @@ export const WarehouseSelect = ({
                   })()}
                   <span className="truncate">№{selectedWarehouse.Number}</span>
                 </div>
-              )}
+              ) : hasSavedValue ? (
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-primary" />
+                  <span className="truncate">Відділення №{warehouseNumber}</span>
+                </div>
+              ) : null}
             </SelectValue>
           </SelectTrigger>
           <SelectContent className="max-h-60">
