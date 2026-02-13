@@ -104,6 +104,7 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
   const [bonusesToUse, setBonusesToUse] = useState(0);
   const [personalBonuses, setPersonalBonuses] = useState<PersonalBonus[]>([]);
   const [selectedPersonalBonus, setSelectedPersonalBonus] = useState<PersonalBonus | null>(null);
+  const [orderCount, setOrderCount] = useState(0);
   
   // Saved address selection
   const [selectedSavedAddressId, setSelectedSavedAddressId] = useState<string | null>(null);
@@ -132,6 +133,7 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
           .limit(20);
 
         const totalOrders = orders?.length || 0;
+        setOrderCount(totalOrders);
         const totalSpending = orders?.reduce((sum, o) => sum + (o.total || 0), 0) || 0;
         const bonuses: PersonalBonus[] = [];
         const cashbackRate = Math.min(5 + totalOrders, 15);
@@ -801,6 +803,7 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
         selectedPersonalBonus={selectedPersonalBonus}
         onSelectPersonalBonus={setSelectedPersonalBonus}
         isAuthenticated={isAuthenticated}
+        orderCount={orderCount}
       />
 
       <div className="space-y-2">

@@ -2,10 +2,11 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Wallet, ChevronLeft, Users, Gift, Tag, ShoppingBag, ChevronRight,
-  Coins, Sparkles, Copy, Check, Share2,
+  Coins, Sparkles, Copy, Check, Share2, TrendingUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import { useTelegramAuthContext } from "@/components/TelegramAuthProvider";
 import { useBonuses } from "@/hooks/useBonuses";
 import { hapticSelection, hapticNotification } from "@/lib/haptics";
@@ -21,6 +22,7 @@ export default function BonusAccount() {
   const [referralEarned, setReferralEarned] = useState(0);
   const [activeBonusesCount, setActiveBonusesCount] = useState(0);
   const [activePromosCount, setActivePromosCount] = useState(0);
+  const [totalOrders, setTotalOrders] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [copied, setCopied] = useState(false);
 
@@ -66,6 +68,7 @@ export default function BonusAccount() {
           .limit(20);
 
         const totalOrders = orders?.length || 0;
+        setTotalOrders(totalOrders);
         // Count active bonuses (same logic as PersonalBonuses page)
         let bonusCount = 2; // cashback + category always active
         const totalSpending = orders?.reduce((sum, o) => sum + (o.total || 0), 0) || 0;
@@ -249,8 +252,51 @@ export default function BonusAccount() {
             </button>
           </motion.div>
 
+          {/* Progressive Bonus Cap Info */}
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }}>
+            <Card className="border border-primary/20">
+              <CardHeader className="pb-2 pt-4 px-4">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-primary" />
+                  Ліміт використання бонусів
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4 space-y-2">
+                <p className="text-xs text-muted-foreground mb-3">
+                  Чим більше замовлень — тим більший % знижки бонусами:
+                </p>
+                {[
+                  { orders: 5, percent: 10, label: "до 5 замовлень" },
+                  { orders: 10, percent: 12, label: "від 10 замовлень" },
+                  { orders: 25, percent: 15, label: "від 25 замовлень" },
+                  { orders: 50, percent: 20, label: "від 50 замовлень" },
+                ].map((tier) => {
+                  const isActive = totalOrders >= 50 ? tier.orders === 50
+                    : totalOrders >= 25 ? tier.orders === 25
+                    : totalOrders >= 10 ? tier.orders === 10
+                    : tier.orders === 5;
+                  return (
+                    <div key={tier.orders} className={cn(
+                      "flex items-center justify-between p-2.5 rounded-lg border transition-all",
+                      isActive ? "border-primary bg-primary/10" : "border-border"
+                    )}>
+                      <div className="flex items-center gap-2">
+                        {isActive && <Check className="w-4 h-4 text-primary" />}
+                        <span className={cn("text-sm", isActive ? "font-medium text-foreground" : "text-muted-foreground")}>{tier.label}</span>
+                      </div>
+                      <span className={cn("text-sm font-bold", isActive ? "text-primary" : "text-muted-foreground")}>{tier.percent}%</span>
+                    </div>
+                  );
+                })}
+                <p className="text-xs text-muted-foreground mt-2">
+                  Ваших замовлень: <span className="font-medium text-foreground">{totalOrders}</span>
+                </p>
+              </CardContent>
+            </Card>
+          </motion.div>
+
           {/* Spend CTA */}
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}>
             <Button
               onClick={() => { hapticSelection(); navigate("/"); }}
               className="w-full gap-2 bg-gradient-to-r from-primary to-accent hover:opacity-90"
