@@ -1,4 +1,4 @@
-import { Package, Truck, Banknote } from "lucide-react";
+import { Package, Truck, Banknote, Tag, Wallet, Sparkles } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { CartItem } from "@/components/CartModal";
 
@@ -7,6 +7,11 @@ interface OrderSummaryProps {
   subtotal: number;
   deliveryCost: number;
   total: number;
+  promoDiscount?: number;
+  bonusesUsed?: number;
+  personalBonusDiscount?: number;
+  personalBonusName?: string;
+  promoCode?: string;
 }
 
 export const OrderSummary = ({
@@ -14,6 +19,11 @@ export const OrderSummary = ({
   subtotal,
   deliveryCost,
   total,
+  promoDiscount = 0,
+  bonusesUsed = 0,
+  personalBonusDiscount = 0,
+  personalBonusName,
+  promoCode,
 }: OrderSummaryProps) => {
   return (
     <div className="bg-card rounded-xl border border-border p-4 space-y-4">
@@ -65,6 +75,35 @@ export const OrderSummary = ({
             {deliveryCost > 0 ? `${deliveryCost.toLocaleString()} ₴` : "Безкоштовно"}
           </span>
         </div>
+
+        {/* Discount breakdown */}
+        {promoDiscount > 0 && (
+          <div className="flex justify-between items-center text-emerald-500">
+            <div className="flex items-center gap-1">
+              <Tag className="h-4 w-4" />
+              <span>Промокод {promoCode}</span>
+            </div>
+            <span>-{promoDiscount.toLocaleString()} ₴</span>
+          </div>
+        )}
+        {bonusesUsed > 0 && (
+          <div className="flex justify-between items-center text-primary">
+            <div className="flex items-center gap-1">
+              <Wallet className="h-4 w-4" />
+              <span>Бонуси</span>
+            </div>
+            <span>-{bonusesUsed.toLocaleString()} ₴</span>
+          </div>
+        )}
+        {personalBonusDiscount > 0 && (
+          <div className="flex justify-between items-center text-amber-500">
+            <div className="flex items-center gap-1">
+              <Sparkles className="h-4 w-4" />
+              <span>{personalBonusName || "Персональний бонус"}</span>
+            </div>
+            <span>-{personalBonusDiscount.toLocaleString()} ₴</span>
+          </div>
+        )}
       </div>
 
       <Separator />
