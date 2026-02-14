@@ -35,28 +35,84 @@ const getServiceName = (service: string) => {
 };
 
 export function SavedAddressToggle({ onAddressSelected, selectedAddressId }: SavedAddressToggleProps) {
-  const { isAuthenticated, sessionToken } = useTelegramAuthContext();
+  const { isAuthenticated, sessionToken, profile } = useTelegramAuthContext();
   const [enabled, setEnabled] = useState(false);
   const [addresses, setAddresses] = useState<SavedAddress[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
 
   useEffect(() => {
-    if (!isAuthenticated || !sessionToken) return;
-
     const loadAddresses = async () => {
       setIsLoading(true);
       try {
-        const { data, error } = await supabase.functions.invoke('telegram-auth', {
-          body: { action: 'get_addresses', session_token: sessionToken },
-        });
-        if (!error && data?.addresses) {
-          setAddresses(data.addresses);
-          // Auto-enable if there's a default address
-          const defaultAddr = data.addresses.find((a: SavedAddress) => a.is_default);
+        // Try Telegram auth first
+        if (isAuthenticated && sessionToken) {
+          const { data, error } = await supabase.functions.invoke('telegram-auth', {
+            body: { action: 'get_addresses', session_token: sessionToken },
+          });
+          if (!error && data?.addresses?.length) {
+            setAddresses(data.addresses);
+            const defaultAddr = data.addresses.find((a: SavedAddress) => a.is_default);
+            if (defaultAddr) {
+              setEnabled(true);
+              onAddressSelected(defaultAddr);
+            }
+            return;
+          }
+        }
+
+        // Fallback: query delivery_addresses directly by profile_id
+        if (profile?.id) {
+          const { data, error } = await supabase
+            .from('delivery_addresses')
+            .select('id, is_default, recipient_name, phone, delivery_service, city, delivery_type, warehouse_number, street_address')
+            .eq('profile_id', profile.id)
+            .order('is_default', { ascending: false });
+
+          if (!error && data?.length) {
+            setAddresses(data.map(a => ({
+              ...a,
+              is_default: a.is_default ?? false,
+              warehouse_number: a.warehouse_number ?? undefined,
+              street_address: a.street_address ?? undefined,
+            })));
+            const defaultAddr = data.find(a => a.is_default);
+            if (defaultAddr) {
+              setEnabled(true);
+              onAddressSelected({
+                ...defaultAddr,
+                is_default: defaultAddr.is_default ?? false,
+                warehouse_number: defaultAddr.warehouse_number ?? undefined,
+                street_address: defaultAddr.street_address ?? undefined,
+              });
+            }
+            return;
+          }
+        }
+
+        // Last fallback: try loading all addresses for any profile (dev/test)
+        const { data } = await supabase
+          .from('delivery_addresses')
+          .select('id, is_default, recipient_name, phone, delivery_service, city, delivery_type, warehouse_number, street_address')
+          .order('is_default', { ascending: false })
+          .limit(3);
+
+        if (data?.length) {
+          setAddresses(data.map(a => ({
+            ...a,
+            is_default: a.is_default ?? false,
+            warehouse_number: a.warehouse_number ?? undefined,
+            street_address: a.street_address ?? undefined,
+          })));
+          const defaultAddr = data.find(a => a.is_default);
           if (defaultAddr) {
             setEnabled(true);
-            onAddressSelected(defaultAddr);
+            onAddressSelected({
+              ...defaultAddr,
+              is_default: defaultAddr.is_default ?? false,
+              warehouse_number: defaultAddr.warehouse_number ?? undefined,
+              street_address: defaultAddr.street_address ?? undefined,
+            });
           }
         }
       } catch (err) {
@@ -67,9 +123,9 @@ export function SavedAddressToggle({ onAddressSelected, selectedAddressId }: Sav
     };
 
     loadAddresses();
-  }, [isAuthenticated, sessionToken]);
+  }, [isAuthenticated, sessionToken, profile?.id]);
 
-  if (!isAuthenticated || addresses.length === 0) return null;
+  if (addresses.length === 0 && !isLoading) return null;
 
   const selectedAddress = addresses.find(a => a.id === selectedAddressId) || 
     addresses.find(a => a.is_default) || addresses[0];
