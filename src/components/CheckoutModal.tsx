@@ -844,6 +844,11 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
         subtotal={subtotal}
         deliveryCost={deliveryCost}
         total={total}
+        promoDiscount={promoDiscount}
+        bonusesUsed={bonusesToUse}
+        personalBonusDiscount={personalBonusDiscount}
+        personalBonusName={selectedPersonalBonus?.title}
+        promoCode={promoApplied ? promoCode : undefined}
       />
 
       {/* Delivery Info */}
@@ -851,13 +856,21 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
         <div className="flex items-center gap-2 text-sm font-medium text-foreground">
           <Truck className="h-4 w-4" />
           Доставка
+          {deliveryData.deliveryType === 'fulfillment' && (
+            <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">Фулфілмент НП</span>
+          )}
         </div>
         <p className="text-sm text-muted-foreground">
-          {deliveryData.city}, {deliveryData.warehouse}
+          {deliveryData.city}{deliveryData.warehouse ? `, Відділення №${deliveryData.warehouse}` : ''}
         </p>
         <p className="text-sm text-muted-foreground">
           {contactData.firstName} {contactData.lastName}, +{contactData.phone}
         </p>
+        {isMultiSupplier && deliveryData.deliveryType === 'fulfillment' && (
+          <p className="text-xs text-primary">
+            Товари від {uniqueSuppliers.size} постачальників будуть зібрані на складі НП в одну посилку
+          </p>
+        )}
       </div>
 
       {/* Payment Info */}
