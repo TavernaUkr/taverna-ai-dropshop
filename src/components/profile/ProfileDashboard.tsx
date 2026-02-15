@@ -271,6 +271,28 @@ export const ProfileDashboard = () => {
         </button>
       )}
 
+      {/* Store Management Button - ONLY for Suppliers */}
+      {isAuthenticated && (isOnlySupplier || isAdmin) && (
+        <button
+          onClick={() => {
+            hapticSelection();
+            navigate("/store-management");
+          }}
+          className="w-full flex items-center gap-4 p-4 rounded-xl border transition-all bg-gradient-to-r from-teal-500/5 to-cyan-500/5 border-teal-500/20 hover:border-teal-500 hover:from-teal-500/10 hover:to-cyan-500/10"
+        >
+          <div className="w-12 h-12 rounded-full flex items-center justify-center bg-gradient-to-br from-teal-500/20 to-cyan-500/20">
+            <Settings className="h-6 w-6 text-teal-500" />
+          </div>
+          <div className="flex-1 text-left">
+            <h4 className="font-semibold text-foreground">Керування магазином</h4>
+            <p className="text-xs text-muted-foreground">
+              Обкладинка, правила, відгуки, запити
+            </p>
+          </div>
+          <ChevronRight className="h-5 w-5 text-teal-500" />
+        </button>
+      )}
+
       {/* Become Partner Button - For Customers (not suppliers/admin/moderator) */}
       {isAuthenticated && !isOnlySupplier && !isAdmin && !isModerator && (
         <button

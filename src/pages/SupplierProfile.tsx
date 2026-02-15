@@ -21,6 +21,13 @@ interface Supplier {
   id: string;
   shop_name: string;
   is_active: boolean;
+  description?: string;
+  logo_url?: string;
+  cover_image_url?: string;
+  return_policy?: string;
+  exchange_policy?: string;
+  shipping_schedule?: string;
+  shipping_days?: string[];
 }
 
 interface Product {
@@ -82,15 +89,25 @@ const SupplierProfile = () => {
     
     setIsLoading(true);
     try {
-      // Fetch supplier info
+      // Fetch supplier info (try full table first, fallback to public view)
       const { data: supplierData, error: supplierError } = await supabase
-        .from("suppliers_public")
-        .select("*")
+        .from("suppliers")
+        .select("id, shop_name, is_active, description, logo_url, cover_image_url, return_policy, exchange_policy, shipping_schedule, shipping_days")
         .eq("id", id)
         .single();
 
-      if (supplierError) throw supplierError;
-      setSupplier(supplierData as Supplier);
+      if (supplierError) {
+        // Fallback to public view
+        const { data: pubData, error: pubError } = await supabase
+          .from("suppliers_public")
+          .select("*")
+          .eq("id", id)
+          .single();
+        if (pubError) throw pubError;
+        setSupplier(pubData as Supplier);
+      } else {
+        setSupplier(supplierData as any as Supplier);
+      }
 
       // Fetch products for this supplier
       const { data: productsData, error: productsError } = await supabase
@@ -310,14 +327,22 @@ const SupplierProfile = () => {
 
       {/* Supplier Hero */}
       <div className="relative">
-        {/* Cover gradient */}
-        <div className="h-24 bg-gradient-to-r from-primary/20 via-primary/10 to-accent/20" />
+        {/* Cover image */}
+        <div className="h-24 bg-gradient-to-r from-primary/20 via-primary/10 to-accent/20 overflow-hidden">
+          {supplier.cover_image_url && (
+            <img src={supplier.cover_image_url} alt="Cover" className="w-full h-full object-cover" />
+          )}
+        </div>
         
         {/* Profile section */}
         <div className="px-4 -mt-8">
           <div className="flex items-end gap-4 mb-4">
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center border-4 border-background shadow-lg">
-              <Store className="h-10 w-10 text-primary" />
+            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center border-4 border-background shadow-lg overflow-hidden">
+              {supplier.logo_url ? (
+                <img src={supplier.logo_url} alt={supplier.shop_name} className="w-full h-full object-cover" />
+              ) : (
+                <Store className="h-10 w-10 text-primary" />
+              )}
             </div>
             <div className="flex-1 pb-2">
               <div className="flex items-center gap-3 text-sm mb-1">
@@ -560,8 +585,7 @@ const SupplierProfile = () => {
               <h3 className="font-semibold text-foreground">Про магазин</h3>
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              {supplier.shop_name} — офіційний партнер маркетплейсу Taverna Group. 
-              Всі товари проходять перевірку якості перед відправкою.
+              {supplier.description || `${supplier.shop_name} — офіційний партнер маркетплейсу Taverna Group. Всі товари проходять перевірку якості перед відправкою.`}
             </p>
           </div>
 
@@ -571,9 +595,17 @@ const SupplierProfile = () => {
               <h3 className="font-semibold text-foreground">Політика повернення</h3>
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Повернення товару можливе протягом 14 днів з моменту отримання за умови 
-              збереження товарного вигляду та упаковки. Для оформлення повернення 
-              зверніться до служби підтримки Taverna.
+              {supplier.return_policy || "Повернення товару можливе протягом 14 днів з моменту отримання за умови збереження товарного вигляду та упаковки. Для оформлення повернення зверніться до служби підтримки Taverna."}
+            </p>
+          </div>
+
+          <div className="bg-card rounded-xl p-4 border border-border">
+            <div className="flex items-center gap-2 mb-3">
+              <Package className="h-5 w-5 text-primary" />
+              <h3 className="font-semibold text-foreground">Обмін товару</h3>
+            </div>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              {supplier.exchange_policy || "Обмін товару можливий на аналогічний або інший розмір/колір протягом 14 днів."}
             </p>
           </div>
 
@@ -583,9 +615,24 @@ const SupplierProfile = () => {
               <h3 className="font-semibold text-foreground">Доставка</h3>
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Відправка замовлень здійснюється протягом 1-2 робочих днів. 
-              Доставка по всій Україні через Нову Пошту, Укрпошту та інші служби.
+              {supplier.shipping_schedule || "Відправка замовлень здійснюється протягом 1-2 робочих днів. Доставка по всій Україні через Нову Пошту, Укрпошту та інші служби."}
             </p>
+            {supplier.shipping_days && supplier.shipping_days.length > 0 && (
+              <div className="flex gap-1.5 mt-3">
+                {["Пн","Вт","Ср","Чт","Пт","Сб","Нд"].map((day, i) => {
+                  const dayIds = ["mon","tue","wed","thu","fri","sat","sun"];
+                  const isActive = supplier.shipping_days?.includes(dayIds[i]);
+                  return (
+                    <span key={i} className={cn(
+                      "w-8 h-8 rounded-lg text-xs font-medium flex items-center justify-center",
+                      isActive ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                    )}>
+                      {day}
+                    </span>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </TabsContent>
       </Tabs>

@@ -1063,16 +1063,26 @@ export type Database = {
           contact_email: string | null
           contact_name: string
           contact_phone: string
+          cover_image_url: string | null
           created_at: string
+          description: string | null
+          exchange_policy: string | null
           id: string
           is_active: boolean | null
           legal_type: string
+          logo_url: string | null
           markup_percentage: number | null
+          return_contact_info: string | null
+          return_policy: string | null
+          shipping_days: string[] | null
+          shipping_schedule: string | null
           shop_name: string
+          shop_photos: string[] | null
           tax_code: string | null
           telegram_channel_url: string | null
           telegram_id: number | null
           updated_at: string
+          website_url: string | null
           xml_url: string | null
         }
         Insert: {
@@ -1080,16 +1090,26 @@ export type Database = {
           contact_email?: string | null
           contact_name: string
           contact_phone: string
+          cover_image_url?: string | null
           created_at?: string
+          description?: string | null
+          exchange_policy?: string | null
           id?: string
           is_active?: boolean | null
           legal_type: string
+          logo_url?: string | null
           markup_percentage?: number | null
+          return_contact_info?: string | null
+          return_policy?: string | null
+          shipping_days?: string[] | null
+          shipping_schedule?: string | null
           shop_name: string
+          shop_photos?: string[] | null
           tax_code?: string | null
           telegram_channel_url?: string | null
           telegram_id?: number | null
           updated_at?: string
+          website_url?: string | null
           xml_url?: string | null
         }
         Update: {
@@ -1097,16 +1117,26 @@ export type Database = {
           contact_email?: string | null
           contact_name?: string
           contact_phone?: string
+          cover_image_url?: string | null
           created_at?: string
+          description?: string | null
+          exchange_policy?: string | null
           id?: string
           is_active?: boolean | null
           legal_type?: string
+          logo_url?: string | null
           markup_percentage?: number | null
+          return_contact_info?: string | null
+          return_policy?: string | null
+          shipping_days?: string[] | null
+          shipping_schedule?: string | null
           shop_name?: string
+          shop_photos?: string[] | null
           tax_code?: string | null
           telegram_channel_url?: string | null
           telegram_id?: number | null
           updated_at?: string
+          website_url?: string | null
           xml_url?: string | null
         }
         Relationships: []
