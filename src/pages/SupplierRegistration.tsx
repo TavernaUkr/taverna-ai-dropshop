@@ -450,6 +450,19 @@ const SupplierRegistration = () => {
                   className="w-full px-4 py-3 bg-muted border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Telegram менеджера магазину</label>
+                <input
+                  {...register("managerTelegram" as any)}
+                  type="text"
+                  placeholder="@manager_username"
+                  className="w-full px-4 py-3 bg-muted border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Менеджер отримуватиме сповіщення від бота при зверненнях клієнтів
+                </p>
+              </div>
             </div>
 
             <div className="flex gap-3">

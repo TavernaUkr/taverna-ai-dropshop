@@ -1059,6 +1059,7 @@ export type Database = {
       }
       suppliers: {
         Row: {
+          allow_bot_chat: boolean | null
           company_name: string
           contact_email: string | null
           contact_name: string
@@ -1071,6 +1072,7 @@ export type Database = {
           is_active: boolean | null
           legal_type: string
           logo_url: string | null
+          manager_telegram: string | null
           markup_percentage: number | null
           return_contact_info: string | null
           return_policy: string | null
@@ -1086,6 +1088,7 @@ export type Database = {
           xml_url: string | null
         }
         Insert: {
+          allow_bot_chat?: boolean | null
           company_name: string
           contact_email?: string | null
           contact_name: string
@@ -1098,6 +1101,7 @@ export type Database = {
           is_active?: boolean | null
           legal_type: string
           logo_url?: string | null
+          manager_telegram?: string | null
           markup_percentage?: number | null
           return_contact_info?: string | null
           return_policy?: string | null
@@ -1113,6 +1117,7 @@ export type Database = {
           xml_url?: string | null
         }
         Update: {
+          allow_bot_chat?: boolean | null
           company_name?: string
           contact_email?: string | null
           contact_name?: string
@@ -1125,6 +1130,7 @@ export type Database = {
           is_active?: boolean | null
           legal_type?: string
           logo_url?: string | null
+          manager_telegram?: string | null
           markup_percentage?: number | null
           return_contact_info?: string | null
           return_policy?: string | null
