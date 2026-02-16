@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Package, Truck, CheckCircle2, Clock, XCircle, ChevronRight, Loader2, MapPin, RefreshCw, ExternalLink } from 'lucide-react';
+import { Package, Truck, CheckCircle2, Clock, XCircle, ChevronRight, Loader2, MapPin, RefreshCw, ExternalLink, RotateCcw, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTelegramAuthContext } from './TelegramAuthProvider';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from './ui/button';
 import { OrderTracking } from './OrderTracking';
+import { toast } from 'sonner';
 
 interface OrderItem {
   id: string;
@@ -131,6 +132,9 @@ interface OrderDetailsModalProps {
 }
 
 function OrderDetailsModal({ order, onClose }: OrderDetailsModalProps) {
+  const [returnAddress, setReturnAddress] = useState<string | null>(null);
+  const [isLoadingAddress, setIsLoadingAddress] = useState(false);
+
   if (!order) return null;
 
   const status = statusConfig[order.status] || statusConfig.pending;
@@ -145,6 +149,57 @@ function OrderDetailsModal({ order, onClose }: OrderDetailsModalProps) {
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  const handleShowReturnAddress = async () => {
+    setIsLoadingAddress(true);
+    try {
+      // Get product supplier to find return address
+      const productIds = order.items.map(i => (i as any).product_id).filter(Boolean);
+      if (productIds.length === 0) {
+        // Try to find via order items
+        const { data: orderItems } = await supabase
+          .from("order_items")
+          .select("product_id")
+          .eq("order_id", order.id);
+        
+        if (orderItems?.length) {
+          const { data: products } = await supabase
+            .from("products")
+            .select("supplier_id")
+            .in("id", orderItems.map(oi => oi.product_id!).filter(Boolean));
+          
+          if (products?.length) {
+            const { data: supplier } = await supabase
+              .from("suppliers")
+              .select("return_contact_info, shop_name")
+              .eq("id", products[0].supplier_id!)
+              .single();
+            
+            if (supplier?.return_contact_info) {
+              setReturnAddress(supplier.return_contact_info);
+            } else {
+              setReturnAddress(`Адреса повернення для ${supplier?.shop_name || 'магазину'} не вказана. Зверніться до менеджера.`);
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Error loading return address:", err);
+      toast.error("Помилка завантаження адреси");
+    } finally {
+      setIsLoadingAddress(false);
+    }
+  };
+
+  const handleContactManager = () => {
+    const tg = (window as any).Telegram?.WebApp;
+    const startParam = `return_${order.id}`;
+    if (tg?.openTelegramLink) {
+      tg.openTelegramLink(`https://t.me/taverna_support_bot?start=${startParam}`);
+    } else {
+      window.open(`https://t.me/taverna_support_bot?start=${startParam}`, "_blank");
+    }
   };
 
   return (
@@ -249,6 +304,43 @@ function OrderDetailsModal({ order, onClose }: OrderDetailsModalProps) {
               <p className="text-sm text-muted-foreground">{order.notes}</p>
             </div>
           )}
+
+          {/* Return Address Section */}
+          {returnAddress && (
+            <div className="bg-primary/5 border border-primary/20 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <MapPin className="h-4 w-4 text-primary" />
+                <span className="font-medium text-sm text-foreground">Адреса обміну/повернення</span>
+              </div>
+              <p className="text-sm text-muted-foreground">{returnAddress}</p>
+            </div>
+          )}
+
+          {/* Return/Exchange Actions */}
+          <div className="space-y-2 pt-2">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Обмін та повернення</p>
+            <Button
+              variant="outline"
+              className="w-full justify-start gap-3 h-12"
+              onClick={handleShowReturnAddress}
+              disabled={isLoadingAddress}
+            >
+              {isLoadingAddress ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RotateCcw className="h-4 w-4 text-primary" />
+              )}
+              <span>Адреса обміну/повернення</span>
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start gap-3 h-12"
+              onClick={handleContactManager}
+            >
+              <MessageSquare className="h-4 w-4 text-primary" />
+              <span>Зв'язатись із менеджером</span>
+            </Button>
+          </div>
         </div>
 
         {/* Footer */}

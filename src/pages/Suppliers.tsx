@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Store, Star, MapPin, Package, ChevronRight, Verified, Loader2, User } from "lucide-react";
+import { Store, Star, MapPin, Package, ChevronRight, Verified, Loader2, User, MessageSquare } from "lucide-react";
 import { Header } from "@/components/Header";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { Badge } from "@/components/ui/badge";
@@ -128,42 +128,63 @@ const Suppliers = () => {
         ) : (
           <div className="space-y-4">
             {suppliers.map((supplier) => (
-              <button
+              <div
                 key={supplier.id}
-                onClick={() => navigate(`/supplier/${supplier.id}`)}
                 className="w-full bg-card rounded-2xl p-5 border border-border hover:border-primary/50 hover:shadow-lg transition-all duration-300 text-left group"
               >
-                <div className="flex items-start gap-4">
-                  {/* Avatar */}
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center flex-shrink-0 shadow-inner">
-                    <Store className="h-8 w-8 text-primary" />
-                  </div>
-
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-semibold text-foreground truncate text-lg group-hover:text-primary transition-colors">
-                        {supplier.shop_name}
-                      </h3>
-                      <Verified className="h-4 w-4 text-primary flex-shrink-0" />
+                <button
+                  onClick={() => navigate(`/supplier/${supplier.id}`)}
+                  className="w-full text-left"
+                >
+                  <div className="flex items-start gap-4">
+                    {/* Avatar */}
+                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center flex-shrink-0 shadow-inner">
+                      <Store className="h-8 w-8 text-primary" />
                     </div>
 
-                    <p className="text-sm text-muted-foreground mb-3">
-                      Офіційний партнер Taverna
-                    </p>
-
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1.5 bg-muted/50 px-2.5 py-1 rounded-full">
-                          <Package className="h-3.5 w-3.5" />
-                          {supplier.product_count || 0} товарів
-                        </span>
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-semibold text-foreground truncate text-lg group-hover:text-primary transition-colors">
+                          {supplier.shop_name}
+                        </h3>
+                        <Verified className="h-4 w-4 text-primary flex-shrink-0" />
                       </div>
-                      <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+
+                      <p className="text-sm text-muted-foreground mb-3">
+                        Офіційний партнер Taverna
+                      </p>
+
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1.5 bg-muted/50 px-2.5 py-1 rounded-full">
+                            <Package className="h-3.5 w-3.5" />
+                            {supplier.product_count || 0} товарів
+                          </span>
+                        </div>
+                        <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                      </div>
                     </div>
                   </div>
-                </div>
-              </button>
+                </button>
+                
+                {/* Contact Seller Button */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const tg = (window as any).Telegram?.WebApp;
+                    if (tg?.openTelegramLink) {
+                      tg.openTelegramLink("https://t.me/taverna_support_bot?start=seller_" + supplier.id);
+                    } else {
+                      window.open("https://t.me/taverna_support_bot?start=seller_" + supplier.id, "_blank");
+                    }
+                  }}
+                  className="mt-3 w-full flex items-center justify-center gap-2 py-2.5 bg-primary/10 text-primary rounded-xl text-sm font-medium hover:bg-primary/20 transition-colors"
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  Звернутись до продавця
+                </button>
+              </div>
             ))}
           </div>
         )}
