@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { UserPlus, Loader2, Package, Link2 } from "lucide-react";
+import { UserPlus, Loader2, Package, Link2, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -37,6 +37,7 @@ export function ManualSupplierForm({ onSuccess }: ManualSupplierFormProps) {
     markup_percentage: 33,
     transfer_to_user: false,
     target_telegram_id: "",
+    manager_telegram: "",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -63,8 +64,9 @@ export function ManualSupplierForm({ onSuccess }: ManualSupplierFormProps) {
           xml_url: formData.xml_url || null,
           telegram_channel_url: formData.telegram_channel_url || null,
           markup_percentage: formData.markup_percentage,
+          manager_telegram: formData.manager_telegram || null,
           is_active: true,
-        })
+        } as any)
         .select()
         .single();
 
@@ -119,6 +121,7 @@ export function ManualSupplierForm({ onSuccess }: ManualSupplierFormProps) {
         markup_percentage: 33,
         transfer_to_user: false,
         target_telegram_id: "",
+        manager_telegram: "",
       });
       
       onSuccess?.();
@@ -259,6 +262,22 @@ export function ManualSupplierForm({ onSuccess }: ManualSupplierFormProps) {
               onChange={(e) => setFormData(prev => ({ ...prev, telegram_channel_url: e.target.value }))}
               placeholder="https://t.me/mychannel"
             />
+          </div>
+
+          {/* Manager Telegram */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2">
+              <Bot className="h-4 w-4" />
+              Менеджер магазину (Telegram)
+            </Label>
+            <Input
+              value={formData.manager_telegram}
+              onChange={(e) => setFormData(prev => ({ ...prev, manager_telegram: e.target.value }))}
+              placeholder="@manager_username"
+            />
+            <p className="text-xs text-muted-foreground">
+              Менеджер отримуватиме сповіщення від бота про замовлення та звернення клієнтів
+            </p>
           </div>
 
           {/* Transfer to user */}

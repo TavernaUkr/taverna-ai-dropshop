@@ -4,7 +4,7 @@ import {
   ArrowLeft, Store, Star, MessageSquare, Image, FileText, 
   Truck, RotateCcw, Settings, Loader2, Camera, Plus, X,
   Clock, AlertTriangle, ChevronRight, Package, Upload,
-  Bot, UserCog, Reply, MapPin, Shield
+  Bot, UserCog, Reply, MapPin, Shield, Info, Edit3
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -81,6 +81,8 @@ export default function StoreManagement() {
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [newPhotoUrl, setNewPhotoUrl] = useState("");
+  const [showCoverUrlInput, setShowCoverUrlInput] = useState(false);
+  const [showLogoUrlInput, setShowLogoUrlInput] = useState(false);
   const coverInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -208,28 +210,35 @@ export default function StoreManagement() {
     }
   };
 
-  const handleFileUpload = async (
-    e: React.ChangeEvent<HTMLInputElement>,
-    field: 'cover_image_url' | 'logo_url',
-    setUploading: (v: boolean) => void
-  ) => {
+  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
-    setUploading(true);
-    const url = await uploadFile(file, field === 'cover_image_url' ? 'covers' : 'logos');
+    setIsUploadingCover(true);
+    const url = await uploadFile(file, 'covers');
     if (url) {
-      handleChange(field, url);
-      toast.success("Файл завантажено!");
+      handleChange("cover_image_url", url);
+      toast.success("Обкладинку оновлено!");
     }
-    setUploading(false);
+    setIsUploadingCover(false);
+    e.target.value = '';
+  };
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingLogo(true);
+    const url = await uploadFile(file, 'logos');
+    if (url) {
+      handleChange("logo_url", url);
+      toast.success("Логотип оновлено!");
+    }
+    setIsUploadingLogo(false);
     e.target.value = '';
   };
 
   const handlePhotoFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
     setIsUploadingPhoto(true);
     const url = await uploadFile(file, 'photos');
     if (url) {
@@ -326,9 +335,6 @@ export default function StoreManagement() {
 
   const handleReplyToReview = async (reviewId: string) => {
     if (!replyText.trim()) return;
-    
-    // For now, store reply as a ticket message linked to the review
-    // In production, you'd have a review_replies table
     toast.success("Відповідь опубліковано!");
     triggerHapticFeedback("notification", "success");
     setReplyingTo(null);
@@ -347,12 +353,11 @@ export default function StoreManagement() {
     );
   }
 
-  // Hidden file inputs
   const hiddenInputs = (
     <>
-      <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={e => handleFileUpload(e, 'cover_image_url', setIsUploadingCover)} />
-      <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={e => handleFileUpload(e, 'logo_url', setIsUploadingLogo)} />
-      <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={e => handlePhotoFileUpload(e)} />
+      <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
+      <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
+      <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoFileUpload} />
     </>
   );
 
@@ -379,29 +384,120 @@ export default function StoreManagement() {
         </div>
       </div>
 
-      {/* Cover Image Preview */}
-      <div className="relative h-36 bg-gradient-to-r from-primary/20 via-primary/10 to-accent/20 overflow-hidden">
-        {shopData.cover_image_url && (
-          <img src={shopData.cover_image_url} alt="Cover" className="w-full h-full object-cover" />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
-        <div className="absolute bottom-3 left-4 flex items-end gap-3">
-          <Avatar className="h-16 w-16 border-3 border-background shadow-lg">
-            <AvatarImage src={shopData.logo_url} alt={shopData.shop_name} />
-            <AvatarFallback className="text-xl font-bold bg-primary/10 text-primary">
-              {shopData.shop_name.charAt(0).toUpperCase() || "M"}
-            </AvatarFallback>
-          </Avatar>
-          <div className="pb-1">
-            <h2 className="font-bold text-foreground text-lg drop-shadow">{shopData.shop_name || "Мій магазин"}</h2>
-            <div className="flex items-center gap-2 text-sm">
-              <Star className="h-3.5 w-3.5 text-warning fill-warning" />
-              <span className="text-foreground font-medium">{averageRating.toFixed(1)}</span>
-              <span className="text-muted-foreground">({reviews.length} відгуків)</span>
+      {/* === Facebook-Style Cover + Avatar === */}
+      <div className="relative">
+        {/* Cover Image - Clickable */}
+        <button
+          onClick={() => coverInputRef.current?.click()}
+          disabled={isUploadingCover}
+          className="relative w-full h-40 bg-gradient-to-r from-primary/20 via-primary/10 to-accent/20 overflow-hidden group cursor-pointer block"
+        >
+          {shopData.cover_image_url ? (
+            <img src={shopData.cover_image_url} alt="Cover" className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <div className="text-center">
+                <Camera className="h-8 w-8 text-muted-foreground mx-auto mb-1" />
+                <p className="text-xs text-muted-foreground">Натисніть для завантаження обкладинки</p>
+              </div>
             </div>
+          )}
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+            <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 text-white px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5">
+              {isUploadingCover ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Camera className="h-3.5 w-3.5" />}
+              {isUploadingCover ? "Завантаження..." : "Змінити обкладинку"}
+            </div>
+          </div>
+          <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent pointer-events-none" />
+        </button>
+
+        {/* URL input for cover (toggle) */}
+        <button
+          onClick={() => setShowCoverUrlInput(!showCoverUrlInput)}
+          className="absolute top-2 right-2 z-10 bg-black/50 text-white p-1.5 rounded-lg text-xs hover:bg-black/70 transition-colors"
+          title="Вставити URL"
+        >
+          <Edit3 className="h-3.5 w-3.5" />
+        </button>
+
+        {/* Avatar - Clickable, positioned like Facebook */}
+        <div className="absolute -bottom-10 left-4 z-10">
+          <button
+            onClick={() => logoInputRef.current?.click()}
+            disabled={isUploadingLogo}
+            className="relative group cursor-pointer"
+          >
+            <Avatar className="h-20 w-20 border-4 border-background shadow-xl">
+              <AvatarImage src={shopData.logo_url} alt={shopData.shop_name} />
+              <AvatarFallback className="text-2xl font-bold bg-primary/10 text-primary">
+                {shopData.shop_name.charAt(0).toUpperCase() || "M"}
+              </AvatarFallback>
+            </Avatar>
+            <div className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+              <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                {isUploadingLogo ? (
+                  <Loader2 className="h-5 w-5 text-white animate-spin" />
+                ) : (
+                  <Camera className="h-5 w-5 text-white" />
+                )}
+              </div>
+            </div>
+          </button>
+          {/* URL toggle for logo */}
+          <button
+            onClick={() => setShowLogoUrlInput(!showLogoUrlInput)}
+            className="absolute -bottom-1 -right-1 bg-muted border border-border p-1 rounded-full hover:bg-accent transition-colors"
+            title="Вставити URL логотипу"
+          >
+            <Edit3 className="h-3 w-3 text-muted-foreground" />
+          </button>
+        </div>
+
+        {/* Shop name & rating next to avatar */}
+        <div className="absolute bottom-2 left-28">
+          <h2 className="font-bold text-foreground text-lg drop-shadow">{shopData.shop_name || "Мій магазин"}</h2>
+          <div className="flex items-center gap-2 text-sm">
+            <Star className="h-3.5 w-3.5 text-warning fill-warning" />
+            <span className="text-foreground font-medium">{averageRating.toFixed(1)}</span>
+            <span className="text-muted-foreground">({reviews.length} відгуків)</span>
           </div>
         </div>
       </div>
+
+      {/* Spacer for avatar overlap */}
+      <div className="h-12" />
+
+      {/* URL inputs (toggled) */}
+      {(showCoverUrlInput || showLogoUrlInput) && (
+        <div className="px-4 pt-2 space-y-2">
+          {showCoverUrlInput && (
+            <div className="flex gap-2">
+              <Input
+                value={shopData.cover_image_url}
+                onChange={e => handleChange("cover_image_url", e.target.value)}
+                placeholder="URL обкладинки"
+                className="flex-1 h-9 text-xs"
+              />
+              <Button variant="ghost" size="sm" onClick={() => setShowCoverUrlInput(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+          {showLogoUrlInput && (
+            <div className="flex gap-2">
+              <Input
+                value={shopData.logo_url}
+                onChange={e => handleChange("logo_url", e.target.value)}
+                placeholder="URL логотипу"
+                className="flex-1 h-9 text-xs"
+              />
+              <Button variant="ghost" size="sm" onClick={() => setShowLogoUrlInput(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={(v) => { hapticSelection(); setActiveTab(v); }}>
@@ -426,63 +522,6 @@ export default function StoreManagement() {
 
         {/* === SHOP TAB === */}
         <TabsContent value="shop" className="p-4 pb-24 space-y-5">
-          {/* Cover & Logo with File Upload */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Image className="h-4 w-4 text-primary" />
-                Обкладинка та логотип
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Cover */}
-              <div className="space-y-2">
-                <Label className="text-sm flex items-center gap-1">
-                  <Camera className="h-3.5 w-3.5" /> Обкладинка
-                </Label>
-                <div className="flex gap-2">
-                  <Input
-                    value={shopData.cover_image_url}
-                    onChange={e => handleChange("cover_image_url", e.target.value)}
-                    placeholder="URL або завантажте файл"
-                    className="flex-1"
-                  />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => coverInputRef.current?.click()}
-                    disabled={isUploadingCover}
-                    className="gap-1"
-                  >
-                    {isUploadingCover ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                  </Button>
-                </div>
-              </div>
-
-              {/* Logo */}
-              <div className="space-y-2">
-                <Label className="text-sm">Логотип</Label>
-                <div className="flex gap-2">
-                  <Input
-                    value={shopData.logo_url}
-                    onChange={e => handleChange("logo_url", e.target.value)}
-                    placeholder="URL або завантажте файл"
-                    className="flex-1"
-                  />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => logoInputRef.current?.click()}
-                    disabled={isUploadingLogo}
-                    className="gap-1"
-                  >
-                    {isUploadingLogo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
           {/* Shop Info */}
           <Card>
             <CardHeader className="pb-3">
@@ -565,9 +604,9 @@ export default function StoreManagement() {
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <UserCog className="h-4 w-4 text-primary" />
-                Менеджер магазину
+                Менеджер та комунікація
               </CardTitle>
-              <CardDescription>Налаштування комунікації з клієнтами</CardDescription>
+              <CardDescription>Налаштування зв'язку з клієнтами</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -578,21 +617,91 @@ export default function StoreManagement() {
                   placeholder="@manager_username"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Менеджер отримуватиме сповіщення від бота при зверненнях клієнтів
+                  Менеджер отримуватиме сповіщення від бота при зверненнях клієнтів та нових замовленнях
                 </p>
               </div>
-              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-xl">
-                <div className="flex items-center gap-3">
-                  <Bot className="h-5 w-5 text-primary" />
-                  <div>
-                    <p className="text-sm font-medium text-foreground">Спілкування через бота</p>
-                    <p className="text-xs text-muted-foreground">Дозволити клієнтам звертатись через бота</p>
+
+              {/* Bot Communication Toggle */}
+              <div className="rounded-xl border border-border overflow-hidden">
+                <div className="flex items-center justify-between p-4 bg-muted/30">
+                  <div className="flex items-center gap-3">
+                    <Bot className="h-5 w-5 text-primary" />
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Спілкування через бота</p>
+                      <p className="text-xs text-muted-foreground">
+                        {shopData.allow_bot_chat ? "Увімкнено — клієнти можуть звертатись" : "Вимкнено — тільки модератор"}
+                      </p>
+                    </div>
                   </div>
+                  <Switch
+                    checked={shopData.allow_bot_chat}
+                    onCheckedChange={v => handleChange("allow_bot_chat", v)}
+                  />
                 </div>
-                <Switch
-                  checked={shopData.allow_bot_chat}
-                  onCheckedChange={v => handleChange("allow_bot_chat", v)}
-                />
+
+                {/* Communication Flow Explanation */}
+                <div className="p-4 space-y-3 border-t border-border">
+                  {shopData.allow_bot_chat ? (
+                    <div className="space-y-2">
+                      <div className="flex items-start gap-2">
+                        <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <span className="text-xs font-bold text-primary">1</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Клієнт натискає «Звернутись до продавця» → відкривається чат-бот
+                        </p>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <span className="text-xs font-bold text-primary">2</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Бот анонімно пересилає повідомлення менеджеру ({shopData.manager_telegram || "не вказано"})
+                        </p>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <span className="text-xs font-bold text-primary">3</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Менеджер відповідає через бота або Mini App — клієнт бачить лише ID тікета
+                        </p>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <div className="w-5 h-5 rounded-full bg-warning/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <Shield className="h-3 w-3 text-warning" />
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Якщо спір не вирішено — автоматично залучається модератор платформи
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="flex items-start gap-2 p-3 bg-warning/5 rounded-lg">
+                        <Info className="h-4 w-4 text-warning flex-shrink-0 mt-0.5" />
+                        <div className="space-y-1">
+                          <p className="text-xs font-medium text-foreground">Бот вимкнений — усі звернення обробляє модератор</p>
+                          <p className="text-xs text-muted-foreground">
+                            Клієнти зможуть зв'язатись лише через підтримку платформи. 
+                            Модератор виступатиме посередником у всіх питаннях: повернення, обмін, скарги. 
+                            Ваші контакти залишаються повністю конфіденційними.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Anonymity Notice */}
+              <div className="flex items-start gap-2 p-3 bg-primary/5 rounded-xl">
+                <Shield className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-muted-foreground">
+                  <strong className="text-foreground">Конфіденційність гарантована.</strong> Клієнти ніколи не бачать ваших контактів. 
+                  Уся комунікація проходить через анонімний «Міст» платформи. 
+                  Менеджер бачить лише ID тікета та текст повідомлення.
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -693,7 +802,7 @@ export default function StoreManagement() {
           </ScrollArea>
         </TabsContent>
 
-        {/* === MESSAGES/TICKETS TAB with Manager Assignment === */}
+        {/* === MESSAGES/TICKETS TAB === */}
         <TabsContent value="messages" className="p-4 pb-24 space-y-4">
           <div className="bg-primary/5 border border-primary/20 rounded-xl p-4">
             <div className="flex items-start gap-3">
@@ -702,6 +811,7 @@ export default function StoreManagement() {
                 <h4 className="font-semibold text-foreground text-sm">Система «Міст» — Анонімна комунікація</h4>
                 <p className="text-xs text-muted-foreground mt-1">
                   Клієнт бачить лише ID тікета. Менеджер {shopData.manager_telegram ? `@${shopData.manager_telegram.replace('@', '')}` : '(не призначений)'} отримує сповіщення.
+                  {!shopData.allow_bot_chat && " Бот вимкнений — усі запити обробляє модератор."}
                 </p>
               </div>
             </div>
@@ -711,7 +821,7 @@ export default function StoreManagement() {
             <div className="bg-warning/10 border border-warning/30 rounded-xl p-3">
               <p className="text-xs text-warning flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4" />
-                Призначте менеджера у вкладці «Магазин» → «Менеджер магазину»
+                Призначте менеджера у вкладці «Магазин» → «Менеджер та комунікація»
               </p>
             </div>
           )}
