@@ -26,6 +26,7 @@ import {
   MessageSquare,
   Trophy,
   UserPlus,
+  Store,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -48,7 +49,7 @@ import { AIInsightsDashboard } from '@/components/admin/AIInsightsDashboard';
 import { ManualSupplierForm } from '@/components/admin/ManualSupplierForm';
 import { SupportChatsViewer } from '@/components/admin/SupportChatsViewer';
 import { GiveawaysManager } from '@/components/admin/GiveawaysManager';
-
+import { AdminStoreManager } from '@/components/admin/AdminStoreManager';
 interface SupplierApplication {
   id: string;
   shop_name: string;
@@ -514,6 +515,10 @@ export default function AdminDashboard() {
                 <Package className="h-4 w-4" />
                 Партнери
               </TabsTrigger>
+              <TabsTrigger value="stores" className="text-xs px-3 gap-1">
+                <Store className="h-4 w-4" />
+                Магазини
+              </TabsTrigger>
               <TabsTrigger value="register" className="text-xs px-3 gap-1">
                 <UserPlus className="h-4 w-4" />
                 Реєстрація
@@ -778,9 +783,14 @@ export default function AdminDashboard() {
           <TabsContent value="register">
             <ScrollArea className="h-[calc(100vh-380px)]">
               <div className="pr-4">
-                <ManualSupplierForm onSuccess={fetchSuppliers} />
+                <ManualSupplierForm onSuccess={() => { fetchSuppliers(); }} />
               </div>
             </ScrollArea>
+          </TabsContent>
+
+          {/* Admin Store Manager Tab */}
+          <TabsContent value="stores">
+            <AdminStoreManager />
           </TabsContent>
 
           {/* Support Chats Tab */}
