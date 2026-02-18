@@ -271,8 +271,8 @@ export const ProfileDashboard = () => {
         </button>
       )}
 
-      {/* Store Management Button - ONLY for Suppliers */}
-      {isAuthenticated && (isOnlySupplier || isAdmin) && (
+      {/* Store Management Button - ONLY for Suppliers (not Admin — admin manages stores from admin panel) */}
+      {isAuthenticated && isOnlySupplier && !isAdmin && (
         <button
           onClick={() => {
             hapticSelection();

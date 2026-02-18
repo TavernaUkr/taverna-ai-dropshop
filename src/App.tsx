@@ -109,6 +109,7 @@ function AnimatedRoutes() {
             <Route path="/personal-bonuses" element={<PersonalBonuses />} />
             <Route path="/bonus-account" element={<BonusAccount />} />
             <Route path="/store-management" element={<StoreManagement />} />
+            <Route path="/store-management/:supplierId" element={<StoreManagement />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
