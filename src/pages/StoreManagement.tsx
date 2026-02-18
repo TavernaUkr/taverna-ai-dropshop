@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft, Store, Star, MessageSquare, Image, FileText, 
   Truck, RotateCcw, Settings, Loader2, Camera, Plus, X,
@@ -69,6 +69,7 @@ interface SupportTicket {
 
 export default function StoreManagement() {
   const navigate = useNavigate();
+  const { supplierId: paramSupplierId } = useParams<{ supplierId?: string }>();
   const [activeTab, setActiveTab] = useState("shop");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -105,16 +106,22 @@ export default function StoreManagement() {
 
   useEffect(() => {
     loadSupplier();
-  }, []);
+  }, [paramSupplierId]);
 
   const loadSupplier = async () => {
     setIsLoading(true);
     try {
-      const { data: suppliers } = await supabase
-        .from("suppliers")
-        .select("*")
-        .eq("is_active", true)
-        .limit(1);
+      let query = supabase.from("suppliers").select("*");
+      
+      if (paramSupplierId) {
+        // Admin accessing specific store by ID
+        query = query.eq("id", paramSupplierId);
+      } else {
+        // Supplier accessing their own store
+        query = query.eq("is_active", true);
+      }
+      
+      const { data: suppliers } = await query.limit(1);
 
       if (suppliers?.[0]) {
         const s = suppliers[0] as any;

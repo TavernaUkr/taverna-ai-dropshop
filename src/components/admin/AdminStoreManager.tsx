@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Store, Settings, ChevronRight, Loader2, UserPlus, Send,
-  Shield, Eye, Edit3, ArrowRightLeft, X, Bot, Check
+  Shield, Eye, Edit3, ArrowRightLeft, X, Bot, Check, Package
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +34,7 @@ interface AdminSupplier {
   tax_code: string | null;
   xml_url: string | null;
   description: string | null;
+  product_count?: number;
 }
 
 export function AdminStoreManager() {
@@ -60,7 +61,20 @@ export function AdminStoreManager() {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setSuppliers((data || []) as AdminSupplier[]);
+      
+      // Fetch product counts
+      const supplierIds = (data || []).map(s => s.id);
+      const { data: products } = await supabase
+        .from("products")
+        .select("supplier_id")
+        .in("supplier_id", supplierIds);
+
+      const countMap: Record<string, number> = {};
+      (products || []).forEach(p => {
+        if (p.supplier_id) countMap[p.supplier_id] = (countMap[p.supplier_id] || 0) + 1;
+      });
+
+      setSuppliers((data || []).map(s => ({ ...s, product_count: countMap[s.id] || 0 })) as AdminSupplier[]);
     } catch (err) {
       console.error("Error fetching suppliers:", err);
       toast.error("Помилка завантаження магазинів");
@@ -251,6 +265,10 @@ export function AdminStoreManager() {
                       )}
                       <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                         <span>Націнка: {supplier.markup_percentage || 33}%</span>
+                        <span className="flex items-center gap-1">
+                          <Package className="h-3 w-3" />
+                          {supplier.product_count || 0} товарів
+                        </span>
                         {supplier.manager_telegram && (
                           <span className="text-primary">
                             <Bot className="h-3 w-3 inline mr-0.5" />
@@ -265,41 +283,48 @@ export function AdminStoreManager() {
                     />
                   </div>
 
-                  {/* Actions */}
-                  <div className="flex gap-2 mt-3 pt-3 border-t border-border">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 gap-1.5 text-xs"
-                      onClick={() => {
-                        setEditManagerDialog({ supplier });
-                        setManagerTelegram(supplier.manager_telegram || "");
-                      }}
-                    >
-                      <UserPlus className="h-3.5 w-3.5" />
-                      Менеджер
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 gap-1.5 text-xs"
-                      onClick={() => {
-                        setTransferDialog({ supplier });
-                        setTransferTelegramId("");
-                      }}
-                    >
-                      <ArrowRightLeft className="h-3.5 w-3.5" />
-                      Передати
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="gap-1.5 text-xs"
-                      onClick={() => navigate(`/supplier/${supplier.id}`)}
-                    >
-                      <Eye className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
+                    {/* Actions */}
+                    <div className="flex gap-2 mt-3 pt-3 border-t border-border">
+                      <Button
+                        variant="default"
+                        size="sm"
+                        className="flex-1 gap-1.5 text-xs"
+                        onClick={() => navigate(`/store-management/${supplier.id}`)}
+                      >
+                        <Settings className="h-3.5 w-3.5" />
+                        Керувати
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5 text-xs"
+                        onClick={() => {
+                          setEditManagerDialog({ supplier });
+                          setManagerTelegram(supplier.manager_telegram || "");
+                        }}
+                      >
+                        <UserPlus className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5 text-xs"
+                        onClick={() => {
+                          setTransferDialog({ supplier });
+                          setTransferTelegramId("");
+                        }}
+                      >
+                        <ArrowRightLeft className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="gap-1.5 text-xs"
+                        onClick={() => navigate(`/supplier/${supplier.id}`)}
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                 </CardContent>
               </Card>
             ))
