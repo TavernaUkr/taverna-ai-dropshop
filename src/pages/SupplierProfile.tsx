@@ -4,6 +4,7 @@ import {
   ArrowLeft, Store, Star, Package, Verified, FileText, Loader2, 
   MessageCircle, ThumbsUp, User, Check 
 } from "lucide-react";
+import { AppRatingModal } from "@/components/AppRatingModal";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -73,6 +74,7 @@ const SupplierProfile = () => {
   const [newReview, setNewReview] = useState({ rating: 5, content: "" });
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [canReview, setCanReview] = useState(false);
+  const [isRatingOpen, setIsRatingOpen] = useState(false);
   
   const { addItem } = useCartContext();
   const { isFavorite, toggleFavorite } = useFavoritesContext();
@@ -328,10 +330,18 @@ const SupplierProfile = () => {
       {/* Supplier Hero */}
       <div className="relative">
         {/* Cover image */}
-        <div className="h-24 bg-gradient-to-r from-primary/20 via-primary/10 to-accent/20 overflow-hidden">
+        <div className="h-24 bg-gradient-to-r from-primary/20 via-primary/10 to-accent/20 overflow-hidden relative">
           {supplier.cover_image_url && (
             <img src={supplier.cover_image_url} alt="Cover" className="w-full h-full object-cover" />
           )}
+          {/* Rating button on cover */}
+          <button
+            onClick={() => setIsRatingOpen(true)}
+            className="absolute top-2 right-2 flex items-center gap-1 px-2.5 py-1 rounded-full bg-background/80 backdrop-blur-sm text-xs font-medium text-foreground hover:bg-background/95 transition-all shadow-sm"
+          >
+            <Star className="h-3.5 w-3.5 text-warning fill-warning" />
+            Оцінити
+          </button>
         </div>
         
         {/* Profile section */}
@@ -636,6 +646,14 @@ const SupplierProfile = () => {
           </div>
         </TabsContent>
       </Tabs>
+
+      <AppRatingModal 
+        isOpen={isRatingOpen} 
+        onClose={() => setIsRatingOpen(false)} 
+        type="store" 
+        targetId={id} 
+        targetName={supplier.shop_name} 
+      />
 
       <BottomNavigation 
         activeTab="suppliers" 

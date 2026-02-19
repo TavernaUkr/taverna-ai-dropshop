@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { ShoppingCart, Search, Heart, Gift, Info } from "lucide-react";
+import { ShoppingCart, Search, Heart, Gift, Info, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import tavernaLogo from "@/assets/taverna-logo.png";
 import { AppInfoModal } from "./AppInfoModal";
+import { AppRatingModal } from "./AppRatingModal";
 
 interface HeaderProps {
   cartCount?: number;
@@ -24,6 +25,7 @@ export const Header = ({
   onPromoClick,
 }: HeaderProps) => {
   const [isInfoOpen, setIsInfoOpen] = useState(false);
+  const [isRatingOpen, setIsRatingOpen] = useState(false);
 
   return (
     <>
@@ -49,6 +51,15 @@ export const Header = ({
               <span className="font-bold text-base text-foreground leading-tight">Taverna</span>
               <span className="text-[10px] text-muted-foreground leading-tight">Group</span>
             </div>
+            {/* App Rating Button */}
+            <button
+              onClick={() => setIsRatingOpen(true)}
+              className="ml-1 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-warning/10 hover:bg-warning/20 active:scale-95 transition-all"
+              aria-label="Оцінити додаток"
+            >
+              <Star className="h-3 w-3 text-warning fill-warning" />
+              <span className="text-[10px] font-medium text-warning">Оцінити</span>
+            </button>
           </div>
 
           {/* Center - Promo Button */}
@@ -109,6 +120,7 @@ export const Header = ({
       </header>
 
       <AppInfoModal isOpen={isInfoOpen} onClose={() => setIsInfoOpen(false)} />
+      <AppRatingModal isOpen={isRatingOpen} onClose={() => setIsRatingOpen(false)} type="app" />
     </>
   );
 };
