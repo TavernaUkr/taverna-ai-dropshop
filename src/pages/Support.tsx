@@ -15,7 +15,12 @@ import {
   AlertCircle,
   Clock,
   Phone,
-  Loader2
+  Loader2,
+  Star,
+  AlertTriangle,
+  ArrowLeft,
+  Shield,
+  Store
 } from "lucide-react";
 import { Header } from "@/components/Header";
 import { BottomNavigation } from "@/components/BottomNavigation";
@@ -41,6 +46,7 @@ import { useSupportTickets, TicketType } from "@/hooks/useSupportTickets";
 import { SearchModal } from "@/components/SearchModal";
 import { CartModal } from "@/components/CartModal";
 import { WishlistModal } from "@/components/WishlistModal";
+import { AppRatingModal } from "@/components/AppRatingModal";
 import { toast } from "sonner";
 import { hapticSelection, hapticNotification } from "@/lib/haptics";
 
@@ -87,34 +93,23 @@ const faqItems = [
     answer: "Так, на всі товари надається гарантія від виробника. Термін гарантії залежить від категорії товару та вказаний на сторінці товару.",
     icon: HelpCircle,
   },
+  {
+    id: "free-return",
+    question: "Хто оплачує повернення/обмін?",
+    answer: "Якщо сума вашого замовлення перевищує 1500 ₴ — доставку обміну/повернення оплачує наш магазин. В іншому випадку — за рахунок покупця.",
+    icon: ArrowLeftRight,
+  },
 ];
 
 const exchangeSteps = [
-  {
-    step: 1,
-    title: "Зверніться до підтримки",
-    description: "Напишіть нам через бот або оберіть 'Питання до постачальника' нижче",
-    icon: MessageCircle,
-  },
-  {
-    step: 2,
-    title: "Отримайте номер повернення",
-    description: "Менеджер надасть вам унікальний номер та адресу для відправки",
-    icon: Package,
-  },
-  {
-    step: 3,
-    title: "Надішліть товар",
-    description: "Запакуйте товар та надішліть Новою Поштою за вказаною адресою",
-    icon: Truck,
-  },
-  {
-    step: 4,
-    title: "Отримайте заміну або кошти",
-    description: "Обмін протягом 3-5 днів, повернення коштів — до 5 робочих днів",
-    icon: CheckCircle2,
-  },
+  { step: 1, title: "Зверніться до підтримки", description: "Натисніть 'Зв'язатися з підтримкою' → 'Питання до постачальника'", icon: MessageCircle },
+  { step: 2, title: "Оберіть замовлення", description: "Бот допоможе вам обрати конкретне замовлення та товар", icon: Package },
+  { step: 3, title: "Опишіть проблему", description: "AI-асистент з'ясує деталі та запропонує рішення", icon: HelpCircle },
+  { step: 4, title: "Зв'язок з менеджером", description: "Якщо потрібен обмін — бот з'єднає вас з менеджером магазину анонімно", icon: Shield },
+  { step: 5, title: "Отримайте заміну або кошти", description: "Обмін 3-5 днів, повернення коштів — до 5 робочих днів", icon: CheckCircle2 },
 ];
+
+type ModalView = "main" | "complaints" | "ratings";
 
 const Support = () => {
   const navigate = useNavigate();
@@ -125,22 +120,18 @@ const Support = () => {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isWishlistOpen, setIsWishlistOpen] = useState(false);
   const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
+  const [modalView, setModalView] = useState<ModalView>("main");
+  const [isAppRatingOpen, setIsAppRatingOpen] = useState(false);
   
   const { items: cartItems, totalItems, updateQuantity, removeItem } = useCartContext();
   const { totalFavorites } = useFavoritesContext();
 
   const handleTabChange = (tab: string) => {
-    if (tab === "catalog") {
-      navigate("/");
-    } else if (tab === "suppliers") {
-      navigate("/suppliers");
-    } else if (tab === "support") {
-      setActiveTab(tab);
-    } else if (tab === "account") {
-      navigate("/");
-    } else {
-      navigate("/");
-    }
+    if (tab === "catalog") navigate("/");
+    else if (tab === "suppliers") navigate("/suppliers");
+    else if (tab === "support") setActiveTab(tab);
+    else if (tab === "account") navigate("/");
+    else navigate("/");
   };
 
   const handleSearch = (query: string) => {
@@ -149,6 +140,7 @@ const Support = () => {
   };
 
   const handleOpenSupportModal = () => {
+    setModalView("main");
     setIsSupportModalOpen(true);
   };
 
@@ -173,14 +165,30 @@ const Support = () => {
     }
   };
 
-  const handleSupplierQuery = () => {
-    handleStartChat("supplier_question");
+  const handleComplaint = (type: "complaint_admin" | "complaint_supplier") => {
+    handleStartChat(type as TicketType);
   };
 
-  const handleTechnicalSupport = () => {
-    handleStartChat("tech_support");
+  const handleStoreRating = () => {
+    setIsSupportModalOpen(false);
+    navigate("/suppliers");
+    toast.info("Оберіть магазин для оцінки");
   };
 
+  const handleAppRating = () => {
+    setIsSupportModalOpen(false);
+    setIsAppRatingOpen(true);
+  };
+
+  const ModalBackButton = () => (
+    <button
+      onClick={() => setModalView("main")}
+      className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-3"
+    >
+      <ArrowLeft className="h-4 w-4" />
+      Назад
+    </button>
+  );
 
   return (
     <div className="min-h-screen bg-background">
@@ -212,11 +220,7 @@ const Support = () => {
               {faqItems.map((item) => {
                 const IconComponent = item.icon;
                 return (
-                  <AccordionItem
-                    key={item.id}
-                    value={item.id}
-                    className="bg-card rounded-xl border border-border px-4"
-                  >
+                  <AccordionItem key={item.id} value={item.id} className="bg-card rounded-xl border border-border px-4">
                     <AccordionTrigger className="hover:no-underline py-4">
                       <div className="flex items-center gap-3 text-left">
                         <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -234,7 +238,6 @@ const Support = () => {
             </Accordion>
           </TabsContent>
 
-          {/* Exchange Tab */}
           <TabsContent value="exchange" className="space-y-4">
             <div className="bg-gradient-to-br from-primary/10 to-accent/10 rounded-2xl p-4 border border-primary/20">
               <div className="flex items-center gap-3 mb-3">
@@ -246,18 +249,19 @@ const Support = () => {
                   <p className="text-xs text-muted-foreground">Протягом 14 днів з моменту отримання</p>
                 </div>
               </div>
+              <div className="bg-success/10 rounded-lg p-2.5 border border-success/30 mt-2">
+                <p className="text-xs text-success font-medium">
+                  💰 При замовленні від 1 500 ₴ — доставка обміну/повернення за наш рахунок!
+                </p>
+              </div>
             </div>
 
-            {/* Step by step guide */}
             <div className="space-y-3">
               <h4 className="font-medium text-foreground text-sm">Покрокова інструкція:</h4>
               {exchangeSteps.map((step, index) => {
                 const IconComponent = step.icon;
                 return (
-                  <div
-                    key={step.step}
-                    className="bg-card rounded-xl p-4 border border-border flex gap-4"
-                  >
+                  <div key={step.step} className="bg-card rounded-xl p-4 border border-border flex gap-4">
                     <div className="relative">
                       <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm">
                         {step.step}
@@ -278,23 +282,21 @@ const Support = () => {
               })}
             </div>
 
-            {/* Important notes */}
             <div className="bg-warning/10 rounded-xl p-4 border border-warning/30">
               <div className="flex items-start gap-3">
                 <AlertCircle className="h-5 w-5 text-warning flex-shrink-0 mt-0.5" />
                 <div>
                   <h5 className="font-medium text-foreground text-sm mb-1">Важливо!</h5>
                   <ul className="text-xs text-muted-foreground space-y-1">
-                    <li>• Обмін на інший розмір/колір — доставка в обидва боки за рахунок покупця</li>
-                    <li>• Обмін на інший товар — різниця в ціні доплачується або повертається</li>
                     <li>• Товар має бути без слідів використання та в оригінальній упаковці</li>
+                    <li>• Обмін на інший розмір/колір — різниця в ціні доплачується</li>
+                    <li>• При замовленні від 1 500 ₴ — повернення безкоштовне</li>
                   </ul>
                 </div>
               </div>
             </div>
           </TabsContent>
 
-          {/* Returns Tab */}
           <TabsContent value="returns" className="space-y-4">
             <div className="bg-card rounded-xl p-4 border border-border">
               <div className="flex items-center gap-2 mb-4">
@@ -305,7 +307,7 @@ const Support = () => {
               <div className="text-sm text-muted-foreground space-y-4">
                 <p>
                   Відповідно до Закону України "Про захист прав споживачів", ви маєте право 
-                  повернути або обміняти товар належної якості протягом <strong className="text-foreground">14 днів</strong> з моменту отримання.
+                  повернути або обміняти товар належної якості протягом <strong className="text-foreground">14 днів</strong>.
                 </p>
 
                 <div className="bg-success/10 rounded-xl p-3 border border-success/30">
@@ -319,6 +321,17 @@ const Support = () => {
                     <li>✓ Збережено всі бирки та етикетки</li>
                     <li>✓ Наявний чек або підтвердження замовлення</li>
                   </ul>
+                </div>
+
+                <div className="bg-primary/5 rounded-xl p-3 border border-primary/20">
+                  <div className="flex items-center gap-2 mb-2">
+                    <ArrowLeftRight className="h-4 w-4 text-primary" />
+                    <h4 className="font-medium text-foreground text-sm">Безкоштовне повернення:</h4>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    При сумі замовлення <strong className="text-foreground">від 1 500 ₴</strong> — доставку 
+                    обміну або повернення оплачує наш магазин.
+                  </p>
                 </div>
 
                 <div className="bg-destructive/10 rounded-xl p-3 border border-destructive/30">
@@ -352,99 +365,217 @@ const Support = () => {
 
         {/* Contact Support Button */}
         <div className="mt-6">
-          <Button 
-            onClick={handleOpenSupportModal}
-            className="w-full"
-            size="lg"
-          >
+          <Button onClick={handleOpenSupportModal} className="w-full" size="lg">
             <MessageCircle className="h-5 w-5 mr-2" />
             Зв'язатися з підтримкою
           </Button>
           <p className="text-xs text-muted-foreground text-center mt-2">
-            Відповідаємо протягом 15 хвилин у робочий час
+            AI-асистент відповідає миттєво • Менеджер — до 15 хвилин
           </p>
         </div>
       </main>
 
       {/* Support Type Selection Modal */}
       <Dialog open={isSupportModalOpen} onOpenChange={setIsSupportModalOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <MessageCircle className="h-5 w-5 text-primary" />
-              Оберіть тип запиту
+              {modalView === "main" && "Оберіть тип запиту"}
+              {modalView === "complaints" && "Скарги"}
+              {modalView === "ratings" && "Оцінки"}
             </DialogTitle>
             <DialogDescription>
-              Оберіть категорію, щоб ми могли швидше вам допомогти
+              {modalView === "main" && "Оберіть категорію, щоб ми могли швидше вам допомогти"}
+              {modalView === "complaints" && "Оберіть тип скарги"}
+              {modalView === "ratings" && "Що бажаєте оцінити?"}
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-3 mt-4">
-            {/* Supplier Query - Order/Product issues */}
-            <button
-              onClick={handleSupplierQuery}
-              disabled={ticketLoading}
-              className="w-full flex items-center gap-4 p-4 rounded-xl bg-card border border-border hover:border-primary hover:bg-primary/5 transition-all text-left group disabled:opacity-50"
-            >
-              <div className="w-12 h-12 rounded-full bg-accent/20 flex items-center justify-center group-hover:bg-accent/30 transition-colors">
-                {ticketLoading ? (
-                  <Loader2 className="h-6 w-6 text-accent animate-spin" />
-                ) : (
-                  <ShoppingBag className="h-6 w-6 text-accent" />
-                )}
-              </div>
-              <div className="flex-1">
-                <h4 className="font-semibold text-foreground">Питання до постачальника</h4>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Замовлення, товари, доставка, обмін, повернення
-                </p>
-              </div>
-              <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
-            </button>
+          <div className="space-y-3 mt-2">
+            {modalView === "main" && (
+              <>
+                {/* Supplier Query */}
+                <button
+                  onClick={() => handleStartChat("supplier_question")}
+                  disabled={ticketLoading}
+                  className="w-full flex items-center gap-4 p-4 rounded-xl bg-card border border-border hover:border-primary hover:bg-primary/5 transition-all text-left group disabled:opacity-50"
+                >
+                  <div className="w-12 h-12 rounded-full bg-accent/20 flex items-center justify-center group-hover:bg-accent/30 transition-colors">
+                    {ticketLoading ? (
+                      <Loader2 className="h-6 w-6 text-accent animate-spin" />
+                    ) : (
+                      <ShoppingBag className="h-6 w-6 text-accent" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-foreground">Питання до постачальника</h4>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Замовлення, товари, доставка, обмін, повернення
+                    </p>
+                  </div>
+                  <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                </button>
 
-            {/* Technical Support - App issues */}
-            <button
-              onClick={handleTechnicalSupport}
-              disabled={ticketLoading}
-              className="w-full flex items-center gap-4 p-4 rounded-xl bg-card border border-border hover:border-primary hover:bg-primary/5 transition-all text-left group disabled:opacity-50"
-            >
-              <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center group-hover:bg-primary/30 transition-colors">
-                {ticketLoading ? (
-                  <Loader2 className="h-6 w-6 text-primary animate-spin" />
-                ) : (
-                  <Wrench className="h-6 w-6 text-primary" />
-                )}
-              </div>
-              <div className="flex-1">
-                <h4 className="font-semibold text-foreground">Технічна підтримка</h4>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Проблеми з додатком, помилки, пропозиції
-                </p>
-              </div>
-              <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
-            </button>
+                {/* Technical Support */}
+                <button
+                  onClick={() => handleStartChat("tech_support")}
+                  disabled={ticketLoading}
+                  className="w-full flex items-center gap-4 p-4 rounded-xl bg-card border border-border hover:border-primary hover:bg-primary/5 transition-all text-left group disabled:opacity-50"
+                >
+                  <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center group-hover:bg-primary/30 transition-colors">
+                    {ticketLoading ? (
+                      <Loader2 className="h-6 w-6 text-primary animate-spin" />
+                    ) : (
+                      <Wrench className="h-6 w-6 text-primary" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-foreground">Технічна підтримка</h4>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Проблеми з додатком, помилки, пропозиції
+                    </p>
+                  </div>
+                  <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                </button>
+
+                {/* Complaints */}
+                <button
+                  onClick={() => setModalView("complaints")}
+                  className="w-full flex items-center gap-4 p-4 rounded-xl bg-card border border-border hover:border-warning/50 hover:bg-warning/5 transition-all text-left group"
+                >
+                  <div className="w-12 h-12 rounded-full bg-warning/20 flex items-center justify-center group-hover:bg-warning/30 transition-colors">
+                    <AlertTriangle className="h-6 w-6 text-warning" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-foreground">Скарги</h4>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      На модератора, адміна або постачальника
+                    </p>
+                  </div>
+                  <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-warning transition-colors" />
+                </button>
+
+                {/* Ratings */}
+                <button
+                  onClick={() => setModalView("ratings")}
+                  className="w-full flex items-center gap-4 p-4 rounded-xl bg-card border border-border hover:border-warning/50 hover:bg-warning/5 transition-all text-left group"
+                >
+                  <div className="w-12 h-12 rounded-full bg-warning/10 flex items-center justify-center group-hover:bg-warning/20 transition-colors">
+                    <Star className="h-6 w-6 text-warning" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-foreground">Оцінки</h4>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Оцініть магазин або додаток
+                    </p>
+                  </div>
+                  <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-warning transition-colors" />
+                </button>
+              </>
+            )}
+
+            {/* Complaints Sub-menu */}
+            {modalView === "complaints" && (
+              <>
+                <ModalBackButton />
+                <button
+                  onClick={() => handleComplaint("complaint_admin")}
+                  disabled={ticketLoading}
+                  className="w-full flex items-center gap-4 p-4 rounded-xl bg-card border border-border hover:border-destructive/50 hover:bg-destructive/5 transition-all text-left group disabled:opacity-50"
+                >
+                  <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center">
+                    <Shield className="h-6 w-6 text-destructive" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-foreground">Скарга на модератора/адміна</h4>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Неправомірні дії з боку персоналу
+                    </p>
+                  </div>
+                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                </button>
+
+                <button
+                  onClick={() => handleComplaint("complaint_supplier")}
+                  disabled={ticketLoading}
+                  className="w-full flex items-center gap-4 p-4 rounded-xl bg-card border border-border hover:border-warning/50 hover:bg-warning/5 transition-all text-left group disabled:opacity-50"
+                >
+                  <div className="w-12 h-12 rounded-full bg-warning/10 flex items-center justify-center">
+                    <Store className="h-6 w-6 text-warning" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-foreground">Скарга на постачальника</h4>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Якість товару, обслуговування, обман
+                    </p>
+                  </div>
+                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                </button>
+
+                <div className="bg-muted/50 rounded-xl p-3 mt-2">
+                  <p className="text-xs text-muted-foreground text-center">
+                    🔒 Всі скарги анонімні та розглядаються керівництвом платформи
+                  </p>
+                </div>
+              </>
+            )}
+
+            {/* Ratings Sub-menu */}
+            {modalView === "ratings" && (
+              <>
+                <ModalBackButton />
+                <button
+                  onClick={handleStoreRating}
+                  className="w-full flex items-center gap-4 p-4 rounded-xl bg-card border border-border hover:border-warning/50 hover:bg-warning/5 transition-all text-left group"
+                >
+                  <div className="w-12 h-12 rounded-full bg-warning/10 flex items-center justify-center">
+                    <Store className="h-6 w-6 text-warning" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-foreground">Оцінка магазину</h4>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Оцініть якість обслуговування магазину
+                    </p>
+                  </div>
+                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                </button>
+
+                <button
+                  onClick={handleAppRating}
+                  className="w-full flex items-center gap-4 p-4 rounded-xl bg-card border border-border hover:border-primary/50 hover:bg-primary/5 transition-all text-left group"
+                >
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Star className="h-6 w-6 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-foreground">Оцінка додатку</h4>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Допоможіть нам стати кращими
+                    </p>
+                  </div>
+                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                </button>
+              </>
+            )}
           </div>
 
-          {/* Quick contact info */}
-          <div className="mt-4 pt-4 border-t border-border">
-            <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-              <Phone className="h-3 w-3" />
-              <span>Гаряча лінія: +380 (44) 123-45-67</span>
+          {modalView === "main" && (
+            <div className="mt-2 pt-3 border-t border-border">
+              <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                <Phone className="h-3 w-3" />
+                <span>Гаряча лінія: +380 (44) 123-45-67</span>
+              </div>
             </div>
-          </div>
+          )}
         </DialogContent>
       </Dialog>
 
-      <BottomNavigation 
-        activeTab={activeTab} 
-        onTabChange={handleTabChange} 
-      />
+      <AppRatingModal isOpen={isAppRatingOpen} onClose={() => setIsAppRatingOpen(false)} type="app" />
 
-      <SearchModal
-        isOpen={isSearchOpen}
-        onClose={() => setIsSearchOpen(false)}
-        onSearch={handleSearch}
-      />
+      <BottomNavigation activeTab={activeTab} onTabChange={handleTabChange} />
+
+      <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} onSearch={handleSearch} />
 
       <CartModal
         isOpen={isCartOpen}
@@ -452,19 +583,13 @@ const Support = () => {
         items={cartItems}
         onUpdateQuantity={updateQuantity}
         onRemoveItem={removeItem}
-        onCheckout={() => {
-          setIsCartOpen(false);
-          navigate("/");
-        }}
+        onCheckout={() => { setIsCartOpen(false); navigate("/"); }}
       />
 
       <WishlistModal
         isOpen={isWishlistOpen}
         onClose={() => setIsWishlistOpen(false)}
-        onProductClick={(id) => {
-          setIsWishlistOpen(false);
-          navigate(`/product/${id}`);
-        }}
+        onProductClick={(id) => { setIsWishlistOpen(false); navigate(`/product/${id}`); }}
       />
     </div>
   );

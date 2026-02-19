@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_ratings: {
+        Row: {
+          comment: string | null
+          created_at: string
+          id: string
+          profile_id: string | null
+          rating: number
+          rating_type: string
+          target_id: string | null
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          profile_id?: string | null
+          rating?: number
+          rating_type?: string
+          target_id?: string | null
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          profile_id?: string | null
+          rating?: number
+          rating_type?: string
+          target_id?: string | null
+        }
+        Relationships: []
+      }
       auto_promotion_queue: {
         Row: {
           created_at: string
