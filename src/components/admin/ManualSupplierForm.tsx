@@ -1,18 +1,10 @@
 import { useState } from "react";
-import { UserPlus, Loader2, Package, Link2, Bot } from "lucide-react";
+import { Store, Loader2, Package, Link2, Bot, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { hapticNotification } from "@/lib/haptics";
@@ -26,45 +18,38 @@ export function ManualSupplierForm({ onSuccess }: ManualSupplierFormProps) {
   const [isMyDrop, setIsMyDrop] = useState(false);
   const [formData, setFormData] = useState({
     shop_name: "",
-    company_name: "",
-    contact_name: "",
-    contact_phone: "",
-    contact_email: "",
-    legal_type: "individual" as "individual" | "company",
-    tax_code: "",
-    xml_url: "",
     telegram_channel_url: "",
-    markup_percentage: 33,
-    transfer_to_user: false,
-    target_telegram_id: "",
     manager_telegram: "",
+    xml_url: "",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!formData.shop_name || !formData.contact_name || !formData.contact_phone) {
-      toast.error("Заповніть обов'язкові поля");
+
+    if (!formData.shop_name) {
+      toast.error("Вкажіть назву магазину");
+      return;
+    }
+
+    if (!isMyDrop && !formData.xml_url) {
+      toast.error("Для не-MyDrop магазину необхідно вказати XML-файл");
       return;
     }
 
     setIsSubmitting(true);
     try {
-      // Create supplier record
       const { data: supplier, error: supplierError } = await supabase
         .from("suppliers")
         .insert({
           shop_name: formData.shop_name,
-          company_name: formData.company_name || formData.shop_name,
-          contact_name: formData.contact_name,
-          contact_phone: formData.contact_phone,
-          contact_email: formData.contact_email || null,
-          legal_type: formData.legal_type,
-          tax_code: formData.tax_code || null,
+          company_name: formData.shop_name,
+          contact_name: "Адмін",
+          contact_phone: "-",
+          legal_type: "individual",
           xml_url: formData.xml_url || null,
           telegram_channel_url: formData.telegram_channel_url || null,
-          markup_percentage: formData.markup_percentage,
           manager_telegram: formData.manager_telegram || null,
+          markup_percentage: 33,
           is_active: true,
         } as any)
         .select()
@@ -72,31 +57,10 @@ export function ManualSupplierForm({ onSuccess }: ManualSupplierFormProps) {
 
       if (supplierError) throw supplierError;
 
-      // If transfer to user is enabled and telegram ID provided
-      if (formData.transfer_to_user && formData.target_telegram_id) {
-        // Find user by telegram_id
-        const { data: profile } = await (supabase
-          .from("profiles_safe" as any)
-          .select("id") as any)
-          .eq("id", formData.target_telegram_id)
-          .single();
-
-        if (profile) {
-          // Add supplier role to user
-          await supabase
-            .from("user_roles")
-            .insert({ user_id: profile.id, role: "supplier" as any });
-
-          toast.success(`Акаунт передано користувачу з ID ${formData.target_telegram_id}`);
-        } else {
-          toast.warning("Користувача не знайдено, але постачальника створено");
-        }
-      }
-
-      // If MyDrop XML provided, trigger import
-      if (isMyDrop && formData.xml_url) {
+      // Trigger XML import if URL provided
+      if (formData.xml_url && supplier) {
         await supabase.functions.invoke("parse-xml", {
-          body: { 
+          body: {
             xml_url: formData.xml_url,
             supplier_id: supplier.id,
           },
@@ -105,29 +69,13 @@ export function ManualSupplierForm({ onSuccess }: ManualSupplierFormProps) {
       }
 
       hapticNotification("success");
-      toast.success(`Постачальника "${formData.shop_name}" створено!`);
-      
-      // Reset form
-      setFormData({
-        shop_name: "",
-        company_name: "",
-        contact_name: "",
-        contact_phone: "",
-        contact_email: "",
-        legal_type: "individual",
-        tax_code: "",
-        xml_url: "",
-        telegram_channel_url: "",
-        markup_percentage: 33,
-        transfer_to_user: false,
-        target_telegram_id: "",
-        manager_telegram: "",
-      });
-      
+      toast.success(`Магазин "${formData.shop_name}" створено! Для передачі власнику — використайте вкладку "Магазини".`);
+
+      setFormData({ shop_name: "", telegram_channel_url: "", manager_telegram: "", xml_url: "" });
       onSuccess?.();
     } catch (err: any) {
       console.error("Error creating supplier:", err);
-      toast.error(err.message || "Помилка створення постачальника");
+      toast.error(err.message || "Помилка створення магазину");
     } finally {
       setIsSubmitting(false);
     }
@@ -137,130 +85,67 @@ export function ManualSupplierForm({ onSuccess }: ManualSupplierFormProps) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <UserPlus className="h-5 w-5" />
-          Ручна реєстрація постачальника
+          <Store className="h-5 w-5" />
+          Додати магазин (дропшипінг)
         </CardTitle>
+        <CardDescription>
+          Спрощена реєстрація. Повні дані власник заповнює самостійно після передачі прав у вкладці «Магазини».
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
+
           {/* MyDrop Toggle */}
-          <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+          <div className="flex items-center justify-between p-3 bg-primary/5 border border-primary/20 rounded-lg">
             <div className="flex items-center gap-2">
               <Package className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium">Постачальник з MyDrop</span>
+              <div>
+                <span className="text-sm font-medium">Постачальник з MyDrop</span>
+                <p className="text-xs text-muted-foreground">Підключення через API MyDrop</p>
+              </div>
             </div>
             <Switch checked={isMyDrop} onCheckedChange={setIsMyDrop} />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Назва магазину *</Label>
-              <Input
-                value={formData.shop_name}
-                onChange={(e) => setFormData(prev => ({ ...prev, shop_name: e.target.value }))}
-                placeholder="Мій магазин"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Компанія</Label>
-              <Input
-                value={formData.company_name}
-                onChange={(e) => setFormData(prev => ({ ...prev, company_name: e.target.value }))}
-                placeholder="ТОВ/ФОП"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Контактна особа *</Label>
-              <Input
-                value={formData.contact_name}
-                onChange={(e) => setFormData(prev => ({ ...prev, contact_name: e.target.value }))}
-                placeholder="Іван Іванов"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Телефон *</Label>
-              <Input
-                value={formData.contact_phone}
-                onChange={(e) => setFormData(prev => ({ ...prev, contact_phone: e.target.value }))}
-                placeholder="+380..."
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Email</Label>
-              <Input
-                type="email"
-                value={formData.contact_email}
-                onChange={(e) => setFormData(prev => ({ ...prev, contact_email: e.target.value }))}
-                placeholder="email@example.com"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Тип</Label>
-              <Select
-                value={formData.legal_type}
-                onValueChange={(value: "individual" | "company") => 
-                  setFormData(prev => ({ ...prev, legal_type: value }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="individual">ФОП</SelectItem>
-                  <SelectItem value="company">ТОВ</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>ЄДРПОУ / ІПН</Label>
-              <Input
-                value={formData.tax_code}
-                onChange={(e) => setFormData(prev => ({ ...prev, tax_code: e.target.value }))}
-                placeholder="12345678"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Націнка (%)</Label>
-              <Input
-                type="number"
-                min={15}
-                max={50}
-                value={formData.markup_percentage}
-                onChange={(e) => setFormData(prev => ({ ...prev, markup_percentage: parseInt(e.target.value) || 33 }))}
-              />
-            </div>
-          </div>
-
-          {/* XML URL for MyDrop */}
-          {isMyDrop && (
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <Link2 className="h-4 w-4" />
-                XML URL (MyDrop)
-              </Label>
-              <Input
-                value={formData.xml_url}
-                onChange={(e) => setFormData(prev => ({ ...prev, xml_url: e.target.value }))}
-                placeholder="https://mydrop.com.ua/export/..."
-              />
-            </div>
-          )}
-
+          {/* Shop Name */}
           <div className="space-y-2">
-            <Label>Telegram канал</Label>
+            <Label>Назва магазину *</Label>
+            <Input
+              value={formData.shop_name}
+              onChange={(e) => setFormData(prev => ({ ...prev, shop_name: e.target.value }))}
+              placeholder="Назва магазину з MyDrop або Prom"
+            />
+          </div>
+
+          {/* XML URL */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2">
+              <Link2 className="h-4 w-4" />
+              XML-файл товарів {!isMyDrop && <span className="text-destructive">*</span>}
+            </Label>
+            <Input
+              value={formData.xml_url}
+              onChange={(e) => setFormData(prev => ({ ...prev, xml_url: e.target.value }))}
+              placeholder={isMyDrop
+                ? "https://mydrop.com.ua/export/... (якщо API не знайшло магазин)"
+                : "https://prom.ua/export/... (обов'язково для Prom)"
+              }
+            />
+            {isMyDrop && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <Info className="h-3 w-3" />
+                Залиште порожнім — магазин підключиться автоматично через API MyDrop
+              </p>
+            )}
+          </div>
+
+          {/* Telegram Channel */}
+          <div className="space-y-2">
+            <Label>Telegram-канал магазину</Label>
             <Input
               value={formData.telegram_channel_url}
               onChange={(e) => setFormData(prev => ({ ...prev, telegram_channel_url: e.target.value }))}
-              placeholder="https://t.me/mychannel"
+              placeholder="https://t.me/mychannel або @mychannel"
             />
           </div>
 
@@ -276,44 +161,29 @@ export function ManualSupplierForm({ onSuccess }: ManualSupplierFormProps) {
               placeholder="@manager_username"
             />
             <p className="text-xs text-muted-foreground">
-              Менеджер отримуватиме сповіщення від бота про замовлення та звернення клієнтів
+              Отримуватиме сповіщення про замовлення та звернення клієнтів через бота
             </p>
           </div>
 
-          {/* Transfer to user */}
-          <div className="p-3 bg-muted/50 rounded-lg space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Передати акаунт користувачу</span>
-              <Switch 
-                checked={formData.transfer_to_user} 
-                onCheckedChange={(checked) => setFormData(prev => ({ ...prev, transfer_to_user: checked }))}
-              />
-            </div>
-            {formData.transfer_to_user && (
-              <div className="space-y-2">
-                <Label>Telegram ID користувача</Label>
-                <Input
-                  value={formData.target_telegram_id}
-                  onChange={(e) => setFormData(prev => ({ ...prev, target_telegram_id: e.target.value }))}
-                  placeholder="123456789"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Користувач отримає роль "supplier" і доступ до панелі партнера
-                </p>
-              </div>
-            )}
+          {/* Info box */}
+          <div className="p-3 bg-muted/40 rounded-lg border text-xs text-muted-foreground space-y-1">
+            <p className="font-medium text-foreground">ℹ️ Після створення магазину:</p>
+            <p>• Передача прав реальному власнику — у вкладці <strong>«Магазини»</strong></p>
+            <p>• Власник сам заповнить всі юридичні дані при реєстрації</p>
+            <p>• Націнка однакова для всіх: <strong>33%</strong></p>
           </div>
 
           <Button type="submit" className="w-full" disabled={isSubmitting}>
             {isSubmitting ? (
               <Loader2 className="h-4 w-4 animate-spin mr-2" />
             ) : (
-              <UserPlus className="h-4 w-4 mr-2" />
+              <Store className="h-4 w-4 mr-2" />
             )}
-            Створити постачальника
+            Створити магазин
           </Button>
         </form>
       </CardContent>
     </Card>
   );
 }
+
