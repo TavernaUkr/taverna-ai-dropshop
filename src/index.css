@@ -48,6 +48,10 @@ All colors MUST be HSL.
     --warning: 42 95% 52%;
     --warning-foreground: 30 10% 12%;
 
+    /* Rating gold/amber */
+    --rating: 38 90% 48%;
+    --rating-foreground: 0 0% 100%;
+
     --border: 45 15% 88%;
     --input: 45 15% 90%;
     --ring: 72 28% 32%;
@@ -109,6 +113,9 @@ All colors MUST be HSL.
 
     --warning: 42 95% 52%;
     --warning-foreground: 30 10% 12%;
+
+    --rating: 38 90% 48%;
+    --rating-foreground: 0 0% 100%;
 
     --border: 30 8% 22%;
     --input: 30 8% 22%;

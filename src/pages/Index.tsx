@@ -16,6 +16,8 @@ import { AllCategoriesModal } from "@/components/AllCategoriesModal";
 import { WishlistModal } from "@/components/WishlistModal";
 import { OrdersHistory } from "@/components/OrdersHistory";
 import { ProfileDashboard } from "@/components/profile/ProfileDashboard";
+import { LiveActivityFeed } from "@/components/LiveActivityFeed";
+import { RatingsTab } from "@/components/RatingsTab";
 import { useTelegramAuthContext } from "@/components/TelegramAuthProvider";
 import { useCartContext } from "@/contexts/CartContext";
 import { useFavoritesContext } from "@/components/FavoritesContext";
@@ -220,12 +222,9 @@ const LiveTab = () => (
       <h2 className="text-lg font-bold text-foreground">Live Активність</h2>
       <span className="w-2 h-2 rounded-full bg-live animate-pulse-live" />
     </div>
-    
-    <div className="space-y-3">
-      {liveFeed.map((item, idx) => (
-        <LiveFeedItem key={idx} {...item} />
-      ))}
-    </div>
+
+    {/* Realtime feed with auto-refresh */}
+    <LiveActivityFeed maxItems={15} autoRefresh={true} />
   </div>
 );
 
@@ -363,6 +362,8 @@ const Index = () => {
         );
       case "live":
         return <LiveTab />;
+      case "ratings":
+        return <RatingsTab />;
       case "account":
         return <AccountTab />;
       default:

@@ -1,4 +1,4 @@
-import { Store, Users, Radio, HelpCircle, User } from "lucide-react";
+import { Store, Users, Radio, HelpCircle, User, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface NavItem {
@@ -7,6 +7,7 @@ interface NavItem {
   icon: React.ReactNode;
   isCenter?: boolean;
   isLive?: boolean;
+  isRating?: boolean;
 }
 
 interface BottomNavigationProps {
@@ -18,6 +19,7 @@ const navItems: NavItem[] = [
   { id: "catalog", label: "Каталог", icon: <Store className="h-5 w-5" /> },
   { id: "suppliers", label: "Продавці", icon: <Users className="h-5 w-5" /> },
   { id: "live", label: "Live", icon: <Radio className="h-5 w-5" />, isCenter: true, isLive: true },
+  { id: "ratings", label: "Рейтинги", icon: <Trophy className="h-5 w-5" />, isRating: true },
   { id: "support", label: "Підтримка", icon: <HelpCircle className="h-5 w-5" /> },
   { id: "account", label: "Профіль", icon: <User className="h-5 w-5" /> },
 ];
@@ -28,7 +30,7 @@ export const BottomNavigation = ({ activeTab, onTabChange }: BottomNavigationPro
       <div className="flex items-end justify-around h-[80px] pb-3 safe-area-pb">
         {navItems.map((item) => {
           const isActive = activeTab === item.id;
-          
+
           if (item.isCenter) {
             return (
               <button
@@ -53,6 +55,35 @@ export const BottomNavigation = ({ activeTab, onTabChange }: BottomNavigationPro
                   className={cn(
                     "text-[10px] font-medium transition-colors",
                     isActive ? "text-live" : "text-muted-foreground"
+                  )}
+                >
+                  {item.label}
+                </span>
+              </button>
+            );
+          }
+
+          if (item.isRating) {
+            return (
+              <button
+                key={item.id}
+                onClick={() => onTabChange(item.id)}
+                className="relative -top-3 flex flex-col items-center gap-0.5 group"
+              >
+                <div
+                  className={cn(
+                    "w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200 shadow-lg",
+                    isActive
+                      ? "bg-rating text-rating-foreground scale-110"
+                      : "bg-rating/80 text-rating-foreground group-hover:scale-105"
+                  )}
+                >
+                  {item.icon}
+                </div>
+                <span
+                  className={cn(
+                    "text-[10px] font-medium transition-colors",
+                    isActive ? "text-rating" : "text-muted-foreground"
                   )}
                 >
                   {item.label}
