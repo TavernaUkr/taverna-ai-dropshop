@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Wallet, ChevronLeft, Users, Gift, Tag, ShoppingBag, ChevronRight,
-  Coins, Sparkles, Copy, Check, Share2, TrendingUp,
+  Coins, Sparkles, Copy, Check, Share2, TrendingUp, Trophy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -295,8 +295,40 @@ export default function BonusAccount() {
             </Card>
           </motion.div>
 
+          {/* Rating Bonuses */}
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
+            <Card className="border border-rating/20">
+              <CardHeader className="pb-2 pt-4 px-4">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Trophy className="w-4 h-4 text-rating" />
+                  Рейтингові бонуси
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4 space-y-2">
+                <p className="text-xs text-muted-foreground mb-2">
+                  Змагайтесь з іншими клієнтами та отримуйте бонуси:
+                </p>
+                <div className="grid grid-cols-3 gap-1.5 text-center">
+                  <div className="bg-yellow-500/10 rounded-lg p-2 border border-yellow-500/20">
+                    <p className="text-sm font-bold text-yellow-500">1 місце</p>
+                    <p className="text-[10px] text-muted-foreground">1000₴/міс</p>
+                  </div>
+                  <div className="bg-slate-400/10 rounded-lg p-2 border border-slate-400/20">
+                    <p className="text-sm font-bold text-slate-400">2-3 місце</p>
+                    <p className="text-[10px] text-muted-foreground">500₴/міс</p>
+                  </div>
+                  <div className="bg-amber-600/10 rounded-lg p-2 border border-amber-600/20">
+                    <p className="text-sm font-bold text-amber-600">4-10 місце</p>
+                    <p className="text-[10px] text-muted-foreground">200₴/міс</p>
+                  </div>
+                </div>
+                <p className="text-[10px] text-muted-foreground">🎯 +50₴ кожне 5-те замовлення • +100₴ кожне 10-те</p>
+              </CardContent>
+            </Card>
+          </motion.div>
+
           {/* Spend CTA */}
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
             <Button
               onClick={() => { hapticSelection(); navigate("/"); }}
               className="w-full gap-2 bg-gradient-to-r from-primary to-accent hover:opacity-90"
