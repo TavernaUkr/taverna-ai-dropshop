@@ -141,7 +141,7 @@ const CatalogTab = ({
           <h2 className="text-lg font-bold text-foreground">Категорії</h2>
           <button 
             onClick={onOpenAllCategories}
-            className="text-sm text-primary flex items-center gap-1 hover:underline"
+            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-sm font-medium hover:bg-primary/20 active:scale-95 transition-all min-h-[36px]"
           >
             Всі <ChevronRight className="h-4 w-4" />
           </button>
@@ -175,7 +175,7 @@ const CatalogTab = ({
           <h2 className="text-lg font-bold text-foreground">Популярні товари</h2>
           <button 
             onClick={onViewAllProducts}
-            className="text-sm text-primary flex items-center gap-1 hover:underline"
+            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-sm font-medium hover:bg-primary/20 active:scale-95 transition-all min-h-[36px]"
           >
             Всі товари <ChevronRight className="h-4 w-4" />
           </button>

@@ -48,15 +48,15 @@ export default function BonusAccount() {
           .select("id", { count: "exact", head: true })
           .eq("referred_by", profile.id);
         setInvitedCount(count || 0);
-        // Calculate referral earnings with progression tiers
+        // Calculate referral earnings with calibrated progression tiers
         const invited = count || 0;
         let earned = 0;
         for (let i = 0; i < invited; i++) {
-          if (i >= 50) earned += 500;
-          else if (i >= 20) earned += 400;
-          else if (i >= 10) earned += 300;
-          else if (i >= 5) earned += 200;
-          else earned += 100;
+          if (i >= 50) earned += 150;
+          else if (i >= 20) earned += 125;
+          else if (i >= 10) earned += 100;
+          else if (i >= 5) earned += 75;
+          else earned += 50;
         }
         setReferralEarned(earned);
 
@@ -201,7 +201,7 @@ export default function BonusAccount() {
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground mt-2 text-center">
-                  {invitedCount > 0 ? `${invitedCount} друзів запрошено` : "Поділіться кодом — отримайте 100₴ за друга"}
+                  {invitedCount > 0 ? `${invitedCount} друзів запрошено` : "Поділіться кодом — отримайте 50₴ за друга"}
                 </p>
               </CardContent>
             </Card>
@@ -250,6 +250,20 @@ export default function BonusAccount() {
               </div>
               <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
             </button>
+
+            <button
+              onClick={() => { hapticSelection(); navigate("/?tab=ratings"); }}
+              className="w-full flex items-center gap-4 p-4 rounded-xl border border-rating/20 bg-card hover:border-rating/40 transition-all text-left"
+            >
+              <div className="w-10 h-10 rounded-full bg-rating/10 flex items-center justify-center shrink-0">
+                <Trophy className="w-5 h-5 text-rating" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-foreground text-sm">Рейтингові бонуси</p>
+                <p className="text-xs text-muted-foreground">Змагайтесь та отримуйте нагороди</p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+            </button>
           </motion.div>
 
           {/* Progressive Bonus Cap Info */}
@@ -266,10 +280,10 @@ export default function BonusAccount() {
                   Чим більше замовлень — тим більший % знижки бонусами:
                 </p>
                 {[
-                  { orders: 5, percent: 10, label: "до 5 замовлень" },
-                  { orders: 10, percent: 12, label: "від 10 замовлень" },
-                  { orders: 25, percent: 15, label: "від 25 замовлень" },
-                  { orders: 50, percent: 20, label: "від 50 замовлень" },
+                  { orders: 5, percent: 5, label: "до 10 замовлень" },
+                  { orders: 10, percent: 8, label: "від 10 замовлень" },
+                  { orders: 25, percent: 10, label: "від 25 замовлень" },
+                  { orders: 50, percent: 12, label: "від 50 замовлень" },
                 ].map((tier) => {
                   const isActive = totalOrders >= 50 ? tier.orders === 50
                     : totalOrders >= 25 ? tier.orders === 25
@@ -311,18 +325,18 @@ export default function BonusAccount() {
                 <div className="grid grid-cols-3 gap-1.5 text-center">
                   <div className="bg-yellow-500/10 rounded-lg p-2 border border-yellow-500/20">
                     <p className="text-sm font-bold text-yellow-500">1 місце</p>
-                    <p className="text-[10px] text-muted-foreground">1000₴/міс</p>
+                    <p className="text-[10px] text-muted-foreground">500₴/міс</p>
                   </div>
                   <div className="bg-slate-400/10 rounded-lg p-2 border border-slate-400/20">
                     <p className="text-sm font-bold text-slate-400">2-3 місце</p>
-                    <p className="text-[10px] text-muted-foreground">500₴/міс</p>
+                    <p className="text-[10px] text-muted-foreground">200₴/міс</p>
                   </div>
                   <div className="bg-amber-600/10 rounded-lg p-2 border border-amber-600/20">
                     <p className="text-sm font-bold text-amber-600">4-10 місце</p>
-                    <p className="text-[10px] text-muted-foreground">200₴/міс</p>
+                    <p className="text-[10px] text-muted-foreground">100₴/міс</p>
                   </div>
                 </div>
-                <p className="text-[10px] text-muted-foreground">🎯 +50₴ кожне 5-те замовлення • +100₴ кожне 10-те</p>
+                <p className="text-[10px] text-muted-foreground">🎯 +25₴ кожне 5-те замовлення • +50₴ кожне 10-те</p>
               </CardContent>
             </Card>
           </motion.div>
