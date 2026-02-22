@@ -312,7 +312,7 @@ export const ProfileDashboard = () => {
         </button>
       )}
 
-      {/* Bonus Account Button - Unified */}
+      {/* Bonus Account Button - Unified hub for all bonus features */}
       {isAuthenticated && (
         <button
           onClick={() => {
@@ -327,69 +327,10 @@ export const ProfileDashboard = () => {
           <div className="flex-1 text-left">
             <h4 className="font-semibold text-foreground">Бонусний рахунок</h4>
             <p className="text-xs text-muted-foreground">
-              Реферали, персональні бонуси та акції
+              Реферали, бонуси, акції, рейтингові нагороди
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold bg-primary/10 text-primary px-2 py-1 rounded-full">
-              Єдиний
-            </span>
-            <ChevronRight className="h-5 w-5 text-primary" />
-          </div>
-        </button>
-      )}
-
-      {/* Referral Program Button - For all authenticated users */}
-      {isAuthenticated && (
-        <button
-          onClick={() => {
-            hapticSelection();
-            navigate("/referrals");
-          }}
-          className="w-full flex items-center gap-4 p-4 rounded-xl border transition-all bg-gradient-to-r from-emerald-500/5 to-teal-500/5 border-emerald-500/20 hover:border-emerald-500 hover:from-emerald-500/10 hover:to-teal-500/10"
-        >
-          <div className="w-12 h-12 rounded-full flex items-center justify-center bg-gradient-to-br from-emerald-500/20 to-teal-500/20">
-            <Users className="h-6 w-6 text-emerald-500" />
-          </div>
-          <div className="flex-1 text-left">
-            <h4 className="font-semibold text-foreground">Реферальна програма</h4>
-            <p className="text-xs text-muted-foreground">
-              Запрошуй друзів — отримуй 100₴
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-medium bg-emerald-500/10 text-emerald-500 px-2 py-1 rounded-full">
-              +100₴
-            </span>
-            <ChevronRight className="h-5 w-5 text-emerald-500" />
-          </div>
-        </button>
-      )}
-
-      {/* Personal Bonuses Button - For all authenticated users */}
-      {isAuthenticated && (
-        <button
-          onClick={() => {
-            hapticSelection();
-            navigate("/personal-bonuses");
-          }}
-          className="w-full flex items-center gap-4 p-4 rounded-xl border transition-all bg-gradient-to-r from-amber-500/5 to-orange-500/5 border-amber-500/20 hover:border-amber-500 hover:from-amber-500/10 hover:to-orange-500/10"
-        >
-          <div className="w-12 h-12 rounded-full flex items-center justify-center bg-gradient-to-br from-amber-500/20 to-orange-500/20">
-            <Gift className="h-6 w-6 text-amber-500" />
-          </div>
-          <div className="flex-1 text-left">
-            <h4 className="font-semibold text-foreground">Персональні бонуси</h4>
-            <p className="text-xs text-muted-foreground">
-              Унікальні пропозиції під ваші вподобання
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-medium bg-amber-500/10 text-amber-500 px-2 py-1 rounded-full animate-pulse">
-              Нове
-            </span>
-            <ChevronRight className="h-5 w-5 text-amber-500" />
-          </div>
+          <ChevronRight className="h-5 w-5 text-primary" />
         </button>
       )}
 

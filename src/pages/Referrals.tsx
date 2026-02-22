@@ -128,7 +128,7 @@ export default function Referrals() {
               Запроси друга — отримай бонуси!
             </h1>
             <p className="text-muted-foreground max-w-sm mx-auto">
-              Чим більше друзів — тим більше бонусів за кожного наступного!
+              Ви та ваш друг отримуєте по 50₴ бонусів. Чим більше друзів — тим вища ставка!
             </p>
           </div>
         </motion.div>
@@ -168,7 +168,7 @@ export default function Referrals() {
                 <p className="text-3xl font-bold text-emerald-500">{invitedCount}</p>
                 <p className="text-sm text-muted-foreground">Запрошених друзів</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Поточна ставка: {invitedCount >= 50 ? 500 : invitedCount >= 20 ? 400 : invitedCount >= 10 ? 300 : invitedCount >= 5 ? 200 : 100}₴ за друга
+                  Поточна ставка: {invitedCount >= 50 ? 150 : invitedCount >= 20 ? 125 : invitedCount >= 10 ? 100 : invitedCount >= 5 ? 75 : 50}₴ за друга
                 </p>
               </CardContent>
             </Card>
@@ -182,11 +182,11 @@ export default function Referrals() {
               </CardHeader>
               <CardContent className="space-y-2">
                 {[
-                  { threshold: 0, reward: 100, label: "Старт" },
-                  { threshold: 5, reward: 200, label: "5 друзів" },
-                  { threshold: 10, reward: 300, label: "10 друзів" },
-                  { threshold: 20, reward: 400, label: "20 друзів" },
-                  { threshold: 50, reward: 500, label: "50 друзів" },
+                  { threshold: 0, reward: 50, label: "Старт" },
+                  { threshold: 5, reward: 75, label: "5 друзів" },
+                  { threshold: 10, reward: 100, label: "10 друзів" },
+                  { threshold: 20, reward: 125, label: "20 друзів" },
+                  { threshold: 50, reward: 150, label: "50 друзів" },
                 ].map((tier, idx) => {
                   const isActive = invitedCount >= tier.threshold;
                   const isCurrentTier = idx === [0, 5, 10, 20, 50].filter(t => invitedCount >= t).length - 1;
@@ -225,7 +225,7 @@ export default function Referrals() {
                 {[
                   { step: 1, text: "Поділіться своїм кодом з друзями" },
                   { step: 2, text: "Друг реєструється та робить замовлення" },
-                  { step: 3, text: "Ви обидва отримуєте по 100₴ бонусів!" },
+                  { step: 3, text: "Ви обидва отримуєте по 50₴ бонусів!" },
                 ].map((item) => (
                   <div key={item.step} className="flex items-center gap-4">
                     <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0">

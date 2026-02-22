@@ -48,11 +48,11 @@ export default function PersonalBonuses() {
         const totalOrders = orders?.length || 0;
         const totalSpending = orders?.reduce((sum, o) => sum + (o.total || 0), 0) || 0;
 
-        const cashbackRate = Math.min(5 + totalOrders, 15);
+        const cashbackRate = Math.min(3 + Math.floor(totalOrders / 5), 5);
         bonuses.push({
           id: "cashback",
           title: `Кешбек ${cashbackRate}%`,
-          description: totalOrders > 5 ? "Преміум рівень за вашу лояльність!" : "На наступне замовлення",
+          description: totalOrders > 10 ? "Преміум рівень за вашу лояльність!" : "На наступне замовлення",
           value: `${cashbackRate}%`,
           icon: "💰",
           status: "active",
@@ -60,9 +60,9 @@ export default function PersonalBonuses() {
 
         bonuses.push({
           id: "category",
-          title: "-10% на улюблену категорію",
+          title: "-5% на улюблену категорію",
           description: "Тактичне спорядження",
-          value: "-10%",
+          value: "-5%",
           icon: "🎯",
           status: "active",
         });
@@ -70,17 +70,17 @@ export default function PersonalBonuses() {
         bonuses.push({
           id: "delivery",
           title: "Безкоштовна доставка",
-          description: totalSpending > 5000 ? "Завжди безкоштовно для VIP" : "При замовленні від 1500₴",
+          description: totalSpending > 10000 ? "Завжди безкоштовно для VIP" : "При замовленні від 2000₴",
           value: "0₴",
           icon: "🚚",
-          status: totalSpending > 5000 ? "active" : "available",
+          status: totalSpending > 10000 ? "active" : "available",
         });
 
         bonuses.push({
           id: "review",
-          title: "+25₴ за відгук",
+          title: "+15₴ за відгук",
           description: "Залиште відгук на куплений товар",
-          value: "+25₴",
+          value: "+15₴",
           icon: "⭐",
           status: "available",
         });
@@ -88,9 +88,9 @@ export default function PersonalBonuses() {
         if (totalOrders < 3) {
           bonuses.push({
             id: "welcome",
-            title: "-20% на перші 3 замовлення",
+            title: "-10% на перші 3 замовлення",
             description: `Залишилось: ${3 - totalOrders} замовлень`,
-            value: "-20%",
+            value: "-10%",
             icon: "🎁",
             status: "active",
           });

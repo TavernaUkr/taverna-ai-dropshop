@@ -118,23 +118,23 @@ const RatingBonusesInfo = ({ type }: { type: "customer" | "supplier" }) => {
           <div className="bg-yellow-500/10 rounded-lg p-2">
             <Crown className="h-4 w-4 text-yellow-500 mx-auto mb-0.5" />
             <p className="text-xs font-bold text-yellow-500">1 місце</p>
-            <p className="text-[10px] text-muted-foreground">1000₴ бонус</p>
+            <p className="text-[10px] text-muted-foreground">500₴ бонус</p>
           </div>
           <div className="bg-slate-400/10 rounded-lg p-2">
             <Trophy className="h-4 w-4 text-slate-400 mx-auto mb-0.5" />
             <p className="text-xs font-bold text-slate-400">2-3 місце</p>
-            <p className="text-[10px] text-muted-foreground">500₴ бонус</p>
+            <p className="text-[10px] text-muted-foreground">200₴ бонус</p>
           </div>
           <div className="bg-amber-600/10 rounded-lg p-2">
             <Award className="h-4 w-4 text-amber-600 mx-auto mb-0.5" />
             <p className="text-xs font-bold text-amber-600">4-10 місце</p>
-            <p className="text-[10px] text-muted-foreground">200₴ бонус</p>
+            <p className="text-[10px] text-muted-foreground">100₴ бонус</p>
           </div>
         </div>
         <div className="space-y-1 text-[10px] text-muted-foreground">
           <p>🎯 Топ-1 за день — 2 персональних бонуси одночасно</p>
-          <p>🎁 Топ-1 за рік — 1 безкоштовне замовлення до 1500₴</p>
-          <p>⭐ Бонуси за замовлення: +50₴ кожне 5-те, +100₴ кожне 10-те</p>
+          <p>🎁 Топ-1 за рік — 1 безкоштовне замовлення до 1000₴</p>
+          <p>⭐ Бонуси за замовлення: +25₴ кожне 5-те, +50₴ кожне 10-те</p>
         </div>
       </div>
     );
@@ -208,7 +208,7 @@ const CustomerRankings = () => {
               <p className="text-sm font-bold text-primary">{customer.totalSpent.toLocaleString()} ₴</p>
               {customer.rank <= 3 && (
                 <Badge variant="outline" className="text-[9px] mt-1 border-rating/40 text-rating">
-                  {customer.rank === 1 ? "+1000₴" : customer.rank <= 3 ? "+500₴" : "+200₴"}
+                  {customer.rank === 1 ? "+500₴" : customer.rank <= 3 ? "+200₴" : "+100₴"}
                 </Badge>
               )}
             </div>
