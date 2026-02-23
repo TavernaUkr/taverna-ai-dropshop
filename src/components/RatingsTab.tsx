@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { Star, Trophy, TrendingUp, Users, ShoppingBag, Package, BarChart3, Gift, Crown, Zap, Award } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Star, Trophy, TrendingUp, Users, ShoppingBag, Package, BarChart3, Gift, Crown, Zap, Award, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useTelegramAuthContext } from "@/components/TelegramAuthProvider";
@@ -435,18 +436,29 @@ const ProductReviews = () => {
 };
 
 export const RatingsTab = () => {
+  const navigate = useNavigate();
   const { effectiveRole } = useTelegramAuthContext();
   const canViewSupplierStats = effectiveRole === "supplier" || effectiveRole === "admin" || effectiveRole === "moderator";
 
   return (
     <div className="space-y-4 pb-28 animate-fade-in">
-      <div className="flex items-center gap-2">
-        <Trophy className="h-5 w-5 text-rating" />
-        <h2 className="text-lg font-bold text-foreground">Рейтинги</h2>
-        <div className="flex items-center gap-1 ml-1">
-          <BarChart3 className="h-3.5 w-3.5 text-rating animate-pulse" />
-          <span className="text-xs font-medium text-rating">LIVE</span>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Trophy className="h-5 w-5 text-rating" />
+          <h2 className="text-lg font-bold text-foreground">Рейтинги</h2>
+          <div className="flex items-center gap-1 ml-1">
+            <BarChart3 className="h-3.5 w-3.5 text-rating animate-pulse" />
+            <span className="text-xs font-medium text-rating">LIVE</span>
+          </div>
         </div>
+        {/* Bonus Account button */}
+        <button
+          onClick={() => navigate("/bonus-account")}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 active:scale-95 transition-all"
+        >
+          <Wallet className="h-3.5 w-3.5" />
+          Бонуси
+        </button>
       </div>
 
       <Tabs defaultValue="customers" className="w-full">

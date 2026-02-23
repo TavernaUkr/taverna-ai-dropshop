@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Gift, Percent, Zap, Clock, ChevronRight, Tag, ChevronLeft, Info, Loader2 } from "lucide-react";
+import { Gift, Percent, Zap, Clock, ChevronRight, Tag, ChevronLeft, Info, Loader2, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -166,6 +166,19 @@ export const Promos = () => {
               <p className="text-xs text-primary-foreground/70">На замовлення</p>
             </div>
           </div>
+
+          {/* Bonus Account CTA */}
+          <button
+            onClick={() => navigate("/bonus-account")}
+            className="w-full mt-3 flex items-center gap-3 bg-primary-foreground/15 backdrop-blur-sm rounded-xl p-3 hover:bg-primary-foreground/25 active:scale-[0.98] transition-all"
+          >
+            <Wallet className="h-5 w-5 text-primary-foreground" />
+            <div className="text-left flex-1">
+              <p className="text-sm font-semibold text-primary-foreground">Бонусний рахунок</p>
+              <p className="text-[10px] text-primary-foreground/70">Реферали, бонуси, рейтингові нагороди</p>
+            </div>
+            <ChevronRight className="h-4 w-4 text-primary-foreground/60" />
+          </button>
         </div>
       </div>
 
