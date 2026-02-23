@@ -260,57 +260,14 @@ export default function BonusAccount() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-foreground text-sm">Рейтингові бонуси</p>
-                <p className="text-xs text-muted-foreground">Змагайтесь та отримуйте нагороди</p>
+                <p className="text-xs text-muted-foreground">Бонуси за місця в рейтингу</p>
               </div>
               <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
             </button>
           </motion.div>
 
-          {/* Progressive Bonus Cap Info */}
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }}>
-            <Card className="border border-primary/20">
-              <CardHeader className="pb-2 pt-4 px-4">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-primary" />
-                  Ліміт використання бонусів
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="px-4 pb-4 space-y-2">
-                <p className="text-xs text-muted-foreground mb-3">
-                  Чим більше замовлень — тим більший % знижки бонусами:
-                </p>
-                {[
-                  { orders: 5, percent: 5, label: "до 10 замовлень" },
-                  { orders: 10, percent: 8, label: "від 10 замовлень" },
-                  { orders: 25, percent: 10, label: "від 25 замовлень" },
-                  { orders: 50, percent: 12, label: "від 50 замовлень" },
-                ].map((tier) => {
-                  const isActive = totalOrders >= 50 ? tier.orders === 50
-                    : totalOrders >= 25 ? tier.orders === 25
-                    : totalOrders >= 10 ? tier.orders === 10
-                    : tier.orders === 5;
-                  return (
-                    <div key={tier.orders} className={cn(
-                      "flex items-center justify-between p-2.5 rounded-lg border transition-all",
-                      isActive ? "border-primary bg-primary/10" : "border-border"
-                    )}>
-                      <div className="flex items-center gap-2">
-                        {isActive && <Check className="w-4 h-4 text-primary" />}
-                        <span className={cn("text-sm", isActive ? "font-medium text-foreground" : "text-muted-foreground")}>{tier.label}</span>
-                      </div>
-                      <span className={cn("text-sm font-bold", isActive ? "text-primary" : "text-muted-foreground")}>{tier.percent}%</span>
-                    </div>
-                  );
-                })}
-                <p className="text-xs text-muted-foreground mt-2">
-                  Ваших замовлень: <span className="font-medium text-foreground">{totalOrders}</span>
-                </p>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* Rating Bonuses */}
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
+          {/* Rating Bonuses Summary */}
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
             <Card className="border border-rating/20">
               <CardHeader className="pb-2 pt-4 px-4">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -318,9 +275,9 @@ export default function BonusAccount() {
                   Рейтингові бонуси
                 </CardTitle>
               </CardHeader>
-              <CardContent className="px-4 pb-4 space-y-2">
-                <p className="text-xs text-muted-foreground mb-2">
-                  Змагайтесь з іншими клієнтами та отримуйте бонуси:
+              <CardContent className="px-4 pb-4 space-y-3">
+                <p className="text-xs text-muted-foreground">
+                  Змагайтесь і отримуйте бонуси щомісяця:
                 </p>
                 <div className="grid grid-cols-3 gap-1.5 text-center">
                   <div className="bg-yellow-500/10 rounded-lg p-2 border border-yellow-500/20">
@@ -336,7 +293,18 @@ export default function BonusAccount() {
                     <p className="text-[10px] text-muted-foreground">100₴/міс</p>
                   </div>
                 </div>
-                <p className="text-[10px] text-muted-foreground">🎯 +25₴ кожне 5-те замовлення • +50₴ кожне 10-те</p>
+                <p className="text-[10px] text-muted-foreground">
+                  🎯 Топ-1 за день — 2 персональних бонуси • 🎁 Топ-1 за рік — безкоштовне замовлення до 1000₴
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full gap-2 border-rating/30 text-rating hover:bg-rating/10"
+                  onClick={() => { hapticSelection(); navigate("/?tab=ratings"); }}
+                >
+                  <Trophy className="w-4 h-4" />
+                  Перейти до рейтингів
+                </Button>
               </CardContent>
             </Card>
           </motion.div>

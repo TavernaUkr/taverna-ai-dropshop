@@ -240,7 +240,11 @@ const AccountTab = () => {
 const Index = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useTelegramAuthContext();
-  const [activeTab, setActiveTab] = useState("catalog");
+  
+  // Check for tab query param
+  const urlParams = new URLSearchParams(window.location.search);
+  const initialTab = urlParams.get("tab") || "catalog";
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
@@ -393,6 +397,7 @@ const Index = () => {
         onNotificationsClick={() => toast.info("Сповіщення")}
         onFavoritesClick={() => setIsWishlistOpen(true)}
         onPromoClick={() => navigate("/promos")}
+        onRatingsClick={() => setActiveTab("ratings")}
       />
       
       <main className="px-4 py-4">

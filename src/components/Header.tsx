@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { ShoppingCart, Search, Heart, Gift, Info, Star } from "lucide-react";
+import { ShoppingCart, Search, Heart, Gift, Info, Star, Trophy, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useNavigate } from "react-router-dom";
 import tavernaLogo from "@/assets/taverna-logo.png";
 import { AppInfoModal } from "./AppInfoModal";
 import { AppRatingModal } from "./AppRatingModal";
@@ -13,6 +14,7 @@ interface HeaderProps {
   onNotificationsClick?: () => void;
   onFavoritesClick?: () => void;
   onPromoClick?: () => void;
+  onRatingsClick?: () => void;
 }
 
 export const Header = ({
@@ -23,7 +25,9 @@ export const Header = ({
   onNotificationsClick,
   onFavoritesClick,
   onPromoClick,
+  onRatingsClick,
 }: HeaderProps) => {
+  const navigate = useNavigate();
   const [isInfoOpen, setIsInfoOpen] = useState(false);
   const [isRatingOpen, setIsRatingOpen] = useState(false);
 
@@ -62,27 +66,44 @@ export const Header = ({
             </button>
           </div>
 
-          {/* Center - Promo Button */}
+          {/* Center - Ratings Button */}
           <button
-            onClick={onPromoClick}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-live to-warning text-live-foreground font-semibold text-sm shadow-md hover:shadow-lg active:scale-95 transition-all animate-pulse-slow"
+            onClick={onRatingsClick}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-rating to-amber-500 text-white font-semibold text-sm shadow-md hover:shadow-lg active:scale-95 transition-all"
           >
-            <Gift className="h-4 w-4" />
-            <span>Акції</span>
+            <Trophy className="h-4 w-4" />
+            <span>Рейтинги</span>
           </button>
 
           {/* Actions */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5">
+            {/* Bonus Account mini */}
+            <button
+              onClick={() => navigate("/bonus-account")}
+              className="w-9 h-9 rounded-xl flex items-center justify-center text-primary hover:bg-primary/10 active:scale-95 transition-all"
+              aria-label="Бонусний рахунок"
+            >
+              <Wallet className="h-4.5 w-4.5" />
+            </button>
+            {/* Promos mini */}
+            <button
+              onClick={onPromoClick}
+              className="w-9 h-9 rounded-xl flex items-center justify-center text-live hover:bg-live/10 active:scale-95 transition-all"
+              aria-label="Акції"
+            >
+              <Gift className="h-4.5 w-4.5" />
+            </button>
+
             <button
               onClick={onSearchClick}
-              className="w-10 h-10 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all"
+              className="w-9 h-9 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all"
             >
               <Search className="h-5 w-5" />
             </button>
 
             <button
               onClick={onFavoritesClick}
-              className="relative w-10 h-10 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all"
+              className="relative w-9 h-9 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all"
             >
               <Heart className="h-5 w-5" />
               {favoritesCount > 0 && (
@@ -100,7 +121,7 @@ export const Header = ({
 
             <button
               onClick={onCartClick}
-              className="relative w-10 h-10 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all"
+              className="relative w-9 h-9 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all"
             >
               <ShoppingCart className="h-5 w-5" />
               {cartCount > 0 && (
