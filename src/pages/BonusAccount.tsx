@@ -1,12 +1,11 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
-  Wallet, ChevronLeft, Users, Gift, Tag, ShoppingBag, ChevronRight,
-  Coins, Sparkles, Copy, Check, Share2, TrendingUp, Trophy,
+  Wallet, ChevronLeft, Users, Tag, ShoppingBag, ChevronRight,
+  Sparkles, Copy, Check, Trophy, Star, Award, Crown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
+import { Card, CardContent } from "@/components/ui/card";
 import { useTelegramAuthContext } from "@/components/TelegramAuthProvider";
 import { useBonuses } from "@/hooks/useBonuses";
 import { hapticSelection, hapticNotification } from "@/lib/haptics";
@@ -19,27 +18,26 @@ export default function BonusAccount() {
   const { balance, totalEarned, totalSpent } = useBonuses();
   const [referralCode, setReferralCode] = useState("");
   const [invitedCount, setInvitedCount] = useState(0);
-  const [referralEarned, setReferralEarned] = useState(0);
   const [activeBonusesCount, setActiveBonusesCount] = useState(0);
   const [activePromosCount, setActivePromosCount] = useState(0);
   const [totalOrders, setTotalOrders] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [showRatingBonuses, setShowRatingBonuses] = useState(false);
 
   const handleBack = () => {
     hapticSelection();
-    navigate(-1);
+    if (showRatingBonuses) {
+      setShowRatingBonuses(false);
+    } else {
+      navigate(-1);
+    }
   };
 
   useEffect(() => {
     const loadSummary = async () => {
-      if (!profile?.id) {
-        setIsLoading(false);
-        return;
-      }
-
+      if (!profile?.id) { setIsLoading(false); return; }
       try {
-        // Referral data
         const code = profile.referral_code || `TAV-${profile.id.replace(/-/g, "").slice(0, 8).toUpperCase()}`;
         setReferralCode(code);
 
@@ -48,36 +46,22 @@ export default function BonusAccount() {
           .select("id", { count: "exact", head: true })
           .eq("referred_by", profile.id);
         setInvitedCount(count || 0);
-        // Calculate referral earnings with calibrated progression tiers
-        const invited = count || 0;
-        let earned = 0;
-        for (let i = 0; i < invited; i++) {
-          if (i >= 50) earned += 150;
-          else if (i >= 20) earned += 125;
-          else if (i >= 10) earned += 100;
-          else if (i >= 5) earned += 75;
-          else earned += 50;
-        }
-        setReferralEarned(earned);
 
-        // Orders for bonus count calculation
         const { data: orders } = await supabase
           .from("orders")
           .select("id, total")
           .eq("profile_id", profile.id)
-          .limit(20);
+          .limit(50);
 
-        const totalOrders = orders?.length || 0;
-        setTotalOrders(totalOrders);
-        // Count active bonuses (same logic as PersonalBonuses page)
-        let bonusCount = 2; // cashback + category always active
+        const ordersCount = orders?.length || 0;
+        setTotalOrders(ordersCount);
+        let bonusCount = 2;
         const totalSpending = orders?.reduce((sum, o) => sum + (o.total || 0), 0) || 0;
         if (totalSpending > 5000) bonusCount++;
-        if (totalOrders < 3) bonusCount++;
-        if (totalOrders >= 10) bonusCount++;
+        if (ordersCount < 3) bonusCount++;
+        if (ordersCount >= 10) bonusCount++;
         setActiveBonusesCount(bonusCount);
 
-        // Active promos count
         const { count: promosCount } = await supabase
           .from("promo_codes")
           .select("id", { count: "exact", head: true })
@@ -89,7 +73,6 @@ export default function BonusAccount() {
         setIsLoading(false);
       }
     };
-
     loadSummary();
   }, [profile?.id]);
 
@@ -125,9 +108,12 @@ export default function BonusAccount() {
     );
   }
 
+  if (showRatingBonuses) {
+    return <RatingBonusesPage onBack={handleBack} onGoToRatings={() => { hapticSelection(); navigate("/?tab=ratings"); }} />;
+  }
+
   return (
     <div className="min-h-screen bg-background flex flex-col pb-safe">
-      {/* Header */}
       <header className="sticky top-0 z-40 bg-card/95 backdrop-blur-md border-b border-border shadow-sm">
         <div className="flex items-center h-14 px-4">
           <button onClick={handleBack} className="w-10 h-10 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all mr-3">
@@ -138,182 +124,107 @@ export default function BonusAccount() {
       </header>
 
       <main className="flex-1 overflow-y-auto scrollbar-hide">
-        {/* Hero Balance */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-accent/10 to-emerald-500/10" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,rgba(120,119,198,0.3),transparent_60%)]" />
-          <div className="relative p-6 text-center">
-            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.2, type: "spring" }} className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-primary to-emerald-500 flex items-center justify-center shadow-lg">
-              <Wallet className="w-10 h-10 text-primary-foreground" />
-            </motion.div>
-            <p className="text-sm text-muted-foreground mb-1">Загальний баланс</p>
-            <h1 className="text-4xl font-bold mb-1">
-              <span className="text-primary">{balance}₴</span>
-            </h1>
-            <p className="text-xs text-muted-foreground">
-              Зароблено: {totalEarned}₴ • Використано: {totalSpent}₴
-            </p>
+        {/* Hero: Balance left + Stats right */}
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="p-4">
+          <Card className="overflow-hidden border-primary/20">
+            <CardContent className="p-0">
+              <div className="flex">
+                {/* Left: Balance */}
+                <div className="flex-1 p-4 flex flex-col justify-center border-r border-border/50">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Wallet className="w-5 h-5 text-primary" />
+                    </div>
+                    <span className="text-xs text-muted-foreground">Баланс</span>
+                  </div>
+                  <p className="text-3xl font-bold text-primary">{balance}₴</p>
+                  <div className="flex gap-3 mt-1.5">
+                    <span className="text-[10px] text-muted-foreground">+{totalEarned}₴</span>
+                    <span className="text-[10px] text-muted-foreground">−{totalSpent}₴</span>
+                  </div>
+                </div>
+
+                {/* Right: Mini stats */}
+                <div className="flex-1 p-3">
+                  <div className="grid grid-cols-2 gap-2 h-full">
+                    <div className="flex items-center gap-1.5 bg-muted/50 rounded-lg px-2 py-1.5">
+                      <Users className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-foreground leading-tight">{invitedCount}</p>
+                        <p className="text-[9px] text-muted-foreground leading-tight">Реферали</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 bg-muted/50 rounded-lg px-2 py-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-foreground leading-tight">{activeBonusesCount}</p>
+                        <p className="text-[9px] text-muted-foreground leading-tight">Бонуси</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 bg-muted/50 rounded-lg px-2 py-1.5">
+                      <Tag className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-foreground leading-tight">{activePromosCount}</p>
+                        <p className="text-[9px] text-muted-foreground leading-tight">Акції</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 bg-muted/50 rounded-lg px-2 py-1.5">
+                      <Trophy className="w-3.5 h-3.5 text-rating shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-foreground leading-tight">{totalOrders >= 10 ? "✓" : "—"}</p>
+                        <p className="text-[9px] text-muted-foreground leading-tight">Рейтинг</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Referral code compact */}
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="px-4 mb-3">
+          <div className="flex items-center gap-2 bg-muted/60 rounded-xl p-2.5 border border-border/50">
+            <Users className="w-4 h-4 text-primary shrink-0" />
+            <span className="font-mono font-semibold text-primary text-sm tracking-wider flex-1">{referralCode}</span>
+            <button onClick={handleCopyCode} className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center active:scale-90 transition-transform">
+              {copied ? <Check className="w-3.5 h-3.5 text-primary" /> : <Copy className="w-3.5 h-3.5 text-primary" />}
+            </button>
           </div>
         </motion.div>
 
-        {/* Stats Row - summary only, no details */}
-        <div className="grid grid-cols-3 gap-2 px-4 -mt-2">
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-            <Card className="bg-gradient-to-br from-emerald-500/10 to-teal-500/5 border-emerald-500/20">
-              <CardContent className="p-3 text-center">
-                <Users className="w-5 h-5 text-emerald-500 mx-auto mb-1" />
-                <p className="text-lg font-bold text-emerald-500">{referralEarned}₴</p>
-                <p className="text-[10px] text-muted-foreground">Реферали</p>
-              </CardContent>
-            </Card>
-          </motion.div>
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-            <Card className="bg-gradient-to-br from-amber-500/10 to-orange-500/5 border-amber-500/20">
-              <CardContent className="p-3 text-center">
-                <Sparkles className="w-5 h-5 text-amber-500 mx-auto mb-1" />
-                <p className="text-lg font-bold text-amber-500">{activeBonusesCount}</p>
-                <p className="text-[10px] text-muted-foreground">Бонуси</p>
-              </CardContent>
-            </Card>
-          </motion.div>
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
-            <Card className="bg-gradient-to-br from-purple-500/10 to-pink-500/5 border-purple-500/20">
-              <CardContent className="p-3 text-center">
-                <Tag className="w-5 h-5 text-purple-500 mx-auto mb-1" />
-                <p className="text-lg font-bold text-purple-500">{activePromosCount}</p>
-                <p className="text-[10px] text-muted-foreground">Акції</p>
-              </CardContent>
-            </Card>
-          </motion.div>
-        </div>
-
-        <div className="p-4 space-y-4">
-          {/* Quick Referral Code (compact, no full details) */}
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-            <Card className="border border-emerald-500/20 bg-gradient-to-br from-emerald-500/5 to-teal-500/5">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex-1 flex items-center gap-2 bg-muted/80 rounded-lg p-2.5">
-                    <span className="font-mono font-bold text-emerald-500 tracking-wider text-sm">{referralCode}</span>
-                  </div>
-                  <Button variant="ghost" size="icon" className="shrink-0" onClick={handleCopyCode}>
-                    {copied ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground mt-2 text-center">
-                  {invitedCount > 0 ? `${invitedCount} друзів запрошено` : "Поділіться кодом — отримайте 50₴ за друга"}
-                </p>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* Navigation Cards - link to dedicated pages */}
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="space-y-3">
-            <button
-              onClick={() => { hapticSelection(); navigate("/referrals"); }}
-              className="w-full flex items-center gap-4 p-4 rounded-xl border border-emerald-500/20 bg-card hover:border-emerald-500/40 transition-all text-left"
+        {/* Navigation list - Telegram style */}
+        <div className="px-4 space-y-2 pb-4">
+          {[
+            { icon: Users, label: "Реферальна програма", sub: "50₴ за друга • прогресивні тіри", color: "text-emerald-500", bg: "bg-emerald-500/10", path: "/referrals" },
+            { icon: Sparkles, label: "Персональні бонуси", sub: "Кешбек 3-5% • AI-пропозиції", color: "text-amber-500", bg: "bg-amber-500/10", path: "/personal-bonuses" },
+            { icon: Tag, label: "Акції та промокоди", sub: `${activePromosCount} активних акцій`, color: "text-purple-500", bg: "bg-purple-500/10", path: "/promos" },
+            { icon: Trophy, label: "Рейтингові бонуси", sub: "Призи за день, тиждень, місяць, рік", color: "text-rating", bg: "bg-rating/10", action: () => setShowRatingBonuses(true) },
+          ].map((item, i) => (
+            <motion.button
+              key={item.label}
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.15 + i * 0.05 }}
+              onClick={() => { hapticSelection(); item.action ? item.action() : navigate(item.path!); }}
+              className="w-full flex items-center gap-3 p-3 rounded-xl bg-card border border-border/50 hover:bg-muted/30 active:scale-[0.98] transition-all text-left"
             >
-              <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0">
-                <Users className="w-5 h-5 text-emerald-500" />
+              <div className={`w-9 h-9 rounded-full ${item.bg} flex items-center justify-center shrink-0`}>
+                <item.icon className={`w-4.5 h-4.5 ${item.color}`} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-foreground text-sm">Реферальна програма</p>
-                <p className="text-xs text-muted-foreground">Запрошуйте друзів та заробляйте</p>
+                <p className="font-medium text-foreground text-[13px] leading-tight">{item.label}</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">{item.sub}</p>
               </div>
-              <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
-            </button>
+              <ChevronRight className="w-4 h-4 text-muted-foreground/50 shrink-0" />
+            </motion.button>
+          ))}
 
-            <button
-              onClick={() => { hapticSelection(); navigate("/personal-bonuses"); }}
-              className="w-full flex items-center gap-4 p-4 rounded-xl border border-amber-500/20 bg-card hover:border-amber-500/40 transition-all text-left"
-            >
-              <div className="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0">
-                <Sparkles className="w-5 h-5 text-amber-500" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-foreground text-sm">Персональні бонуси</p>
-                <p className="text-xs text-muted-foreground">AI-пропозиції під вашу активність</p>
-              </div>
-              <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
-            </button>
-
-            <button
-              onClick={() => { hapticSelection(); navigate("/promos"); }}
-              className="w-full flex items-center gap-4 p-4 rounded-xl border border-purple-500/20 bg-card hover:border-purple-500/40 transition-all text-left"
-            >
-              <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center shrink-0">
-                <Tag className="w-5 h-5 text-purple-500" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-foreground text-sm">Акції та промокоди</p>
-                <p className="text-xs text-muted-foreground">Активні знижки та flash-продажі</p>
-              </div>
-              <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
-            </button>
-
-            <button
-              onClick={() => { hapticSelection(); navigate("/?tab=ratings"); }}
-              className="w-full flex items-center gap-4 p-4 rounded-xl border border-rating/20 bg-card hover:border-rating/40 transition-all text-left"
-            >
-              <div className="w-10 h-10 rounded-full bg-rating/10 flex items-center justify-center shrink-0">
-                <Trophy className="w-5 h-5 text-rating" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-foreground text-sm">Рейтингові бонуси</p>
-                <p className="text-xs text-muted-foreground">Бонуси за місця в рейтингу</p>
-              </div>
-              <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
-            </button>
-          </motion.div>
-
-          {/* Rating Bonuses Summary */}
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-            <Card className="border border-rating/20">
-              <CardHeader className="pb-2 pt-4 px-4">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <Trophy className="w-4 h-4 text-rating" />
-                  Рейтингові бонуси
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="px-4 pb-4 space-y-3">
-                <p className="text-xs text-muted-foreground">
-                  Змагайтесь і отримуйте бонуси щомісяця:
-                </p>
-                <div className="grid grid-cols-3 gap-1.5 text-center">
-                  <div className="bg-yellow-500/10 rounded-lg p-2 border border-yellow-500/20">
-                    <p className="text-sm font-bold text-yellow-500">1 місце</p>
-                    <p className="text-[10px] text-muted-foreground">500₴/міс</p>
-                  </div>
-                  <div className="bg-slate-400/10 rounded-lg p-2 border border-slate-400/20">
-                    <p className="text-sm font-bold text-slate-400">2-3 місце</p>
-                    <p className="text-[10px] text-muted-foreground">200₴/міс</p>
-                  </div>
-                  <div className="bg-amber-600/10 rounded-lg p-2 border border-amber-600/20">
-                    <p className="text-sm font-bold text-amber-600">4-10 місце</p>
-                    <p className="text-[10px] text-muted-foreground">100₴/міс</p>
-                  </div>
-                </div>
-                <p className="text-[10px] text-muted-foreground">
-                  🎯 Топ-1 за день — 2 персональних бонуси • 🎁 Топ-1 за рік — безкоштовне замовлення до 1000₴
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full gap-2 border-rating/30 text-rating hover:bg-rating/10"
-                  onClick={() => { hapticSelection(); navigate("/?tab=ratings"); }}
-                >
-                  <Trophy className="w-4 h-4" />
-                  Перейти до рейтингів
-                </Button>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* Spend CTA */}
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
+          {/* CTA */}
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="pt-2">
             <Button
               onClick={() => { hapticSelection(); navigate("/"); }}
-              className="w-full gap-2 bg-gradient-to-r from-primary to-accent hover:opacity-90"
+              className="w-full gap-2"
               size="lg"
             >
               <ShoppingBag className="w-5 h-5" />
@@ -321,6 +232,197 @@ export default function BonusAccount() {
             </Button>
           </motion.div>
         </div>
+      </main>
+    </div>
+  );
+}
+
+/* ─── Rating Bonuses Sub-page ─── */
+
+function RatingBonusesPage({ onBack, onGoToRatings }: { onBack: () => void; onGoToRatings: () => void }) {
+  return (
+    <div className="min-h-screen bg-background flex flex-col pb-safe">
+      <header className="sticky top-0 z-40 bg-card/95 backdrop-blur-md border-b border-border shadow-sm">
+        <div className="flex items-center h-14 px-4">
+          <button onClick={onBack} className="w-10 h-10 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all mr-3">
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <h1 className="text-lg font-semibold text-foreground">Рейтингові бонуси</h1>
+        </div>
+      </header>
+
+      <main className="flex-1 overflow-y-auto scrollbar-hide p-4 space-y-4">
+        {/* Intro */}
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+          <Card className="border-primary/20 bg-primary/5">
+            <CardContent className="p-4">
+              <div className="flex items-start gap-3">
+                <Trophy className="w-6 h-6 text-primary shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold text-foreground mb-1">Дружня конкуренція = реальні призи</p>
+                  <p className="text-xs text-muted-foreground">
+                    Змагайтесь з іншими учасниками та отримуйте бонуси автоматично. Рейтинг оновлюється щодня.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* ── CLIENTS SECTION ── */}
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+          <div className="flex items-center gap-2 mb-2">
+            <Star className="w-4 h-4 text-primary" />
+            <h2 className="text-sm font-semibold text-foreground">Клієнти</h2>
+            <span className="text-[10px] text-muted-foreground ml-auto">за к-сть замовлень, суму, товари</span>
+          </div>
+
+          {/* Daily */}
+          <Card className="mb-2 border-border/50">
+            <CardContent className="p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-5 h-5 rounded bg-primary/10 flex items-center justify-center">
+                  <span className="text-[10px] font-bold text-primary">Д</span>
+                </div>
+                <span className="text-xs font-medium text-foreground">Щоденний рейтинг</span>
+              </div>
+              <div className="space-y-1 text-[11px] text-muted-foreground">
+                <p>🥇 <span className="text-foreground font-medium">Топ-1:</span> +2 персональних бонуси на наступний день</p>
+                <p>🥈 <span className="text-foreground font-medium">Топ 2-3:</span> +1 персональний бонус</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Weekly */}
+          <Card className="mb-2 border-border/50">
+            <CardContent className="p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-5 h-5 rounded bg-primary/10 flex items-center justify-center">
+                  <span className="text-[10px] font-bold text-primary">Т</span>
+                </div>
+                <span className="text-xs font-medium text-foreground">Тижневий рейтинг</span>
+              </div>
+              <div className="space-y-1 text-[11px] text-muted-foreground">
+                <p>🥇 <span className="text-foreground font-medium">Топ-1:</span> 75₴ бонусів</p>
+                <p>🥈 <span className="text-foreground font-medium">Топ 2-3:</span> 40₴ бонусів</p>
+                <p>🥉 <span className="text-foreground font-medium">Топ 4-10:</span> 15₴ бонусів</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Monthly */}
+          <Card className="mb-2 border-primary/20">
+            <CardContent className="p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-5 h-5 rounded bg-primary/15 flex items-center justify-center">
+                  <span className="text-[10px] font-bold text-primary">М</span>
+                </div>
+                <span className="text-xs font-medium text-foreground">Місячний рейтинг</span>
+                <span className="text-[9px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium ml-auto">Головний</span>
+              </div>
+              <div className="space-y-1 text-[11px] text-muted-foreground">
+                <p>🥇 <span className="text-foreground font-medium">Топ-1:</span> 500₴ бонусів + безкоштовна доставка на місяць</p>
+                <p>🥈 <span className="text-foreground font-medium">Топ 2-3:</span> 200₴ бонусів</p>
+                <p>🥉 <span className="text-foreground font-medium">Топ 4-10:</span> 100₴ бонусів</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Yearly */}
+          <Card className="mb-4 border-rating/20">
+            <CardContent className="p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-5 h-5 rounded bg-rating/10 flex items-center justify-center">
+                  <Crown className="w-3 h-3 text-rating" />
+                </div>
+                <span className="text-xs font-medium text-foreground">Річний рейтинг</span>
+                <span className="text-[9px] bg-rating/10 text-rating px-1.5 py-0.5 rounded-full font-medium ml-auto">Гранд-приз</span>
+              </div>
+              <div className="space-y-1 text-[11px] text-muted-foreground">
+                <p>🏆 <span className="text-foreground font-medium">Топ-1:</span> Безкоштовне замовлення до 1500₴ + VIP-статус</p>
+                <p>🥇 <span className="text-foreground font-medium">Топ 2-3:</span> 1000₴ бонусів</p>
+                <p>🥈 <span className="text-foreground font-medium">Топ 4-10:</span> 500₴ бонусів</p>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* ── SUPPLIERS SECTION ── */}
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+          <div className="flex items-center gap-2 mb-2">
+            <Award className="w-4 h-4 text-accent" />
+            <h2 className="text-sm font-semibold text-foreground">Постачальники</h2>
+            <span className="text-[10px] text-muted-foreground ml-auto">за магазини та товари</span>
+          </div>
+
+          {/* Weekly */}
+          <Card className="mb-2 border-border/50">
+            <CardContent className="p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-5 h-5 rounded bg-accent/10 flex items-center justify-center">
+                  <span className="text-[10px] font-bold text-accent-foreground">Т</span>
+                </div>
+                <span className="text-xs font-medium text-foreground">Тижневий рейтинг</span>
+              </div>
+              <div className="space-y-1 text-[11px] text-muted-foreground">
+                <p>🥇 <span className="text-foreground font-medium">Топ-1 магазин:</span> Пріоритет у черзі на безкоштовний пост</p>
+                <p>🥇 <span className="text-foreground font-medium">Топ-1 товар:</span> Буст товару на 7 днів</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Monthly */}
+          <Card className="mb-2 border-accent/20">
+            <CardContent className="p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-5 h-5 rounded bg-accent/15 flex items-center justify-center">
+                  <span className="text-[10px] font-bold text-accent-foreground">М</span>
+                </div>
+                <span className="text-xs font-medium text-foreground">Місячний рейтинг</span>
+                <span className="text-[9px] bg-accent/10 text-accent-foreground px-1.5 py-0.5 rounded-full font-medium ml-auto">Головний</span>
+              </div>
+              <div className="space-y-1 text-[11px] text-muted-foreground">
+                <p>🥇 <span className="text-foreground font-medium">Топ-1 магазин:</span> Знижена націнка 28% (замість 33%) на місяць</p>
+                <p>🥈 <span className="text-foreground font-medium">Топ 2-3:</span> 1 безкоштовний рекламний пост</p>
+                <p>🥉 <span className="text-foreground font-medium">Топ 4-10:</span> Пріоритет у черзі реклами</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Yearly */}
+          <Card className="mb-4 border-rating/20">
+            <CardContent className="p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-5 h-5 rounded bg-rating/10 flex items-center justify-center">
+                  <Crown className="w-3 h-3 text-rating" />
+                </div>
+                <span className="text-xs font-medium text-foreground">Річний рейтинг</span>
+              </div>
+              <div className="space-y-1 text-[11px] text-muted-foreground">
+                <p>🏆 <span className="text-foreground font-medium">Топ-1 магазин:</span> Знижена націнка 25% на 3 місяці + VIP-бейдж</p>
+                <p>🥇 <span className="text-foreground font-medium">Топ 2-3:</span> Знижена націнка 28% на 1 місяць</p>
+                <p>🏆 <span className="text-foreground font-medium">Топ-1 товар:</span> Безкоштовна реклама на всіх платформах (1 тиждень)</p>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Math note */}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>
+          <div className="bg-muted/50 rounded-xl p-3 border border-border/30">
+            <p className="text-[10px] text-muted-foreground leading-relaxed">
+              💡 <span className="font-medium">Як це працює:</span> Рейтинг формується автоматично на основі кількості замовлень, загальної суми покупок та кількості придбаних товарів. Для постачальників — на основі оцінок магазину та відгуків на товари. Бонуси нараховуються автоматично на початку нового періоду.
+            </p>
+          </div>
+        </motion.div>
+
+        {/* Go to Ratings CTA */}
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
+          <Button onClick={onGoToRatings} className="w-full gap-2" size="lg">
+            <Trophy className="w-5 h-5" />
+            Переглянути рейтинги
+          </Button>
+        </motion.div>
       </main>
     </div>
   );
