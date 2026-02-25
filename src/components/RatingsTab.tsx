@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Star, Trophy, TrendingUp, Users, ShoppingBag, Package, BarChart3, Gift, Crown, Zap, Award, Wallet } from "lucide-react";
+import { Star, Trophy, TrendingUp, Users, ShoppingBag, Package, BarChart3, Gift, Crown, Zap, Award, Wallet, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useTelegramAuthContext } from "@/components/TelegramAuthProvider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 
-type Period = "day" | "month" | "year";
+type Period = "day" | "week" | "month" | "year";
 
 interface CustomerRatingItem {
   rank: number;
@@ -24,6 +24,7 @@ interface SupplierRatingItem {
   revenue: number;
   customersCount: number;
   avgRating: number;
+  reviewsCount: number;
 }
 
 interface ShopReview {
@@ -41,7 +42,7 @@ interface ProductReview {
 }
 
 const generateCustomerRatings = (period: Period): CustomerRatingItem[] => {
-  const multiplier = period === "day" ? 1 : period === "month" ? 30 : 365;
+  const multiplier = period === "day" ? 1 : period === "week" ? 7 : period === "month" ? 30 : 365;
   return [
     { rank: 1, name: "Олекс***", ordersCount: 12 * multiplier / 30, totalSpent: 24500 * multiplier / 30, productsCount: 35 * multiplier / 30 },
     { rank: 2, name: "Мар***", ordersCount: 9 * multiplier / 30, totalSpent: 18200 * multiplier / 30, productsCount: 27 * multiplier / 30 },
@@ -60,18 +61,19 @@ const generateCustomerRatings = (period: Period): CustomerRatingItem[] => {
 };
 
 const generateSupplierRatings = (period: Period): SupplierRatingItem[] => {
-  const multiplier = period === "day" ? 1 : period === "month" ? 30 : 365;
+  const multiplier = period === "day" ? 1 : period === "week" ? 7 : period === "month" ? 30 : 365;
   return [
-    { rank: 1, shopName: "Tactical Pro", soldCount: 145 * multiplier / 30, revenue: 289000 * multiplier / 30, customersCount: 89 * multiplier / 30, avgRating: 4.8 },
-    { rank: 2, shopName: "Military Store", soldCount: 112 * multiplier / 30, revenue: 224000 * multiplier / 30, customersCount: 71 * multiplier / 30, avgRating: 4.7 },
-    { rank: 3, shopName: "Urban Gear", soldCount: 98 * multiplier / 30, revenue: 196000 * multiplier / 30, customersCount: 64 * multiplier / 30, avgRating: 4.6 },
-    { rank: 4, shopName: "Alpha Gear", soldCount: 76 * multiplier / 30, revenue: 152000 * multiplier / 30, customersCount: 49 * multiplier / 30, avgRating: 4.5 },
-    { rank: 5, shopName: "Ranger Shop", soldCount: 61 * multiplier / 30, revenue: 122000 * multiplier / 30, customersCount: 41 * multiplier / 30, avgRating: 4.4 },
+    { rank: 1, shopName: "Tactical Pro", soldCount: 145 * multiplier / 30, revenue: 289000 * multiplier / 30, customersCount: 89 * multiplier / 30, avgRating: 4.8, reviewsCount: Math.round(34 * multiplier / 30) },
+    { rank: 2, shopName: "Military Store", soldCount: 112 * multiplier / 30, revenue: 224000 * multiplier / 30, customersCount: 71 * multiplier / 30, avgRating: 4.7, reviewsCount: Math.round(28 * multiplier / 30) },
+    { rank: 3, shopName: "Urban Gear", soldCount: 98 * multiplier / 30, revenue: 196000 * multiplier / 30, customersCount: 64 * multiplier / 30, avgRating: 4.6, reviewsCount: Math.round(22 * multiplier / 30) },
+    { rank: 4, shopName: "Alpha Gear", soldCount: 76 * multiplier / 30, revenue: 152000 * multiplier / 30, customersCount: 49 * multiplier / 30, avgRating: 4.5, reviewsCount: Math.round(16 * multiplier / 30) },
+    { rank: 5, shopName: "Ranger Shop", soldCount: 61 * multiplier / 30, revenue: 122000 * multiplier / 30, customersCount: 41 * multiplier / 30, avgRating: 4.4, reviewsCount: Math.round(11 * multiplier / 30) },
   ].map(item => ({
     ...item,
     soldCount: Math.max(1, Math.round(item.soldCount)),
     revenue: Math.round(item.revenue),
     customersCount: Math.max(1, Math.round(item.customersCount)),
+    reviewsCount: Math.max(0, item.reviewsCount),
   }));
 };
 
@@ -83,9 +85,25 @@ const shopReviewsMock: ShopReview[] = [
   { shopName: "Ranger Shop", avgRating: 4.4, reviewsCount: 89 },
 ];
 
-const periodLabels: Record<Period, string> = { day: "День", month: "Місяць", year: "Рік" };
+const periodLabels: Record<Period, string> = { day: "День", week: "Тиждень", month: "Місяць", year: "Рік" };
 const rankColors = ["text-yellow-500", "text-slate-400", "text-amber-600"];
 const rankBgs = ["bg-yellow-500/10", "bg-slate-400/10", "bg-amber-600/10"];
+
+// Customer bonus amounts per period
+const customerBonuses: Record<Period, { first: string; second: string; third: string }> = {
+  day: { first: "+2 бонуси", second: "+1 бонус", third: "—" },
+  week: { first: "+75₴", second: "+40₴", third: "+15₴" },
+  month: { first: "+500₴", second: "+200₴", third: "+100₴" },
+  year: { first: "🎁 1500₴", second: "+1000₴", third: "+500₴" },
+};
+
+// Supplier perks per period
+const supplierPerks: Record<Period, { first: string; second: string; third: string }> = {
+  day: { first: "Буст товару", second: "Пріоритет", third: "—" },
+  week: { first: "Безк. пост", second: "Буст 7дн", third: "—" },
+  month: { first: "28% націнка", second: "Безк. пост", third: "Пріоритет" },
+  year: { first: "25% на 3міс", second: "28% на 1міс", third: "Безк. реклама" },
+};
 
 const StarRating = ({ rating, size = "sm" }: { rating: number; size?: "sm" | "md" }) => (
   <div className="flex items-center gap-0.5">
@@ -97,83 +115,14 @@ const StarRating = ({ rating, size = "sm" }: { rating: number; size?: "sm" | "md
 );
 
 const PeriodSelector = ({ period, onChange }: { period: Period; onChange: (p: Period) => void }) => (
-  <div className="flex gap-1 bg-muted rounded-lg p-1">
-    {(["day", "month", "year"] as Period[]).map((p) => (
-      <button key={p} onClick={() => onChange(p)} className={cn("flex-1 text-xs font-medium py-1.5 px-2 rounded-md transition-all", period === p ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
+  <div className="flex gap-1 bg-muted rounded-xl p-1">
+    {(["day", "week", "month", "year"] as Period[]).map((p) => (
+      <button key={p} onClick={() => onChange(p)} className={cn("flex-1 text-xs font-medium py-2 px-2 rounded-lg transition-all", period === p ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
         {periodLabels[p]}
       </button>
     ))}
   </div>
 );
-
-// Rating Bonuses Info
-const RatingBonusesInfo = ({ type }: { type: "customer" | "supplier" }) => {
-  if (type === "customer") {
-    return (
-      <div className="mt-4 p-3 rounded-xl border border-rating/30 bg-rating/5 space-y-2">
-        <div className="flex items-center gap-2">
-          <Gift className="h-4 w-4 text-rating" />
-          <span className="text-xs font-semibold text-rating">Рейтингові бонуси (за місяць)</span>
-        </div>
-        <div className="grid grid-cols-3 gap-1.5 text-center">
-          <div className="bg-yellow-500/10 rounded-lg p-2">
-            <Crown className="h-4 w-4 text-yellow-500 mx-auto mb-0.5" />
-            <p className="text-xs font-bold text-yellow-500">1 місце</p>
-            <p className="text-[10px] text-muted-foreground">500₴ бонус</p>
-          </div>
-          <div className="bg-slate-400/10 rounded-lg p-2">
-            <Trophy className="h-4 w-4 text-slate-400 mx-auto mb-0.5" />
-            <p className="text-xs font-bold text-slate-400">2-3 місце</p>
-            <p className="text-[10px] text-muted-foreground">200₴ бонус</p>
-          </div>
-          <div className="bg-amber-600/10 rounded-lg p-2">
-            <Award className="h-4 w-4 text-amber-600 mx-auto mb-0.5" />
-            <p className="text-xs font-bold text-amber-600">4-10 місце</p>
-            <p className="text-[10px] text-muted-foreground">100₴ бонус</p>
-          </div>
-        </div>
-        <div className="space-y-1 text-[10px] text-muted-foreground">
-          <p>🎯 Топ-1 за день — 2 персональних бонуси одночасно</p>
-          <p>🎁 Топ-1 за рік — 1 безкоштовне замовлення до 1000₴</p>
-          <p>⭐ Бонуси за замовлення: +25₴ кожне 5-те, +50₴ кожне 10-те</p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="mt-4 p-3 rounded-xl border border-rating/30 bg-rating/5 space-y-2">
-      <div className="flex items-center gap-2">
-        <Gift className="h-4 w-4 text-rating" />
-        <span className="text-xs font-semibold text-rating">Рейтингові бонуси для продавців</span>
-      </div>
-      <div className="space-y-1.5">
-        <div className="flex items-center gap-2 p-2 bg-yellow-500/10 rounded-lg">
-          <Crown className="h-4 w-4 text-yellow-500 shrink-0" />
-          <div className="flex-1">
-            <p className="text-xs font-medium">1 місце — Знижена націнка 23%</p>
-            <p className="text-[10px] text-muted-foreground">Замість стандартних 33%</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 p-2 bg-slate-400/10 rounded-lg">
-          <Zap className="h-4 w-4 text-slate-400 shrink-0" />
-          <div className="flex-1">
-            <p className="text-xs font-medium">2-3 місце — Пріоритет у черзі</p>
-            <p className="text-[10px] text-muted-foreground">Перший безкоштовний пост + пріоритет реклами</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 p-2 bg-amber-600/10 rounded-lg">
-          <Award className="h-4 w-4 text-amber-600 shrink-0" />
-          <div className="flex-1">
-            <p className="text-xs font-medium">4-10 місце — Безкоштовний пост</p>
-            <p className="text-[10px] text-muted-foreground">1 безкоштовна публікація на місяць</p>
-          </div>
-        </div>
-      </div>
-      <p className="text-[10px] text-muted-foreground">⭐ Високий рейтинг магазину = вище у пошуку та рекомендаціях</p>
-    </div>
-  );
-};
 
 // Customer Rankings
 const CustomerRankings = () => {
@@ -181,47 +130,58 @@ const CustomerRankings = () => {
   const [sortBy, setSortBy] = useState<"spent" | "orders" | "products">("spent");
   const customers = generateCustomerRatings(period);
   const sorted = [...customers].sort((a, b) => sortBy === "spent" ? b.totalSpent - a.totalSpent : sortBy === "orders" ? b.ordersCount - a.ordersCount : b.productsCount - a.productsCount).map((c, i) => ({ ...c, rank: i + 1 }));
+  const bonuses = customerBonuses[period];
 
   return (
     <div className="space-y-3">
       <PeriodSelector period={period} onChange={setPeriod} />
-      <div className="flex gap-1 bg-muted rounded-lg p-1">
+      <div className="flex gap-1 bg-muted rounded-xl p-1">
         {(["spent", "orders", "products"] as const).map((s) => (
-          <button key={s} onClick={() => setSortBy(s)} className={cn("flex-1 text-[10px] font-medium py-1.5 px-1 rounded-md transition-all", sortBy === s ? "bg-card text-foreground shadow-sm" : "text-muted-foreground")}>
-            {s === "spent" ? "Сума" : s === "orders" ? "Замовлення" : "Товари"}
+          <button key={s} onClick={() => setSortBy(s)} className={cn("flex-1 text-[10px] font-medium py-1.5 px-1 rounded-lg transition-all", sortBy === s ? "bg-card text-foreground shadow-sm" : "text-muted-foreground")}>
+            {s === "spent" ? "💰 Сума" : s === "orders" ? "📦 Замовлення" : "🛍 Товари"}
           </button>
         ))}
       </div>
+
+      {/* Prize pool banner */}
+      <div className="flex items-center gap-2 p-2.5 rounded-xl bg-primary/5 border border-primary/20">
+        <Gift className="h-4 w-4 text-primary shrink-0" />
+        <div className="flex-1 flex items-center gap-3 text-[10px]">
+          <span className="font-medium text-foreground">🥇 {bonuses.first}</span>
+          <span className="text-muted-foreground">🥈 {bonuses.second}</span>
+          {bonuses.third !== "—" && <span className="text-muted-foreground">🥉 {bonuses.third}</span>}
+        </div>
+      </div>
+
       <div className="space-y-2">
         {sorted.map((customer) => (
-          <div key={customer.rank} className={cn("flex items-center gap-3 p-3 rounded-xl border border-border bg-card", customer.rank <= 3 && rankBgs[customer.rank - 1])}>
-            <div className={cn("w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0", customer.rank <= 3 ? rankBgs[customer.rank - 1] : "bg-muted", customer.rank <= 3 ? rankColors[customer.rank - 1] : "text-muted-foreground")}>
+          <div key={customer.rank} className={cn("flex items-center gap-3 p-3 rounded-xl border transition-all", customer.rank <= 3 ? `${rankBgs[customer.rank - 1]} border-transparent` : "border-border bg-card")}>
+            <div className={cn("w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0", customer.rank <= 3 ? rankBgs[customer.rank - 1] : "bg-muted", customer.rank <= 3 ? rankColors[customer.rank - 1] : "text-muted-foreground")}>
               {customer.rank <= 3 ? <Trophy className="h-4 w-4" /> : customer.rank}
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-medium text-sm text-foreground">{customer.name}</p>
               <div className="flex items-center gap-2 mt-0.5">
-                <span className="text-xs text-muted-foreground flex items-center gap-0.5"><ShoppingBag className="h-3 w-3" /> {customer.ordersCount} зам.</span>
-                <span className="text-xs text-muted-foreground flex items-center gap-0.5"><Package className="h-3 w-3" /> {customer.productsCount} тов.</span>
+                <span className="text-[10px] text-muted-foreground flex items-center gap-0.5"><ShoppingBag className="h-2.5 w-2.5" /> {customer.ordersCount}</span>
+                <span className="text-[10px] text-muted-foreground flex items-center gap-0.5"><Package className="h-2.5 w-2.5" /> {customer.productsCount}</span>
               </div>
             </div>
             <div className="text-right">
-              <p className="text-sm font-bold text-primary">{customer.totalSpent.toLocaleString()} ₴</p>
+              <p className="text-sm font-bold text-primary">{customer.totalSpent.toLocaleString()}₴</p>
               {customer.rank <= 3 && (
-                <Badge variant="outline" className="text-[9px] mt-1 border-rating/40 text-rating">
-                  {customer.rank === 1 ? "+500₴" : customer.rank <= 3 ? "+200₴" : "+100₴"}
+                <Badge variant="outline" className="text-[8px] mt-0.5 border-primary/30 text-primary px-1.5">
+                  {customer.rank === 1 ? bonuses.first : customer.rank <= 3 ? bonuses.second : bonuses.third}
                 </Badge>
               )}
             </div>
           </div>
         ))}
       </div>
-      <RatingBonusesInfo type="customer" />
     </div>
   );
 };
 
-// Supplier Rankings (Продавці — only for suppliers/admins)
+// Supplier Rankings
 const SupplierRankings = ({ canView }: { canView: boolean }) => {
   const [period, setPeriod] = useState<Period>("month");
 
@@ -238,53 +198,69 @@ const SupplierRankings = ({ canView }: { canView: boolean }) => {
   }
 
   const suppliers = generateSupplierRatings(period);
+  const perks = supplierPerks[period];
 
   return (
     <div className="space-y-3">
       <PeriodSelector period={period} onChange={setPeriod} />
+
+      {/* Prize pool banner */}
+      <div className="flex items-center gap-2 p-2.5 rounded-xl bg-accent/5 border border-accent/20">
+        <Award className="h-4 w-4 text-accent-foreground shrink-0" />
+        <div className="flex-1 flex items-center gap-3 text-[10px]">
+          <span className="font-medium text-foreground">🥇 {perks.first}</span>
+          <span className="text-muted-foreground">🥈 {perks.second}</span>
+          {perks.third !== "—" && <span className="text-muted-foreground">🥉 {perks.third}</span>}
+        </div>
+      </div>
+
       <div className="space-y-2">
         {suppliers.map((supplier) => (
-          <div key={supplier.rank} className={cn("p-3 rounded-xl border border-border bg-card", supplier.rank <= 3 && rankBgs[supplier.rank - 1])}>
+          <div key={supplier.rank} className={cn("p-3 rounded-xl border transition-all", supplier.rank <= 3 ? `${rankBgs[supplier.rank - 1]} border-transparent` : "border-border bg-card")}>
             <div className="flex items-center gap-3 mb-2">
-              <div className={cn("w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0", supplier.rank <= 3 ? rankBgs[supplier.rank - 1] : "bg-muted", supplier.rank <= 3 ? rankColors[supplier.rank - 1] : "text-muted-foreground")}>
+              <div className={cn("w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0", supplier.rank <= 3 ? rankBgs[supplier.rank - 1] : "bg-muted", supplier.rank <= 3 ? rankColors[supplier.rank - 1] : "text-muted-foreground")}>
                 {supplier.rank <= 3 ? <Trophy className="h-4 w-4" /> : supplier.rank}
               </div>
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <p className="font-semibold text-sm text-foreground">{supplier.shopName}</p>
-                <StarRating rating={supplier.avgRating} />
+                <div className="flex items-center gap-2 mt-0.5">
+                  <StarRating rating={supplier.avgRating} />
+                  <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                    <MessageSquare className="h-2.5 w-2.5" /> {supplier.reviewsCount}
+                  </span>
+                </div>
               </div>
               <div className="text-right">
-                <p className="text-sm font-bold text-primary">{supplier.revenue.toLocaleString()} ₴</p>
+                <p className="text-sm font-bold text-primary">{supplier.revenue.toLocaleString()}₴</p>
                 {supplier.rank <= 3 && (
-                  <Badge variant="outline" className="text-[9px] mt-1 border-rating/40 text-rating">
-                    {supplier.rank === 1 ? "23% націнка" : "Пріоритет"}
+                  <Badge variant="outline" className="text-[8px] mt-0.5 border-primary/30 text-primary px-1.5">
+                    {supplier.rank === 1 ? perks.first : supplier.rank <= 3 ? perks.second : perks.third}
                   </Badge>
                 )}
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-2 mt-2">
-              <div className="bg-muted/60 rounded-lg p-2 text-center">
-                <p className="text-xs text-muted-foreground">Продано</p>
-                <p className="text-sm font-bold text-foreground">{supplier.soldCount}</p>
+            <div className="grid grid-cols-3 gap-1.5">
+              <div className="bg-background/60 rounded-lg p-1.5 text-center">
+                <p className="text-[9px] text-muted-foreground">Продано</p>
+                <p className="text-xs font-bold text-foreground">{supplier.soldCount}</p>
               </div>
-              <div className="bg-muted/60 rounded-lg p-2 text-center">
-                <p className="text-xs text-muted-foreground">Клієнтів</p>
-                <p className="text-sm font-bold text-foreground">{supplier.customersCount}</p>
+              <div className="bg-background/60 rounded-lg p-1.5 text-center">
+                <p className="text-[9px] text-muted-foreground">Клієнтів</p>
+                <p className="text-xs font-bold text-foreground">{supplier.customersCount}</p>
               </div>
-              <div className="bg-muted/60 rounded-lg p-2 text-center">
-                <p className="text-xs text-muted-foreground">Рейтинг</p>
-                <p className="text-sm font-bold text-foreground">{supplier.avgRating}</p>
+              <div className="bg-background/60 rounded-lg p-1.5 text-center">
+                <p className="text-[9px] text-muted-foreground">Рейтинг</p>
+                <p className="text-xs font-bold text-foreground">{supplier.avgRating}</p>
               </div>
             </div>
           </div>
         ))}
       </div>
-      <RatingBonusesInfo type="supplier" />
     </div>
   );
 };
 
-// Shop Reviews (Магазини — public)
+// Shop Reviews
 const ShopReviews = () => {
   const [shopRatings, setShopRatings] = useState<ShopReview[]>(shopReviewsMock);
 
@@ -324,7 +300,7 @@ const ShopReviews = () => {
       <p className="text-xs text-muted-foreground">Публічний рейтинг магазинів на основі відгуків клієнтів</p>
       <div className="space-y-2">
         {shopRatings.map((shop, index) => (
-          <div key={shop.shopName} className={cn("flex items-center gap-3 p-3 rounded-xl border border-border bg-card", index < 3 && rankBgs[index])}>
+          <div key={shop.shopName} className={cn("flex items-center gap-3 p-3 rounded-xl border", index < 3 ? `${rankBgs[index]} border-transparent` : "border-border bg-card")}>
             <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 font-bold text-sm", index < 3 ? rankBgs[index] : "bg-muted", index < 3 ? rankColors[index] : "text-muted-foreground")}>
               {index < 3 ? <Trophy className="h-5 w-5" /> : index + 1}
             </div>
@@ -347,7 +323,7 @@ const ShopReviews = () => {
   );
 };
 
-// Product Reviews (Товари — public)
+// Product Reviews
 const ProductReviews = () => {
   const [products, setProducts] = useState<ProductReview[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -380,7 +356,6 @@ const ProductReviews = () => {
             }
           }
         }
-        // Fallback mock
         setProducts([
           { productName: "Тактичний рюкзак 45L", avgRating: 4.9, reviewsCount: 67 },
           { productName: "Берці зимові", avgRating: 4.8, reviewsCount: 54 },
@@ -406,7 +381,7 @@ const ProductReviews = () => {
       <p className="text-xs text-muted-foreground">Рейтинг товарів на основі відгуків покупців</p>
       <div className="space-y-2">
         {products.map((product, index) => (
-          <div key={product.productName + index} className={cn("flex items-center gap-3 p-3 rounded-xl border border-border bg-card", index < 3 && rankBgs[index])}>
+          <div key={product.productName + index} className={cn("flex items-center gap-3 p-3 rounded-xl border", index < 3 ? `${rankBgs[index]} border-transparent` : "border-border bg-card")}>
             <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 font-bold text-sm overflow-hidden", index < 3 ? rankBgs[index] : "bg-muted", index < 3 ? rankColors[index] : "text-muted-foreground")}>
               {product.image ? (
                 <img src={product.image} alt="" className="w-full h-full object-cover rounded-xl" />
@@ -451,7 +426,6 @@ export const RatingsTab = () => {
             <span className="text-xs font-medium text-rating">LIVE</span>
           </div>
         </div>
-        {/* Bonus Account button */}
         <button
           onClick={() => navigate("/bonus-account")}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 active:scale-95 transition-all"
