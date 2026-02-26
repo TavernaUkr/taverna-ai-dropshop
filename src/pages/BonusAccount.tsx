@@ -87,23 +87,21 @@ export default function BonusAccount() {
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-background flex flex-col">
-        <header className="sticky top-0 z-40 bg-card/95 backdrop-blur-md border-b border-border shadow-sm">
+        <header className="sticky top-0 z-40 bg-card border-b border-border">
           <div className="flex items-center h-14 px-4">
-            <button onClick={handleBack} className="w-10 h-10 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all mr-3">
+            <button onClick={handleBack} className="w-9 h-9 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground active:scale-95 transition-all mr-3">
               <ChevronLeft className="h-5 w-5" />
             </button>
-            <h1 className="text-lg font-semibold text-foreground">Бонусний рахунок</h1>
+            <h1 className="text-base font-semibold text-foreground">Бонусний рахунок</h1>
           </div>
         </header>
         <div className="flex-1 flex items-center justify-center p-4">
-          <Card className="w-full max-w-md text-center">
-            <CardContent className="pt-6">
-              <Wallet className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-              <h2 className="text-xl font-semibold mb-2">Увійдіть для доступу</h2>
-              <p className="text-muted-foreground mb-4">Авторизуйтесь через Telegram для перегляду бонусного рахунку</p>
-              <Button onClick={() => navigate("/")} className="w-full">На головну</Button>
-            </CardContent>
-          </Card>
+          <div className="w-full max-w-md text-center">
+            <Wallet className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
+            <h2 className="text-lg font-semibold mb-1.5">Увійдіть для доступу</h2>
+            <p className="text-sm text-muted-foreground mb-4">Авторизуйтесь через Telegram для перегляду бонусного рахунку</p>
+            <Button onClick={() => navigate("/")} className="w-full">На головну</Button>
+          </div>
         </div>
       </div>
     );
@@ -115,123 +113,102 @@ export default function BonusAccount() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col pb-safe">
-      <header className="sticky top-0 z-40 bg-card/95 backdrop-blur-md border-b border-border shadow-sm">
+      <header className="sticky top-0 z-40 bg-card border-b border-border">
         <div className="flex items-center h-14 px-4">
-          <button onClick={handleBack} className="w-10 h-10 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all mr-3">
+          <button onClick={handleBack} className="w-9 h-9 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground active:scale-95 transition-all mr-3">
             <ChevronLeft className="h-5 w-5" />
           </button>
-          <h1 className="text-lg font-semibold text-foreground">Бонусний рахунок</h1>
+          <h1 className="text-base font-semibold text-foreground">Бонусний рахунок</h1>
         </div>
       </header>
 
       <main className="flex-1 overflow-y-auto scrollbar-hide">
         {/* Hero: Balance left + Stats right */}
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="p-4">
-          <Card className="overflow-hidden border-primary/20">
-            <CardContent className="p-0">
-              <div className="flex">
-                {/* Left: Balance */}
-                <div className="flex-1 p-4 flex flex-col justify-center border-r border-border/50">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Wallet className="w-5 h-5 text-primary" />
-                    </div>
-                    <span className="text-xs text-muted-foreground">Баланс</span>
-                  </div>
-                  <p className="text-3xl font-bold text-primary">{balance}₴</p>
-                  <div className="flex gap-3 mt-1.5">
-                    <span className="text-[10px] text-muted-foreground">+{totalEarned}₴</span>
-                    <span className="text-[10px] text-muted-foreground">−{totalSpent}₴</span>
-                  </div>
+        <div className="p-4">
+          <div className="bg-primary rounded-xl p-4 text-primary-foreground">
+            <div className="flex">
+              {/* Left: Balance */}
+              <div className="flex-1 border-r border-primary-foreground/20 pr-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <Wallet className="w-4 h-4 opacity-80" />
+                  <span className="text-xs opacity-80">Баланс</span>
                 </div>
+                <p className="text-3xl font-bold">{balance}₴</p>
+                <div className="flex gap-3 mt-1">
+                  <span className="text-[10px] opacity-70">+{totalEarned}₴</span>
+                  <span className="text-[10px] opacity-70">−{totalSpent}₴</span>
+                </div>
+              </div>
 
-                {/* Right: Mini stats */}
-                <div className="flex-1 p-3">
-                  <div className="grid grid-cols-2 gap-2 h-full">
-                    <div className="flex items-center gap-1.5 bg-muted/50 rounded-lg px-2 py-1.5">
-                      <Users className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                      <div className="min-w-0">
-                        <p className="text-sm font-bold text-foreground leading-tight">{invitedCount}</p>
-                        <p className="text-[9px] text-muted-foreground leading-tight">Реферали</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1.5 bg-muted/50 rounded-lg px-2 py-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                      <div className="min-w-0">
-                        <p className="text-sm font-bold text-foreground leading-tight">{activeBonusesCount}</p>
-                        <p className="text-[9px] text-muted-foreground leading-tight">Бонуси</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1.5 bg-muted/50 rounded-lg px-2 py-1.5">
-                      <Tag className="w-3.5 h-3.5 text-purple-500 shrink-0" />
-                      <div className="min-w-0">
-                        <p className="text-sm font-bold text-foreground leading-tight">{activePromosCount}</p>
-                        <p className="text-[9px] text-muted-foreground leading-tight">Акції</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1.5 bg-muted/50 rounded-lg px-2 py-1.5">
-                      <Trophy className="w-3.5 h-3.5 text-rating shrink-0" />
-                      <div className="min-w-0">
-                        <p className="text-sm font-bold text-foreground leading-tight">{totalOrders >= 10 ? "✓" : "—"}</p>
-                        <p className="text-[9px] text-muted-foreground leading-tight">Рейтинг</p>
-                      </div>
-                    </div>
+              {/* Right: Stats grid */}
+              <div className="flex-1 pl-3">
+                <div className="grid grid-cols-2 gap-1.5">
+                  <div className="bg-primary-foreground/10 rounded-lg px-2 py-1.5 text-center">
+                    <p className="text-sm font-bold">{invitedCount}</p>
+                    <p className="text-[9px] opacity-70">Реферали</p>
+                  </div>
+                  <div className="bg-primary-foreground/10 rounded-lg px-2 py-1.5 text-center">
+                    <p className="text-sm font-bold">{activeBonusesCount}</p>
+                    <p className="text-[9px] opacity-70">Бонуси</p>
+                  </div>
+                  <div className="bg-primary-foreground/10 rounded-lg px-2 py-1.5 text-center">
+                    <p className="text-sm font-bold">{activePromosCount}</p>
+                    <p className="text-[9px] opacity-70">Акції</p>
+                  </div>
+                  <div className="bg-primary-foreground/10 rounded-lg px-2 py-1.5 text-center">
+                    <p className="text-sm font-bold">{totalOrders >= 10 ? "✓" : "—"}</p>
+                    <p className="text-[9px] opacity-70">Рейтинг</p>
                   </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+            </div>
+          </div>
+        </div>
 
         {/* Referral code compact */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="px-4 mb-3">
-          <div className="flex items-center gap-2 bg-muted/60 rounded-xl p-2.5 border border-border/50">
+        <div className="px-4 mb-3">
+          <div className="flex items-center gap-2 bg-muted rounded-xl p-2.5">
             <Users className="w-4 h-4 text-primary shrink-0" />
             <span className="font-mono font-semibold text-primary text-sm tracking-wider flex-1">{referralCode}</span>
             <button onClick={handleCopyCode} className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center active:scale-90 transition-transform">
               {copied ? <Check className="w-3.5 h-3.5 text-primary" /> : <Copy className="w-3.5 h-3.5 text-primary" />}
             </button>
           </div>
-        </motion.div>
+        </div>
 
         {/* Navigation list */}
-        <div className="px-4 space-y-2 pb-4">
+        <div className="px-4 space-y-1.5 pb-4">
           {[
-            { icon: Users, label: "Реферальна програма", sub: "50₴ за друга • прогресивні тіри", color: "text-emerald-500", bg: "bg-emerald-500/10", path: "/referrals" },
-            { icon: Sparkles, label: "Персональні бонуси", sub: "Кешбек 3-5% • AI-пропозиції", color: "text-amber-500", bg: "bg-amber-500/10", path: "/personal-bonuses" },
-            { icon: Tag, label: "Акції та промокоди", sub: `${activePromosCount} активних акцій`, color: "text-purple-500", bg: "bg-purple-500/10", path: "/promos" },
-            { icon: Trophy, label: "Рейтингові бонуси", sub: "Призи за день, тиждень, місяць, рік", color: "text-rating", bg: "bg-rating/10", action: () => setShowRatingBonuses(true) },
+            { icon: Users, label: "Реферальна програма", sub: "50₴ за друга • прогресивні тіри", path: "/referrals" },
+            { icon: Sparkles, label: "Персональні бонуси", sub: "Кешбек 3-5% • AI-пропозиції", path: "/personal-bonuses" },
+            { icon: Tag, label: "Акції та промокоди", sub: `${activePromosCount} активних акцій`, path: "/promos" },
+            { icon: Trophy, label: "Рейтингові бонуси", sub: "Призи за день, тиждень, місяць, рік", action: () => setShowRatingBonuses(true) },
           ].map((item, i) => (
-            <motion.button
+            <button
               key={item.label}
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.15 + i * 0.05 }}
               onClick={() => { hapticSelection(); item.action ? item.action() : navigate(item.path!); }}
-              className="w-full flex items-center gap-3 p-3 rounded-xl bg-card border border-border/50 hover:bg-muted/30 active:scale-[0.98] transition-all text-left"
+              className="w-full flex items-center gap-3 p-3 rounded-xl bg-card border border-border hover:bg-muted/30 active:scale-[0.98] transition-all text-left"
             >
-              <div className={`w-9 h-9 rounded-full ${item.bg} flex items-center justify-center shrink-0`}>
-                <item.icon className={`w-4.5 h-4.5 ${item.color}`} />
+              <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <item.icon className="w-4 h-4 text-primary" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-foreground text-[13px] leading-tight">{item.label}</p>
                 <p className="text-[11px] text-muted-foreground mt-0.5">{item.sub}</p>
               </div>
               <ChevronRight className="w-4 h-4 text-muted-foreground/50 shrink-0" />
-            </motion.button>
+            </button>
           ))}
 
-          {/* Usage limits info */}
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
-            <div className="bg-muted/40 rounded-xl p-3 border border-border/30">
-              <p className="text-[10px] text-muted-foreground leading-relaxed">
-                💡 <span className="font-medium">Ліміт використання:</span> До 5% вартості замовлення (менше 10 замовлень), 8% (10+), 10% (25+), 12% (50+ замовлень). Бонуси не конвертуються у гроші.
-              </p>
-            </div>
-          </motion.div>
+          {/* Usage limits */}
+          <div className="bg-muted/50 rounded-xl p-3 mt-2">
+            <p className="text-[10px] text-muted-foreground leading-relaxed">
+              💡 <span className="font-medium">Ліміт:</span> 5% (до 10 замовлень), 8% (10+), 10% (25+), 12% (50+). Бонуси не конвертуються у гроші.
+            </p>
+          </div>
 
           {/* CTA */}
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="pt-2">
+          <div className="pt-2">
             <Button
               onClick={() => { hapticSelection(); navigate("/"); }}
               className="w-full gap-2"
@@ -240,7 +217,7 @@ export default function BonusAccount() {
               <ShoppingBag className="w-5 h-5" />
               Витратити бонуси
             </Button>
-          </motion.div>
+          </div>
         </div>
       </main>
     </div>
@@ -252,12 +229,12 @@ export default function BonusAccount() {
 function RatingBonusesPage({ onBack, onGoToRatings }: { onBack: () => void; onGoToRatings: () => void }) {
   return (
     <div className="min-h-screen bg-background flex flex-col pb-safe">
-      <header className="sticky top-0 z-40 bg-card/95 backdrop-blur-md border-b border-border shadow-sm">
+      <header className="sticky top-0 z-40 bg-card border-b border-border">
         <div className="flex items-center h-14 px-4">
-          <button onClick={onBack} className="w-10 h-10 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all mr-3">
+          <button onClick={onBack} className="w-9 h-9 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground active:scale-95 transition-all mr-3">
             <ChevronLeft className="h-5 w-5" />
           </button>
-          <h1 className="text-lg font-semibold text-foreground">Рейтингові бонуси</h1>
+          <h1 className="text-base font-semibold text-foreground">Рейтингові бонуси</h1>
         </div>
       </header>
 

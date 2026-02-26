@@ -33,105 +33,75 @@ export const Header = ({
 
   return (
     <>
-      <header className="sticky top-0 z-40 bg-card/95 backdrop-blur-md border-b border-border shadow-sm">
-        <div className="flex items-center justify-between h-[72px] px-4">
-          {/* Logo with Info Button */}
+      <header className="sticky top-0 z-40 bg-card border-b border-border">
+        <div className="flex items-center justify-between h-14 px-3">
+          {/* Logo */}
           <div className="flex items-center gap-2">
-            <div className="relative">
+            <button onClick={() => setIsInfoOpen(true)} className="relative active:scale-95 transition-transform">
               <img 
                 src={tavernaLogo} 
                 alt="Taverna Group" 
-                className="w-12 h-12 rounded-xl object-cover shadow-md"
+                className="w-10 h-10 rounded-xl object-cover"
               />
-              <button
-                onClick={() => setIsInfoOpen(true)}
-                className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-primary flex items-center justify-center shadow-md hover:bg-primary/90 active:scale-95 transition-all"
-                aria-label="Інформація про додаток"
-              >
-                <Info className="h-3 w-3 text-primary-foreground" />
-              </button>
-            </div>
-            <div className="flex flex-col">
-              <span className="font-bold text-base text-foreground leading-tight">Taverna</span>
-              <span className="text-[10px] text-muted-foreground leading-tight">Group</span>
-            </div>
-            {/* App Rating Button */}
-            <button
-              onClick={() => setIsRatingOpen(true)}
-              className="ml-1 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-warning/10 hover:bg-warning/20 active:scale-95 transition-all"
-              aria-label="Оцінити додаток"
-            >
-              <Star className="h-3 w-3 text-warning fill-warning" />
-              <span className="text-[10px] font-medium text-warning">Оцінити</span>
+              <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-primary flex items-center justify-center">
+                <Info className="h-2.5 w-2.5 text-primary-foreground" />
+              </div>
             </button>
+            <div className="flex flex-col">
+              <span className="font-bold text-sm text-foreground leading-tight">Taverna</span>
+              <span className="text-[9px] text-muted-foreground leading-tight">Group</span>
+            </div>
           </div>
 
-          {/* Center - Ratings Button */}
+          {/* Center - Ratings */}
           <button
             onClick={onRatingsClick}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-rating to-amber-500 text-white font-semibold text-sm shadow-md hover:shadow-lg active:scale-95 transition-all"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-primary-foreground font-medium text-xs active:scale-95 transition-all"
           >
-            <Trophy className="h-4 w-4" />
+            <Trophy className="h-3.5 w-3.5" />
             <span>Рейтинги</span>
           </button>
 
-          {/* Actions */}
+          {/* Right actions */}
           <div className="flex items-center gap-0.5">
-            {/* Bonus Account mini */}
             <button
               onClick={() => navigate("/bonus-account")}
-              className="w-9 h-9 rounded-xl flex items-center justify-center text-primary hover:bg-primary/10 active:scale-95 transition-all"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-primary hover:bg-primary/8 active:scale-95 transition-all"
               aria-label="Бонусний рахунок"
             >
-              <Wallet className="h-4.5 w-4.5" />
+              <Wallet className="h-4 w-4" />
             </button>
-            {/* Promos mini */}
             <button
               onClick={onPromoClick}
-              className="w-9 h-9 rounded-xl flex items-center justify-center text-live hover:bg-live/10 active:scale-95 transition-all"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-live hover:bg-live/8 active:scale-95 transition-all"
               aria-label="Акції"
             >
-              <Gift className="h-4.5 w-4.5" />
+              <Gift className="h-4 w-4" />
             </button>
-
             <button
               onClick={onSearchClick}
-              className="w-9 h-9 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground active:scale-95 transition-all"
             >
-              <Search className="h-5 w-5" />
+              <Search className="h-4.5 w-4.5" />
             </button>
-
             <button
               onClick={onFavoritesClick}
-              className="relative w-9 h-9 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all"
+              className="relative w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground active:scale-95 transition-all"
             >
-              <Heart className="h-5 w-5" />
+              <Heart className="h-4.5 w-4.5" />
               {favoritesCount > 0 && (
-                <span className={cn(
-                  "absolute -top-0.5 -right-0.5",
-                  "min-w-[18px] h-[18px] px-1",
-                  "flex items-center justify-center",
-                  "bg-live text-live-foreground",
-                  "text-[10px] font-bold rounded-full shadow-md"
-                )}>
+                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 flex items-center justify-center bg-live text-live-foreground text-[9px] font-bold rounded-full">
                   {favoritesCount > 99 ? "99+" : favoritesCount}
                 </span>
               )}
             </button>
-
             <button
               onClick={onCartClick}
-              className="relative w-9 h-9 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all"
+              className="relative w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground active:scale-95 transition-all"
             >
-              <ShoppingCart className="h-5 w-5" />
+              <ShoppingCart className="h-4.5 w-4.5" />
               {cartCount > 0 && (
-                <span className={cn(
-                  "absolute -top-0.5 -right-0.5",
-                  "min-w-[20px] h-[20px] px-1",
-                  "flex items-center justify-center",
-                  "bg-live text-live-foreground",
-                  "text-[10px] font-bold rounded-full shadow-md"
-                )}>
+                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 flex items-center justify-center bg-primary text-primary-foreground text-[9px] font-bold rounded-full">
                   {cartCount > 99 ? "99+" : cartCount}
                 </span>
               )}

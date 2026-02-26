@@ -117,9 +117,9 @@ export const ProfileDashboard = () => {
   return (
     <div className="space-y-4 pb-28 animate-fade-in">
       {/* User Card */}
-      <div className="bg-card rounded-2xl p-5 shadow-lg border border-border">
-        <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center overflow-hidden shadow-md ring-2 ring-primary/20">
+      <div className="bg-card rounded-xl p-4 border border-border">
+        <div className="flex items-center gap-3">
+          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary/15 to-accent/15 flex items-center justify-center overflow-hidden ring-2 ring-primary/15">
             {profile?.avatar_url ? (
               <img
                 src={profile.avatar_url}

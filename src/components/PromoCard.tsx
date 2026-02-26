@@ -53,9 +53,8 @@ export const PromoCard = ({
         "bg-gradient-to-br",
         config.gradient,
         "text-white",
-        "hover:scale-[1.02] active:scale-[0.98]",
-        "transition-transform duration-200",
-        "shadow-md hover:shadow-lg"
+        "active:scale-[0.98]",
+        "transition-transform duration-150"
       )}
     >
       {/* Background decoration */}

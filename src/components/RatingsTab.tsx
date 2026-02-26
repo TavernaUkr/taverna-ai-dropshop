@@ -115,9 +115,9 @@ const StarRating = ({ rating, size = "sm" }: { rating: number; size?: "sm" | "md
 );
 
 const PeriodSelector = ({ period, onChange }: { period: Period; onChange: (p: Period) => void }) => (
-  <div className="flex gap-1 bg-muted rounded-xl p-1">
+  <div className="flex gap-0.5 bg-muted rounded-lg p-0.5">
     {(["day", "week", "month", "year"] as Period[]).map((p) => (
-      <button key={p} onClick={() => onChange(p)} className={cn("flex-1 text-xs font-medium py-2 px-2 rounded-lg transition-all", period === p ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
+      <button key={p} onClick={() => onChange(p)} className={cn("flex-1 text-xs font-medium py-1.5 px-2 rounded-md transition-all", period === p ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
         {periodLabels[p]}
       </button>
     ))}
@@ -135,9 +135,9 @@ const CustomerRankings = () => {
   return (
     <div className="space-y-3">
       <PeriodSelector period={period} onChange={setPeriod} />
-      <div className="flex gap-1 bg-muted rounded-xl p-1">
+      <div className="flex gap-0.5 bg-muted rounded-lg p-0.5">
         {(["spent", "orders", "products"] as const).map((s) => (
-          <button key={s} onClick={() => setSortBy(s)} className={cn("flex-1 text-[10px] font-medium py-1.5 px-1 rounded-lg transition-all", sortBy === s ? "bg-card text-foreground shadow-sm" : "text-muted-foreground")}>
+          <button key={s} onClick={() => setSortBy(s)} className={cn("flex-1 text-[10px] font-medium py-1.5 px-1 rounded-md transition-all", sortBy === s ? "bg-card text-foreground shadow-sm" : "text-muted-foreground")}>
             {s === "spent" ? "💰 Сума" : s === "orders" ? "📦 Замовлення" : "🛍 Товари"}
           </button>
         ))}
@@ -155,7 +155,7 @@ const CustomerRankings = () => {
 
       <div className="space-y-2">
         {sorted.map((customer) => (
-          <div key={customer.rank} className={cn("flex items-center gap-3 p-3 rounded-xl border transition-all", customer.rank <= 3 ? `${rankBgs[customer.rank - 1]} border-transparent` : "border-border bg-card")}>
+          <div key={customer.rank} className={cn("flex items-center gap-3 p-2.5 rounded-xl border transition-all", customer.rank <= 3 ? `${rankBgs[customer.rank - 1]} border-transparent` : "border-border bg-card")}>
             <div className={cn("w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0", customer.rank <= 3 ? rankBgs[customer.rank - 1] : "bg-muted", customer.rank <= 3 ? rankColors[customer.rank - 1] : "text-muted-foreground")}>
               {customer.rank <= 3 ? <Trophy className="h-4 w-4" /> : customer.rank}
             </div>
