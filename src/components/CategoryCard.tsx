@@ -1,6 +1,5 @@
 import { cn } from "@/lib/utils";
 import { ElementType } from "react";
-import { motion } from "framer-motion";
 
 interface CategoryCardProps {
   name: string;
@@ -18,47 +17,30 @@ export const CategoryCard = ({
   onClick,
 }: CategoryCardProps) => {
   return (
-    <motion.button
+    <button
       onClick={onClick}
-      whileHover={{ scale: 1.03, y: -2 }}
-      whileTap={{ scale: 0.97 }}
-      transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
       className={cn(
-        "relative overflow-hidden rounded-2xl p-4 text-left",
+        "relative overflow-hidden rounded-xl p-3.5 text-left",
         "bg-gradient-to-br",
         gradient,
         "text-primary-foreground",
-        "shadow-lg hover:shadow-xl",
-        "min-h-[110px] w-full",
-        "transform-gpu"
+        "min-h-[90px] w-full",
+        "active:scale-[0.97] transition-transform duration-150"
       )}
     >
-      {/* Premium Background Pattern */}
-      <div className="absolute inset-0 opacity-[0.12]">
-        <div className="absolute -right-6 -bottom-6 w-28 h-28 rounded-full bg-white blur-sm" />
-        <div className="absolute -right-10 -top-10 w-24 h-24 rounded-full bg-white/80 blur-md" />
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 rounded-full bg-gradient-to-br from-white/20 to-transparent blur-xl" />
-      </div>
-
-      {/* Shimmer Effect */}
-      <div className="absolute inset-0 opacity-0 hover:opacity-100 transition-opacity duration-500">
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-shimmer" />
-      </div>
+      {/* Subtle circle decoration */}
+      <div className="absolute -right-4 -bottom-4 w-20 h-20 rounded-full bg-white/10" />
 
       {/* Content */}
       <div className="relative z-10">
-        <div className="w-11 h-11 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-3 shadow-inner border border-white/10">
-          <Icon className="h-5 w-5 drop-shadow-sm" />
+        <div className="w-9 h-9 rounded-lg bg-white/20 flex items-center justify-center mb-2">
+          <Icon className="h-4.5 w-4.5" />
         </div>
-        
-        <h3 className="font-bold text-sm tracking-tight">{name}</h3>
-        
+        <h3 className="font-semibold text-sm">{name}</h3>
         {count !== undefined && (
-          <p className="text-xs opacity-75 mt-1 font-medium">
-            {count} товарів
-          </p>
+          <p className="text-[11px] opacity-75 mt-0.5">{count} товарів</p>
         )}
       </div>
-    </motion.button>
+    </button>
   );
 };

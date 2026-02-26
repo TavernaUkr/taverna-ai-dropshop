@@ -24,8 +24,8 @@ const navItems: NavItem[] = [
 
 export const BottomNavigation = ({ activeTab, onTabChange }: BottomNavigationProps) => {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border shadow-lg">
-      <div className="flex items-end justify-around h-[80px] pb-3 safe-area-pb">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border">
+      <div className="flex items-center justify-around h-16 pb-safe">
         {navItems.map((item) => {
           const isActive = activeTab === item.id;
 
@@ -34,24 +34,24 @@ export const BottomNavigation = ({ activeTab, onTabChange }: BottomNavigationPro
               <button
                 key={item.id}
                 onClick={() => onTabChange(item.id)}
-                className="relative -top-3 flex flex-col items-center gap-0.5 group"
+                className="relative flex flex-col items-center gap-0.5"
               >
                 <div
                   className={cn(
-                    "w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200 shadow-lg",
+                    "w-11 h-11 -mt-5 rounded-full flex items-center justify-center transition-all duration-200",
                     isActive
-                      ? "bg-live text-live-foreground scale-110"
-                      : "bg-live/80 text-live-foreground group-hover:scale-105"
+                      ? "bg-live text-live-foreground shadow-md"
+                      : "bg-live/85 text-live-foreground"
                   )}
                 >
                   {item.icon}
                   {item.isLive && (
-                    <span className="absolute top-0.5 right-0.5 w-2.5 h-2.5 bg-live-foreground rounded-full animate-pulse-live" />
+                    <span className="absolute top-0 right-0 w-2 h-2 bg-white rounded-full animate-pulse-live" />
                   )}
                 </div>
                 <span
                   className={cn(
-                    "text-[10px] font-medium transition-colors",
+                    "text-[10px] font-medium mt-0.5",
                     isActive ? "text-live" : "text-muted-foreground"
                   )}
                 >
@@ -66,18 +66,13 @@ export const BottomNavigation = ({ activeTab, onTabChange }: BottomNavigationPro
               key={item.id}
               onClick={() => onTabChange(item.id)}
               className={cn(
-                "flex flex-col items-center gap-1 py-2 px-2 transition-colors",
+                "flex flex-col items-center gap-0.5 py-1.5 px-3 transition-colors",
                 isActive
                   ? "text-primary"
-                  : "text-muted-foreground hover:text-foreground"
+                  : "text-muted-foreground"
               )}
             >
-              <div className={cn(
-                "p-1.5 rounded-lg transition-colors",
-                isActive && "bg-primary/10"
-              )}>
-                {item.icon}
-              </div>
+              {item.icon}
               <span className="text-[10px] font-medium">{item.label}</span>
             </button>
           );

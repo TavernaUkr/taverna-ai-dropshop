@@ -54,7 +54,7 @@ export const LiveFeedItem = (props: LiveFeedItemProps) => {
   const config = eventConfig[type];
 
   return (
-    <div className="flex items-start gap-3 p-3 bg-card rounded-lg border border-border animate-slide-up">
+    <div className="flex items-start gap-3 p-2.5 bg-card rounded-xl border border-border">
       {/* Icon */}
       <div className={cn("w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0", config.color)}>
         {config.icon}
