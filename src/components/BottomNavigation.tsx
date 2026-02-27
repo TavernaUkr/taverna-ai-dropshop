@@ -51,8 +51,8 @@ export const BottomNavigation = ({ activeTab, onTabChange }: BottomNavigationPro
                 </div>
                 <span
                   className={cn(
-                    "text-[10px] font-bold mt-0.5 tracking-wide",
-                    isActive ? "text-live" : "text-muted-foreground"
+                    "text-[10px] font-brand mt-0.5 tracking-[0.06em] text-live-royal",
+                    isActive ? "opacity-100" : "opacity-85"
                   )}
                 >
                   {item.label}
