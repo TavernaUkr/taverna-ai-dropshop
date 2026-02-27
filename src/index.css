@@ -339,6 +339,22 @@ All colors MUST be HSL.
   background-clip: text;
 }
 
+/* Premium brand/live gradients */
+.text-brand-royal {
+  background: linear-gradient(135deg, hsl(var(--foreground)) 0%, hsl(var(--primary)) 55%, hsl(var(--rating)) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-live-royal {
+  background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 45%, hsl(var(--live)) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: 0 0 10px hsl(var(--accent) / 0.2);
+}
+
 /* Royal brand font */
 .font-brand {
   font-family: 'Playfair Display', Georgia, serif;

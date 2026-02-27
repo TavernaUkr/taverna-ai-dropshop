@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { SettingsMainPage } from "@/components/settings/SettingsMainPage";
 import { PersonalDataPage } from "@/components/settings/PersonalDataPage";
 import { DeliveryAddressesPage } from "@/components/settings/DeliveryAddressesPage";
@@ -55,31 +56,28 @@ export const AccountSettings = ({
 }: AccountSettingsProps) => {
   const [view, setView] = useState<SettingsView>('main');
 
-  // Main Settings View
-  if (view === 'main') {
-    return (
-      <SettingsMainPage
-        profile={profile}
-        addressCount={addresses.length}
-        onBack={onBack}
-        onNavigate={(newView) => setView(newView)}
-      />
-    );
-  }
+  const content = (() => {
+    if (view === 'main') {
+      return (
+        <SettingsMainPage
+          profile={profile}
+          addressCount={addresses.length}
+          onBack={onBack}
+          onNavigate={(newView) => setView(newView)}
+        />
+      );
+    }
 
-  // Personal Data View
-  if (view === 'personal') {
-    return (
-      <PersonalDataPage
-        profile={profile}
-        onBack={() => setView('main')}
-        onUpdateProfile={onUpdateProfile}
-      />
-    );
-  }
+    if (view === 'personal') {
+      return (
+        <PersonalDataPage
+          profile={profile}
+          onBack={() => setView('main')}
+          onUpdateProfile={onUpdateProfile}
+        />
+      );
+    }
 
-  // Addresses View
-  if (view === 'addresses') {
     return (
       <DeliveryAddressesPage
         addresses={addresses}
@@ -90,7 +88,7 @@ export const AccountSettings = ({
         onDeleteAddress={onDeleteAddress}
       />
     );
-  }
+  })();
 
-  return null;
+  return createPortal(content, document.body);
 };

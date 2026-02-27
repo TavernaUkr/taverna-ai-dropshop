@@ -1,10 +1,8 @@
 import { useState } from "react";
-import { ShoppingCart, Search, Heart, Gift, Info, Star, Trophy, Wallet } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { ShoppingCart, Search, Heart, Gift, Info, Trophy, Wallet } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import tavernaLogo from "@/assets/taverna-logo.png";
 import { AppInfoModal } from "./AppInfoModal";
-import { AppRatingModal } from "./AppRatingModal";
 
 interface HeaderProps {
   cartCount?: number;
@@ -29,18 +27,17 @@ export const Header = ({
 }: HeaderProps) => {
   const navigate = useNavigate();
   const [isInfoOpen, setIsInfoOpen] = useState(false);
-  const [isRatingOpen, setIsRatingOpen] = useState(false);
 
   return (
     <>
-       <header className="sticky top-0 z-40 bg-card border-b border-border">
+      <header className="sticky top-0 z-40 bg-card border-b border-border">
         <div className="relative flex items-center justify-between h-14 px-3">
           {/* Logo - Left */}
           <div className="flex items-center gap-1.5 z-10">
             <button onClick={() => setIsInfoOpen(true)} className="relative active:scale-95 transition-transform">
-              <img 
-                src={tavernaLogo} 
-                alt="Taverna Group" 
+              <img
+                src={tavernaLogo}
+                alt="Taverna Group"
                 className="w-9 h-9 rounded-xl object-cover"
               />
               <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-primary flex items-center justify-center">
@@ -48,21 +45,10 @@ export const Header = ({
               </div>
             </button>
             <div className="flex flex-col leading-none">
-              <span className="font-brand text-[15px] text-foreground" style={{ letterSpacing: '0.04em' }}>Taverna</span>
-              <span className="text-[8px] font-bold text-rating uppercase tracking-[0.25em]">Group</span>
+              <span className="font-brand text-[15px] text-brand-royal">Taverna</span>
+              <span className="font-brand text-[9px] uppercase tracking-[0.22em] text-brand-royal">Group</span>
             </div>
           </div>
-
-          {/* Center - Ratings (same size as Live button) */}
-          <button
-            onClick={onRatingsClick}
-            className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center gap-0.5 active:scale-95 transition-all z-10"
-          >
-            <div className="w-9 h-9 rounded-full bg-rating flex items-center justify-center shadow-sm">
-              <Trophy className="h-4 w-4 text-rating-foreground" />
-            </div>
-            <span className="text-[10px] font-bold text-rating tracking-wide">Рейтинги</span>
-          </button>
 
           {/* Right actions */}
           <div className="flex items-center gap-0.5 z-10">
@@ -72,6 +58,13 @@ export const Header = ({
               aria-label="Бонусний рахунок"
             >
               <Wallet className="h-4 w-4" />
+            </button>
+            <button
+              onClick={onRatingsClick}
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-rating hover:bg-rating/10 active:scale-95 transition-all"
+              aria-label="Рейтинги"
+            >
+              <Trophy className="h-4 w-4" />
             </button>
             <button
               onClick={onPromoClick}
@@ -113,7 +106,6 @@ export const Header = ({
       </header>
 
       <AppInfoModal isOpen={isInfoOpen} onClose={() => setIsInfoOpen(false)} />
-      <AppRatingModal isOpen={isRatingOpen} onClose={() => setIsRatingOpen(false)} type="app" />
     </>
   );
 };
