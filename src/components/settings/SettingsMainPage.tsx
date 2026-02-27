@@ -27,9 +27,9 @@ export function SettingsMainPage({
   onNavigate 
 }: SettingsMainPageProps) {
   return (
-    <div className="fixed inset-0 z-50 bg-background animate-fade-in">
+    <div className="fixed inset-0 z-[60] bg-background animate-fade-in overflow-auto">
       {/* Header */}
-      <div className="sticky top-0 bg-card/95 backdrop-blur-md border-b border-border p-4 flex items-center gap-3 z-10">
+      <div className="sticky top-0 bg-card border-b border-border p-4 flex items-center gap-3 z-10">
         <button
           onClick={onBack}
           className="w-11 h-11 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-all"

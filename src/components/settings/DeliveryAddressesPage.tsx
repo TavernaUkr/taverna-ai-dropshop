@@ -132,7 +132,7 @@ export function DeliveryAddressesPage({
   };
 
   const renderHeader = (title: string, subtitle?: string) => (
-    <div className="sticky top-0 bg-card/95 backdrop-blur-md border-b border-border p-4 z-10">
+    <div className="sticky top-0 bg-card border-b border-border p-4 z-10">
       <div className="flex items-center gap-3">
         <button
           onClick={() => {
@@ -156,7 +156,7 @@ export function DeliveryAddressesPage({
   // Map View
   if (view === 'map') {
     return (
-      <div className="fixed inset-0 z-50 bg-background animate-fade-in overflow-auto">
+      <div className="fixed inset-0 z-[60] bg-background animate-fade-in overflow-auto">
         {renderHeader('Карта відділень', 'Оберіть зручне відділення')}
         
         <div className="p-4">
@@ -183,7 +183,7 @@ export function DeliveryAddressesPage({
         } as AddressData;
 
     return (
-      <div className="fixed inset-0 z-50 bg-background animate-fade-in overflow-auto">
+      <div className="fixed inset-0 z-[60] bg-background animate-fade-in overflow-auto">
         {renderHeader(
           view === 'edit' ? 'Редагувати адресу' : 'Нова адреса',
           view === 'add' ? 'Додайте адресу для швидкого замовлення' : undefined
@@ -226,7 +226,7 @@ export function DeliveryAddressesPage({
 
   // List View (default)
   return (
-    <div className="fixed inset-0 z-50 bg-background animate-fade-in overflow-auto">
+    <div className="fixed inset-0 z-[60] bg-background animate-fade-in overflow-auto">
       {renderHeader('Адреси доставки', 'Мапа відділень/поштоматів України')}
       
       <div className="p-4 space-y-3">

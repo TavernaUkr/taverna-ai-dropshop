@@ -48,18 +48,20 @@ export const Header = ({
               </div>
             </button>
             <div className="flex flex-col">
-              <span className="font-bold text-sm text-foreground leading-tight">Taverna</span>
-              <span className="text-[9px] text-muted-foreground leading-tight">Group</span>
+              <span className="font-brand text-sm text-foreground leading-tight tracking-wide">Taverna</span>
+              <span className="font-brand text-[9px] text-muted-foreground leading-tight tracking-widest uppercase">Group</span>
             </div>
           </div>
 
-          {/* Center - Ratings */}
+          {/* Center - Ratings (styled like bottom Live button) */}
           <button
             onClick={onRatingsClick}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-primary-foreground font-medium text-xs active:scale-95 transition-all"
+            className="relative flex flex-col items-center gap-0.5 active:scale-95 transition-all"
           >
-            <Trophy className="h-3.5 w-3.5" />
-            <span>Рейтинги</span>
+            <div className="w-10 h-10 -mt-1 rounded-full bg-rating flex items-center justify-center shadow-md">
+              <Trophy className="h-5 w-5 text-rating-foreground" />
+            </div>
+            <span className="font-brand text-[10px] text-rating leading-tight">Рейтинги</span>
           </button>
 
           {/* Right actions */}
