@@ -38,7 +38,7 @@ export const BottomNavigation = ({ activeTab, onTabChange }: BottomNavigationPro
               >
                 <div
                   className={cn(
-                    "w-11 h-11 -mt-5 rounded-full flex items-center justify-center transition-all duration-200",
+                    "w-10 h-10 -mt-5 rounded-full flex items-center justify-center transition-all duration-200",
                     isActive
                       ? "bg-live text-live-foreground shadow-md"
                       : "bg-live/85 text-live-foreground"
@@ -51,10 +51,9 @@ export const BottomNavigation = ({ activeTab, onTabChange }: BottomNavigationPro
                 </div>
                 <span
                   className={cn(
-                    "text-[11px] font-brand mt-0.5",
+                    "text-[10px] font-bold mt-0.5 tracking-wide",
                     isActive ? "text-live" : "text-muted-foreground"
                   )}
-                  style={{ letterSpacing: '0.05em' }}
                 >
                   {item.label}
                 </span>

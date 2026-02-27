@@ -34,34 +34,34 @@ export const Header = ({
   return (
     <>
        <header className="sticky top-0 z-40 bg-card border-b border-border">
-        <div className="relative flex items-center justify-between h-16 px-3">
+        <div className="relative flex items-center justify-between h-14 px-3">
           {/* Logo - Left */}
-          <div className="flex items-center gap-2 z-10">
+          <div className="flex items-center gap-1.5 z-10">
             <button onClick={() => setIsInfoOpen(true)} className="relative active:scale-95 transition-transform">
               <img 
                 src={tavernaLogo} 
                 alt="Taverna Group" 
-                className="w-10 h-10 rounded-xl object-cover"
+                className="w-9 h-9 rounded-xl object-cover"
               />
-              <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-primary flex items-center justify-center">
-                <Info className="h-2.5 w-2.5 text-primary-foreground" />
+              <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-primary flex items-center justify-center">
+                <Info className="h-2 w-2 text-primary-foreground" />
               </div>
             </button>
-            <div className="flex flex-col">
-              <span className="font-brand text-base text-foreground leading-tight" style={{ letterSpacing: '0.06em' }}>Taverna</span>
-              <span className="font-brand text-[11px] text-rating leading-none font-extrabold" style={{ letterSpacing: '0.2em' }}>GROUP</span>
+            <div className="flex flex-col leading-none">
+              <span className="font-brand text-[15px] text-foreground" style={{ letterSpacing: '0.04em' }}>Taverna</span>
+              <span className="text-[8px] font-bold text-rating uppercase tracking-[0.25em]">Group</span>
             </div>
           </div>
 
-          {/* Center - Ratings (absolutely centered like Live button) */}
+          {/* Center - Ratings (same size as Live button) */}
           <button
             onClick={onRatingsClick}
             className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center gap-0.5 active:scale-95 transition-all z-10"
           >
-            <div className="w-11 h-11 -mt-1 rounded-full bg-rating flex items-center justify-center shadow-md shadow-rating/30">
-              <Trophy className="h-5 w-5 text-rating-foreground" />
+            <div className="w-9 h-9 rounded-full bg-rating flex items-center justify-center shadow-sm">
+              <Trophy className="h-4 w-4 text-rating-foreground" />
             </div>
-            <span className="font-brand text-xs text-rating font-extrabold leading-tight" style={{ letterSpacing: '0.08em' }}>Рейтинги</span>
+            <span className="text-[10px] font-bold text-rating tracking-wide">Рейтинги</span>
           </button>
 
           {/* Right actions */}
