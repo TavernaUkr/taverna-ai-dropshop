@@ -51,9 +51,10 @@ export const BottomNavigation = ({ activeTab, onTabChange }: BottomNavigationPro
                 </div>
                 <span
                   className={cn(
-                    "text-[10px] font-brand mt-0.5",
+                    "text-[11px] font-brand mt-0.5",
                     isActive ? "text-live" : "text-muted-foreground"
                   )}
+                  style={{ letterSpacing: '0.05em' }}
                 >
                   {item.label}
                 </span>

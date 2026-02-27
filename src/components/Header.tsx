@@ -33,10 +33,10 @@ export const Header = ({
 
   return (
     <>
-      <header className="sticky top-0 z-40 bg-card border-b border-border">
-        <div className="flex items-center justify-between h-14 px-3">
-          {/* Logo */}
-          <div className="flex items-center gap-2">
+       <header className="sticky top-0 z-40 bg-card border-b border-border">
+        <div className="relative flex items-center justify-between h-16 px-3">
+          {/* Logo - Left */}
+          <div className="flex items-center gap-2 z-10">
             <button onClick={() => setIsInfoOpen(true)} className="relative active:scale-95 transition-transform">
               <img 
                 src={tavernaLogo} 
@@ -48,34 +48,34 @@ export const Header = ({
               </div>
             </button>
             <div className="flex flex-col">
-              <span className="font-brand text-sm text-foreground leading-tight tracking-wide">Taverna</span>
-              <span className="font-brand text-[9px] text-muted-foreground leading-tight tracking-widest uppercase">Group</span>
+              <span className="font-brand text-base text-foreground leading-tight" style={{ letterSpacing: '0.06em' }}>Taverna</span>
+              <span className="font-brand text-[11px] text-rating leading-none font-extrabold" style={{ letterSpacing: '0.2em' }}>GROUP</span>
             </div>
           </div>
 
-          {/* Center - Ratings (styled like bottom Live button) */}
+          {/* Center - Ratings (absolutely centered like Live button) */}
           <button
             onClick={onRatingsClick}
-            className="relative flex flex-col items-center gap-0.5 active:scale-95 transition-all"
+            className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center gap-0.5 active:scale-95 transition-all z-10"
           >
-            <div className="w-10 h-10 -mt-1 rounded-full bg-rating flex items-center justify-center shadow-md">
+            <div className="w-11 h-11 -mt-1 rounded-full bg-rating flex items-center justify-center shadow-md shadow-rating/30">
               <Trophy className="h-5 w-5 text-rating-foreground" />
             </div>
-            <span className="font-brand text-[10px] text-rating leading-tight">Рейтинги</span>
+            <span className="font-brand text-xs text-rating font-extrabold leading-tight" style={{ letterSpacing: '0.08em' }}>Рейтинги</span>
           </button>
 
           {/* Right actions */}
-          <div className="flex items-center gap-0.5">
+          <div className="flex items-center gap-0.5 z-10">
             <button
               onClick={() => navigate("/bonus-account")}
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-primary hover:bg-primary/8 active:scale-95 transition-all"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-primary hover:bg-primary/10 active:scale-95 transition-all"
               aria-label="Бонусний рахунок"
             >
               <Wallet className="h-4 w-4" />
             </button>
             <button
               onClick={onPromoClick}
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-live hover:bg-live/8 active:scale-95 transition-all"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-live hover:bg-live/10 active:scale-95 transition-all"
               aria-label="Акції"
             >
               <Gift className="h-4 w-4" />
