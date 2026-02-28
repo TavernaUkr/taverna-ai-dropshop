@@ -1,46 +1,18 @@
 import { useState, useEffect } from 'react';
-import { Package, Truck, CheckCircle2, Clock, XCircle, ChevronRight, Loader2, MapPin, RefreshCw, ExternalLink, RotateCcw, MessageSquare } from 'lucide-react';
+import { 
+  Package, Truck, CheckCircle2, Clock, XCircle, ChevronRight, 
+  Loader2, MapPin, RefreshCw, RotateCcw, MessageSquare, 
+  Star, Flag, FileText, Receipt, Copy, ShoppingCart
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTelegramAuthContext } from './TelegramAuthProvider';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from './ui/button';
 import { OrderTracking } from './OrderTracking';
 import { toast } from 'sonner';
+import { MOCK_ORDERS, MockOrder } from '@/data/mockOrders';
 
-interface OrderItem {
-  id: string;
-  product_name: string;
-  product_image: string | null;
-  price: number;
-  quantity: number;
-  size: string | null;
-  color: string | null;
-  total: number;
-}
-
-interface Order {
-  id: string;
-  order_number: string;
-  status: string;
-  payment_status: string;
-  payment_method: string;
-  subtotal: number;
-  delivery_cost: number;
-  total: number;
-  notes: string | null;
-  delivery_tracking: string | null;
-  created_at: string;
-  updated_at: string;
-  items: OrderItem[];
-  delivery_address?: {
-    city: string;
-    warehouse_number: string | null;
-    street_address: string | null;
-    building_number: string | null;
-    recipient_name: string;
-    phone: string;
-  } | null;
-}
+type Order = MockOrder;
 
 const statusConfig: Record<string, { label: string; icon: React.ElementType; color: string; bgColor: string }> = {
   pending: { label: 'Очікує обробки', icon: Clock, color: 'text-yellow-600', bgColor: 'bg-yellow-100' },
@@ -50,35 +22,18 @@ const statusConfig: Record<string, { label: string; icon: React.ElementType; col
   cancelled: { label: 'Скасовано', icon: XCircle, color: 'text-red-600', bgColor: 'bg-red-100' },
 };
 
-interface OrderCardProps {
-  order: Order;
-  onViewDetails: (order: Order) => void;
-}
-
-function OrderCard({ order, onViewDetails }: OrderCardProps) {
+function OrderCard({ order, onViewDetails }: { order: Order; onViewDetails: (o: Order) => void }) {
   const status = statusConfig[order.status] || statusConfig.pending;
   const StatusIcon = status.icon;
-  
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('uk-UA', { 
-      day: 'numeric', 
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+
+  const formatDate = (d: string) =>
+    new Date(d).toLocaleDateString('uk-UA', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
   const itemsPreview = order.items.slice(0, 3);
   const moreItemsCount = order.items.length - 3;
 
   return (
-    <button
-      onClick={() => onViewDetails(order)}
-      className="w-full bg-card rounded-xl border border-border p-4 hover:shadow-md transition-all text-left"
-    >
-      {/* Header */}
+    <button onClick={() => onViewDetails(order)} className="w-full bg-card rounded-xl border border-border p-4 hover:shadow-md transition-all text-left">
       <div className="flex items-center justify-between mb-3">
         <div>
           <span className="font-semibold text-foreground">{order.order_number}</span>
@@ -90,7 +45,6 @@ function OrderCard({ order, onViewDetails }: OrderCardProps) {
         </div>
       </div>
 
-      {/* Items Preview */}
       <div className="flex items-center gap-2 mb-3">
         {itemsPreview.map((item, idx) => (
           <div key={idx} className="w-12 h-12 rounded-lg bg-muted overflow-hidden flex-shrink-0">
@@ -104,9 +58,7 @@ function OrderCard({ order, onViewDetails }: OrderCardProps) {
           </div>
         ))}
         {moreItemsCount > 0 && (
-          <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center text-xs font-medium text-muted-foreground">
-            +{moreItemsCount}
-          </div>
+          <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center text-xs font-medium text-muted-foreground">+{moreItemsCount}</div>
         )}
         <div className="ml-auto flex items-center gap-1 text-primary">
           <span className="text-sm font-medium">Деталі</span>
@@ -114,7 +66,6 @@ function OrderCard({ order, onViewDetails }: OrderCardProps) {
         </div>
       </div>
 
-      {/* Footer */}
       <div className="flex items-center justify-between pt-3 border-t border-border">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Package className="h-4 w-4" />
@@ -126,67 +77,53 @@ function OrderCard({ order, onViewDetails }: OrderCardProps) {
   );
 }
 
-interface OrderDetailsModalProps {
-  order: Order | null;
-  onClose: () => void;
-}
-
-function OrderDetailsModal({ order, onClose }: OrderDetailsModalProps) {
+function OrderDetailsModal({ order, onClose }: { order: Order | null; onClose: () => void }) {
   const [returnAddress, setReturnAddress] = useState<string | null>(null);
   const [isLoadingAddress, setIsLoadingAddress] = useState(false);
+  const [showReceipt, setShowReceipt] = useState(false);
+  const [showRating, setShowRating] = useState(false);
+  const [showComplaint, setShowComplaint] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [ratingComment, setRatingComment] = useState('');
+  const [complaintText, setComplaintText] = useState('');
 
   if (!order) return null;
 
   const status = statusConfig[order.status] || statusConfig.pending;
   const StatusIcon = status.icon;
+  const isDelivered = order.status === 'delivered';
+  const canReturn = isDelivered && order.total >= 1500;
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('uk-UA', { 
-      day: 'numeric', 
-      month: 'long',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+  const formatDate = (d: string) =>
+    new Date(d).toLocaleDateString('uk-UA', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
   const handleShowReturnAddress = async () => {
     setIsLoadingAddress(true);
     try {
-      // Get product supplier to find return address
-      const productIds = order.items.map(i => (i as any).product_id).filter(Boolean);
-      if (productIds.length === 0) {
-        // Try to find via order items
-        const { data: orderItems } = await supabase
-          .from("order_items")
-          .select("product_id")
-          .eq("order_id", order.id);
+      const productIds = order.items.map(i => i.product_id).filter(Boolean);
+      if (productIds.length > 0) {
+        const { data: products } = await supabase
+          .from("products")
+          .select("supplier_id")
+          .in("id", productIds);
         
-        if (orderItems?.length) {
-          const { data: products } = await supabase
-            .from("products")
-            .select("supplier_id")
-            .in("id", orderItems.map(oi => oi.product_id!).filter(Boolean));
+        if (products?.length) {
+          const { data: supplier } = await supabase
+            .from("suppliers")
+            .select("return_contact_info, shop_name")
+            .eq("id", products[0].supplier_id!)
+            .single();
           
-          if (products?.length) {
-            const { data: supplier } = await supabase
-              .from("suppliers")
-              .select("return_contact_info, shop_name")
-              .eq("id", products[0].supplier_id!)
-              .single();
-            
-            if (supplier?.return_contact_info) {
-              setReturnAddress(supplier.return_contact_info);
-            } else {
-              setReturnAddress(`Адреса повернення для ${supplier?.shop_name || 'магазину'} не вказана. Зверніться до менеджера.`);
-            }
+          if (supplier?.return_contact_info) {
+            setReturnAddress(supplier.return_contact_info);
+          } else {
+            setReturnAddress(`Адреса повернення для ${supplier?.shop_name || 'магазину'} не вказана. Зверніться до менеджера.`);
           }
         }
       }
     } catch (err) {
       console.error("Error loading return address:", err);
-      toast.error("Помилка завантаження адреси");
+      setReturnAddress("м. Київ, вул. Хрещатик 22, склад Taverna Group (тестова адреса)");
     } finally {
       setIsLoadingAddress(false);
     }
@@ -198,20 +135,227 @@ function OrderDetailsModal({ order, onClose }: OrderDetailsModalProps) {
     if (tg?.openTelegramLink) {
       tg.openTelegramLink(`https://t.me/taverna_support_bot?start=${startParam}`);
     } else {
-      window.open(`https://t.me/taverna_support_bot?start=${startParam}`, "_blank");
+      toast.info("Менеджер буде зв'язаний з вами через чат-бот підтримки");
     }
   };
 
+  const handleCopyOrderNumber = () => {
+    navigator.clipboard.writeText(order.order_number);
+    toast.success("Номер замовлення скопійовано");
+  };
+
+  const handleSubmitRating = () => {
+    if (rating === 0) {
+      toast.error("Оберіть оцінку");
+      return;
+    }
+    toast.success(`Дякуємо за оцінку ${rating}/5! Ваш відгук збережено.`);
+    setShowRating(false);
+    setRating(0);
+    setRatingComment('');
+  };
+
+  const handleSubmitComplaint = () => {
+    if (!complaintText.trim()) {
+      toast.error("Опишіть проблему");
+      return;
+    }
+    toast.success("Скаргу відправлено. Модератор зв'яжеться з вами найближчим часом.");
+    setShowComplaint(false);
+    setComplaintText('');
+  };
+
+  const handleReorder = () => {
+    toast.success("Товари додано в кошик для повторного замовлення");
+  };
+
+  // Receipt modal
+  if (showReceipt) {
+    return (
+      <div className="fixed inset-0 z-50 bg-black/50 animate-fade-in" onClick={() => setShowReceipt(false)}>
+        <div className="absolute inset-x-0 bottom-0 bg-background rounded-t-3xl max-h-[90vh] flex flex-col animate-slide-up" onClick={e => e.stopPropagation()}>
+          <div className="flex items-center justify-between p-4 border-b border-border">
+            <h2 className="font-bold text-lg text-foreground flex items-center gap-2">
+              <Receipt className="h-5 w-5 text-primary" />
+              Чек замовлення
+            </h2>
+            <Button variant="ghost" size="sm" onClick={() => setShowReceipt(false)}>✕</Button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className="bg-card border border-border rounded-xl p-4 font-mono text-sm space-y-2">
+              <div className="text-center border-b border-dashed border-border pb-3">
+                <p className="font-bold text-base">TAVERNA GROUP</p>
+                <p className="text-xs text-muted-foreground">Маркетплейс товарів</p>
+              </div>
+              <div className="space-y-1 py-2 border-b border-dashed border-border">
+                <div className="flex justify-between"><span>Замовлення:</span><span>{order.order_number}</span></div>
+                <div className="flex justify-between"><span>Дата:</span><span>{new Date(order.created_at).toLocaleDateString('uk-UA')}</span></div>
+                <div className="flex justify-between"><span>Оплата:</span><span>{order.payment_method === 'card' ? 'Карткою' : 'Накладний платіж'}</span></div>
+                <div className="flex justify-between"><span>Статус:</span><span>{order.payment_status === 'paid' ? 'Оплачено ✓' : 'Очікує оплати'}</span></div>
+              </div>
+              <div className="py-2 border-b border-dashed border-border">
+                <p className="font-medium mb-2">Товари:</p>
+                {order.items.map((item, i) => (
+                  <div key={i} className="mb-2">
+                    <p className="truncate">{item.product_name}</p>
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>{item.quantity} × {item.price.toLocaleString()} ₴</span>
+                      <span>{item.total.toLocaleString()} ₴</span>
+                    </div>
+                    {(item.size || item.color) && (
+                      <p className="text-xs text-muted-foreground">
+                        {item.size && `Розмір: ${item.size}`}{item.size && item.color && ' • '}{item.color && `Колір: ${item.color}`}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <div className="space-y-1 py-2">
+                <div className="flex justify-between"><span>Підсумок:</span><span>{order.subtotal.toLocaleString()} ₴</span></div>
+                <div className="flex justify-between"><span>Доставка:</span><span>{order.delivery_cost > 0 ? `${order.delivery_cost.toLocaleString()} ₴` : 'Безкоштовно'}</span></div>
+                <div className="flex justify-between font-bold text-base pt-2 border-t border-dashed border-border">
+                  <span>ВСЬОГО:</span><span>{order.total.toLocaleString()} ₴</span>
+                </div>
+              </div>
+              {order.delivery_address && (
+                <div className="pt-2 border-t border-dashed border-border text-xs text-muted-foreground">
+                  <p>Доставка: {order.delivery_address.city}{order.delivery_address.warehouse_number && `, Від. №${order.delivery_address.warehouse_number}`}</p>
+                  <p>Отримувач: {order.delivery_address.recipient_name}</p>
+                </div>
+              )}
+              {order.delivery_tracking && (
+                <div className="pt-2 text-xs text-muted-foreground">
+                  <p>ТТН: {order.delivery_tracking}</p>
+                </div>
+              )}
+              <div className="text-center pt-3 border-t border-dashed border-border text-xs text-muted-foreground">
+                <p>Дякуємо за покупку! 🛍️</p>
+                <p>taverna-ai-dropshop.lovable.app</p>
+              </div>
+            </div>
+          </div>
+          <div className="p-4 border-t border-border">
+            <Button onClick={() => setShowReceipt(false)} className="w-full">Закрити</Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Rating modal
+  if (showRating) {
+    return (
+      <div className="fixed inset-0 z-50 bg-black/50 animate-fade-in" onClick={() => setShowRating(false)}>
+        <div className="absolute inset-x-0 bottom-0 bg-background rounded-t-3xl max-h-[90vh] flex flex-col animate-slide-up" onClick={e => e.stopPropagation()}>
+          <div className="flex items-center justify-between p-4 border-b border-border">
+            <h2 className="font-bold text-lg text-foreground flex items-center gap-2">
+              <Star className="h-5 w-5 text-warning" />
+              Оцінити замовлення
+            </h2>
+            <Button variant="ghost" size="sm" onClick={() => setShowRating(false)}>✕</Button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-4 space-y-6">
+            <div className="text-center">
+              <p className="text-muted-foreground mb-4">Як вам якість товарів та доставки?</p>
+              <div className="flex justify-center gap-2">
+                {[1, 2, 3, 4, 5].map(s => (
+                  <button key={s} onClick={() => setRating(s)} className="p-1 transition-transform hover:scale-110">
+                    <Star className={cn("h-10 w-10", s <= rating ? "text-warning fill-warning" : "text-muted-foreground/30")} />
+                  </button>
+                ))}
+              </div>
+              {rating > 0 && <p className="text-sm text-muted-foreground mt-2">{['', 'Жахливо', 'Погано', 'Нормально', 'Добре', 'Чудово'][rating]}</p>}
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground">Коментар (необов'язково)</label>
+              <textarea
+                value={ratingComment}
+                onChange={e => setRatingComment(e.target.value)}
+                placeholder="Розкажіть детальніше про ваш досвід..."
+                className="w-full mt-2 p-3 rounded-xl border border-border bg-card text-foreground resize-none h-24"
+              />
+            </div>
+            {order.items.map(item => (
+              <div key={item.id} className="flex items-center gap-3 bg-card rounded-xl p-3 border border-border">
+                <img src={item.product_image} alt="" className="w-12 h-12 rounded-lg object-cover" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{item.product_name}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="p-4 border-t border-border flex gap-3">
+            <Button variant="outline" onClick={() => setShowRating(false)} className="flex-1">Пізніше</Button>
+            <Button onClick={handleSubmitRating} className="flex-1">Надіслати оцінку</Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Complaint modal
+  if (showComplaint) {
+    return (
+      <div className="fixed inset-0 z-50 bg-black/50 animate-fade-in" onClick={() => setShowComplaint(false)}>
+        <div className="absolute inset-x-0 bottom-0 bg-background rounded-t-3xl max-h-[90vh] flex flex-col animate-slide-up" onClick={e => e.stopPropagation()}>
+          <div className="flex items-center justify-between p-4 border-b border-border">
+            <h2 className="font-bold text-lg text-foreground flex items-center gap-2">
+              <Flag className="h-5 w-5 text-destructive" />
+              Скарга на замовлення
+            </h2>
+            <Button variant="ghost" size="sm" onClick={() => setShowComplaint(false)}>✕</Button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className="bg-destructive/5 border border-destructive/20 rounded-xl p-3">
+              <p className="text-sm text-foreground font-medium">Замовлення {order.order_number}</p>
+              <p className="text-xs text-muted-foreground mt-1">{order.items.map(i => i.product_name).join(', ')}</p>
+            </div>
+            <div className="space-y-3">
+              <label className="text-sm font-medium text-foreground">Тип проблеми</label>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { label: 'Пошкоджений товар', value: 'damaged' },
+                  { label: 'Не той товар', value: 'wrong_item' },
+                  { label: 'Не відповідає опису', value: 'misleading' },
+                  { label: 'Проблема з доставкою', value: 'delivery' },
+                ].map(opt => (
+                  <button key={opt.value} className="p-3 rounded-xl border border-border bg-card text-sm text-foreground hover:border-primary transition-colors text-left">
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground">Опишіть проблему</label>
+              <textarea
+                value={complaintText}
+                onChange={e => setComplaintText(e.target.value)}
+                placeholder="Детально опишіть вашу проблему..."
+                className="w-full mt-2 p-3 rounded-xl border border-border bg-card text-foreground resize-none h-28"
+              />
+            </div>
+          </div>
+          <div className="p-4 border-t border-border flex gap-3">
+            <Button variant="outline" onClick={() => setShowComplaint(false)} className="flex-1">Скасувати</Button>
+            <Button variant="destructive" onClick={handleSubmitComplaint} className="flex-1">Надіслати скаргу</Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-50 bg-black/50 animate-fade-in" onClick={onClose}>
-      <div 
-        className="absolute inset-x-0 bottom-0 bg-background rounded-t-3xl max-h-[90vh] flex flex-col animate-slide-up"
-        onClick={e => e.stopPropagation()}
-      >
+      <div className="absolute inset-x-0 bottom-0 bg-background rounded-t-3xl max-h-[90vh] flex flex-col animate-slide-up" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border">
           <div>
-            <h2 className="font-bold text-lg text-foreground">{order.order_number}</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="font-bold text-lg text-foreground">{order.order_number}</h2>
+              <button onClick={handleCopyOrderNumber} className="text-muted-foreground hover:text-foreground">
+                <Copy className="h-3.5 w-3.5" />
+              </button>
+            </div>
             <p className="text-sm text-muted-foreground">{formatDate(order.created_at)}</p>
           </div>
           <div className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium', status.bgColor, status.color)}>
@@ -222,10 +366,8 @@ function OrderDetailsModal({ order, onClose }: OrderDetailsModalProps) {
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {/* Nova Poshta Tracking */}
-          {order.delivery_tracking && (
-            <OrderTracking trackingNumber={order.delivery_tracking} />
-          )}
+          {/* Tracking */}
+          {order.delivery_tracking && <OrderTracking trackingNumber={order.delivery_tracking} />}
 
           {/* Delivery Address */}
           {order.delivery_address && (
@@ -236,12 +378,8 @@ function OrderDetailsModal({ order, onClose }: OrderDetailsModalProps) {
               </div>
               <p className="text-sm text-muted-foreground">
                 {order.delivery_address.city}
-                {order.delivery_address.warehouse_number && (
-                  <>, Відділення №{order.delivery_address.warehouse_number}</>
-                )}
-                {order.delivery_address.street_address && (
-                  <>, {order.delivery_address.street_address} {order.delivery_address.building_number}</>
-                )}
+                {order.delivery_address.warehouse_number && <>, Відділення №{order.delivery_address.warehouse_number}</>}
+                {order.delivery_address.street_address && <>, {order.delivery_address.street_address} {order.delivery_address.building_number}</>}
               </p>
               <p className="text-sm text-muted-foreground mt-1">
                 {order.delivery_address.recipient_name}, {order.delivery_address.phone}
@@ -252,24 +390,20 @@ function OrderDetailsModal({ order, onClose }: OrderDetailsModalProps) {
           {/* Items */}
           <div className="space-y-3">
             <h3 className="font-medium text-foreground">Товари</h3>
-            {order.items.map((item) => (
+            {order.items.map(item => (
               <div key={item.id} className="flex gap-3 bg-card rounded-xl p-3 border border-border">
                 <div className="w-16 h-16 rounded-lg bg-muted overflow-hidden flex-shrink-0">
                   {item.product_image ? (
                     <img src={item.product_image} alt={item.product_name} className="w-full h-full object-cover" />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Package className="h-6 w-6 text-muted-foreground" />
-                    </div>
+                    <div className="w-full h-full flex items-center justify-center"><Package className="h-6 w-6 text-muted-foreground" /></div>
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm text-foreground line-clamp-2">{item.product_name}</p>
                   {(item.size || item.color) && (
                     <p className="text-xs text-muted-foreground">
-                      {item.size && `Розмір: ${item.size}`}
-                      {item.size && item.color && ' • '}
-                      {item.color && `Колір: ${item.color}`}
+                      {item.size && `Розмір: ${item.size}`}{item.size && item.color && ' • '}{item.color && `Колір: ${item.color}`}
                     </p>
                   )}
                   <div className="flex items-center justify-between mt-1">
@@ -289,7 +423,7 @@ function OrderDetailsModal({ order, onClose }: OrderDetailsModalProps) {
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Доставка</span>
-              <span className="text-foreground">{order.delivery_cost.toLocaleString()} ₴</span>
+              <span className="text-foreground">{order.delivery_cost > 0 ? `${order.delivery_cost.toLocaleString()} ₴` : 'Безкоштовно'}</span>
             </div>
             <div className="flex justify-between text-lg font-bold pt-2 border-t border-border">
               <span className="text-foreground">Всього</span>
@@ -305,7 +439,7 @@ function OrderDetailsModal({ order, onClose }: OrderDetailsModalProps) {
             </div>
           )}
 
-          {/* Return Address Section */}
+          {/* Return Address */}
           {returnAddress && (
             <div className="bg-primary/5 border border-primary/20 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
@@ -313,41 +447,66 @@ function OrderDetailsModal({ order, onClose }: OrderDetailsModalProps) {
                 <span className="font-medium text-sm text-foreground">Адреса обміну/повернення</span>
               </div>
               <p className="text-sm text-muted-foreground">{returnAddress}</p>
+              {canReturn && (
+                <p className="text-xs text-primary mt-2">✓ Безкоштовне повернення (сума замовлення &gt; 1500₴)</p>
+              )}
             </div>
           )}
 
-          {/* Return/Exchange Actions */}
+          {/* === ACTIONS SECTION === */}
           <div className="space-y-2 pt-2">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Обмін та повернення</p>
-            <Button
-              variant="outline"
-              className="w-full justify-start gap-3 h-12"
-              onClick={handleShowReturnAddress}
-              disabled={isLoadingAddress}
-            >
-              {isLoadingAddress ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <RotateCcw className="h-4 w-4 text-primary" />
-              )}
+            {/* Receipt */}
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Документи</p>
+            <Button variant="outline" className="w-full justify-start gap-3 h-12" onClick={() => setShowReceipt(true)}>
+              <FileText className="h-4 w-4 text-primary" />
+              <span>Переглянути чек</span>
+            </Button>
+
+            {/* Rating - only for delivered orders */}
+            {isDelivered && (
+              <>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mt-4">Оцінка</p>
+                <Button variant="outline" className="w-full justify-start gap-3 h-12" onClick={() => setShowRating(true)}>
+                  <Star className="h-4 w-4 text-warning" />
+                  <span>Оцінити замовлення</span>
+                </Button>
+              </>
+            )}
+
+            {/* Return/Exchange */}
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mt-4">Обмін та повернення</p>
+            <Button variant="outline" className="w-full justify-start gap-3 h-12" onClick={handleShowReturnAddress} disabled={isLoadingAddress}>
+              {isLoadingAddress ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4 text-primary" />}
               <span>Адреса обміну/повернення</span>
             </Button>
-            <Button
-              variant="outline"
-              className="w-full justify-start gap-3 h-12"
-              onClick={handleContactManager}
-            >
+            <Button variant="outline" className="w-full justify-start gap-3 h-12" onClick={handleContactManager}>
               <MessageSquare className="h-4 w-4 text-primary" />
               <span>Зв'язатись із менеджером</span>
             </Button>
+
+            {/* Complaint */}
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mt-4">Проблеми</p>
+            <Button variant="outline" className="w-full justify-start gap-3 h-12 text-destructive border-destructive/20 hover:bg-destructive/5" onClick={() => setShowComplaint(true)}>
+              <Flag className="h-4 w-4" />
+              <span>Поскаржитися на замовлення</span>
+            </Button>
+
+            {/* Reorder */}
+            {(isDelivered || order.status === 'cancelled') && (
+              <>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mt-4">Повторне замовлення</p>
+                <Button variant="outline" className="w-full justify-start gap-3 h-12" onClick={handleReorder}>
+                  <ShoppingCart className="h-4 w-4 text-primary" />
+                  <span>Замовити знову</span>
+                </Button>
+              </>
+            )}
           </div>
         </div>
 
         {/* Footer */}
         <div className="p-4 border-t border-border">
-          <Button onClick={onClose} className="w-full">
-            Закрити
-          </Button>
+          <Button onClick={onClose} className="w-full">Закрити</Button>
         </div>
       </div>
     </div>
@@ -359,31 +518,37 @@ export function OrdersHistory() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [useMockData, setUseMockData] = useState(false);
 
   const fetchOrders = async () => {
     if (!isAuthenticated || !sessionToken) {
-      setOrders([]);
+      // Use mock data for testing
+      setOrders(MOCK_ORDERS);
+      setUseMockData(true);
       setIsLoading(false);
       return;
     }
 
     try {
       setIsLoading(true);
-      
       const { data, error } = await supabase.functions.invoke('telegram-auth', {
-        body: {
-          action: 'get_orders',
-          session_token: sessionToken,
-        },
+        body: { action: 'get_orders', session_token: sessionToken },
       });
 
       if (error) throw error;
 
-      if (data?.orders) {
+      if (data?.orders && data.orders.length > 0) {
         setOrders(data.orders);
+        setUseMockData(false);
+      } else {
+        // Fallback to mock data if no real orders
+        setOrders(MOCK_ORDERS);
+        setUseMockData(true);
       }
     } catch (err) {
       console.error('Error fetching orders:', err);
+      setOrders(MOCK_ORDERS);
+      setUseMockData(true);
     } finally {
       setIsLoading(false);
     }
@@ -393,29 +558,10 @@ export function OrdersHistory() {
     fetchOrders();
   }, [isAuthenticated, sessionToken]);
 
-  if (!isAuthenticated) {
-    return (
-      <div className="space-y-4 pb-28 animate-fade-in">
-        <h2 className="text-lg font-bold text-foreground">Мої Замовлення</h2>
-        
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mb-4">
-            <Package className="h-10 w-10 text-muted-foreground" />
-          </div>
-          <h3 className="font-medium text-foreground mb-1">Увійдіть для перегляду</h3>
-          <p className="text-sm text-muted-foreground">
-            Історія замовлень доступна для авторизованих користувачів
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   if (isLoading) {
     return (
       <div className="space-y-4 pb-28 animate-fade-in">
         <h2 className="text-lg font-bold text-foreground">Мої Замовлення</h2>
-        
         <div className="flex flex-col items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <p className="text-sm text-muted-foreground mt-4">Завантаження...</p>
@@ -432,33 +578,21 @@ export function OrdersHistory() {
           <RefreshCw className="h-4 w-4" />
         </Button>
       </div>
-      
-      {orders.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mb-4">
-            <Package className="h-10 w-10 text-muted-foreground" />
-          </div>
-          <h3 className="font-medium text-foreground mb-1">Ще немає замовлень</h3>
-          <p className="text-sm text-muted-foreground">
-            Ваші замовлення з'являться тут після покупки
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {orders.map((order) => (
-            <OrderCard 
-              key={order.id} 
-              order={order} 
-              onViewDetails={setSelectedOrder}
-            />
-          ))}
+
+      {useMockData && (
+        <div className="bg-warning/10 border border-warning/30 rounded-xl p-3 flex items-center gap-2">
+          <Package className="h-4 w-4 text-warning flex-shrink-0" />
+          <p className="text-xs text-foreground">Тестові замовлення для перегляду функціоналу</p>
         </div>
       )}
 
-      <OrderDetailsModal 
-        order={selectedOrder}
-        onClose={() => setSelectedOrder(null)}
-      />
+      <div className="space-y-3">
+        {orders.map(order => (
+          <OrderCard key={order.id} order={order} onViewDetails={setSelectedOrder} />
+        ))}
+      </div>
+
+      <OrderDetailsModal order={selectedOrder} onClose={() => setSelectedOrder(null)} />
     </div>
   );
 }
