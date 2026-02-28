@@ -50,6 +50,7 @@ import { ManualSupplierForm } from '@/components/admin/ManualSupplierForm';
 import { SupportChatsViewer } from '@/components/admin/SupportChatsViewer';
 import { GiveawaysManager } from '@/components/admin/GiveawaysManager';
 import { AdminStoreManager } from '@/components/admin/AdminStoreManager';
+import { OrdersManager } from '@/components/admin/OrdersManager';
 interface SupplierApplication {
   id: string;
   shop_name: string;
@@ -502,6 +503,10 @@ export default function AdminDashboard() {
         }}>
           <ScrollArea className="w-full pb-2">
             <TabsList className="w-max flex gap-1 mb-4">
+              <TabsTrigger value="orders" className="text-xs px-3 gap-1">
+                <ShoppingCart className="h-4 w-4" />
+                Замовлення
+              </TabsTrigger>
               <TabsTrigger value="moderation" className="text-xs px-3 gap-1">
                 <Users className="h-4 w-4" />
                 Заявки
@@ -549,6 +554,11 @@ export default function AdminDashboard() {
               </TabsTrigger>
             </TabsList>
           </ScrollArea>
+
+          {/* Orders Tab */}
+          <TabsContent value="orders">
+            <OrdersManager />
+          </TabsContent>
 
           {/* Moderation Tab */}
           <TabsContent value="moderation">
