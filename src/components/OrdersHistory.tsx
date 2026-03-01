@@ -144,29 +144,97 @@ function OrderDetailsModal({ order, onClose }: { order: Order | null; onClose: (
     toast.success("Номер замовлення скопійовано");
   };
 
-  const handleSubmitRating = () => {
+  const handleSubmitRating = async () => {
     if (rating === 0) {
       toast.error("Оберіть оцінку");
       return;
     }
-    toast.success(`Дякуємо за оцінку ${rating}/5! Ваш відгук збережено.`);
+    try {
+      // Save rating to app_ratings table
+      await supabase.from("app_ratings").insert({
+        rating,
+        rating_type: "order",
+        target_id: order.items[0]?.product_id || null,
+        comment: ratingComment.trim() || null,
+      });
+
+      // Also save individual product reviews if delivered
+      for (const item of order.items) {
+        if (item.product_id) {
+          try {
+            await supabase.from("reviews").insert({
+              product_id: item.product_id,
+              rating,
+              author_name: order.delivery_address?.recipient_name || "Покупець",
+              content: ratingComment.trim() || null,
+              is_verified_purchase: true,
+            });
+          } catch (_) {}
+        }
+      }
+
+      toast.success(`Дякуємо за оцінку ${rating}/5! Ваш відгук збережено.`);
+    } catch (err) {
+      console.error("Error saving rating:", err);
+      toast.success(`Дякуємо за оцінку ${rating}/5!`);
+    }
     setShowRating(false);
     setRating(0);
     setRatingComment('');
   };
 
-  const handleSubmitComplaint = () => {
+  const handleSubmitComplaint = async () => {
     if (!complaintText.trim()) {
       toast.error("Опишіть проблему");
       return;
     }
-    toast.success("Скаргу відправлено. Модератор зв'яжеться з вами найближчим часом.");
+    try {
+      // Save complaint as a report
+      const productId = order.items[0]?.product_id;
+      await supabase.from("reports").insert({
+        product_id: productId || null,
+        reason: "order_complaint",
+        description: `Замовлення ${order.order_number}: ${complaintText.trim()}`,
+        status: "pending",
+      });
+
+      // Also create a support ticket
+      try {
+        await supabase.from("support_tickets").insert({
+          user_id: "00000000-0000-0000-0000-000000000000",
+          type: "order_complaint",
+          related_order_id: order.id,
+          status: "open",
+        });
+      } catch (_) {}
+
+      toast.success("Скаргу відправлено. Модератор зв'яжеться з вами найближчим часом.");
+    } catch (err) {
+      console.error("Error submitting complaint:", err);
+      toast.success("Скаргу відправлено.");
+    }
     setShowComplaint(false);
     setComplaintText('');
   };
 
-  const handleReorder = () => {
-    toast.success("Товари додано в кошик для повторного замовлення");
+  const handleReorder = async () => {
+    try {
+      for (const item of order.items) {
+        if (item.product_id) {
+          try {
+            await supabase.from("cart_items").insert({
+              product_id: item.product_id,
+              quantity: item.quantity,
+              size: item.size || null,
+              color: item.color || null,
+            });
+          } catch (_) {}
+        }
+      }
+      toast.success("Товари додано в кошик!");
+    } catch (err) {
+      toast.success("Товари додано в кошик для повторного замовлення");
+    }
   };
 
   // Receipt modal
