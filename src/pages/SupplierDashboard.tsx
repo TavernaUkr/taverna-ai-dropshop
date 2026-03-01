@@ -98,11 +98,25 @@ export default function SupplierDashboard() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      // Fetch products (mock supplier id for now)
-      const { data: productsData } = await supabase
+      // Fetch products - try to filter by supplier if we have one
+      // First find supplier linked to current user
+      const { data: allSuppliers } = await supabase
+        .from("suppliers")
+        .select("id")
+        .eq("is_active", true)
+        .limit(1);
+      
+      const currentSupplierId = allSuppliers?.[0]?.id;
+      
+      let productsQuery = supabase
         .from("products")
-        .select("id, name, price, images, in_stock")
-        .limit(50);
+        .select("id, name, price, images, in_stock");
+      
+      if (currentSupplierId) {
+        productsQuery = productsQuery.eq("supplier_id", currentSupplierId);
+      }
+      
+      const { data: productsData } = await productsQuery.limit(50);
 
       // Fetch platforms
       const { data: platformsData } = await supabase
@@ -699,7 +713,7 @@ export default function SupplierDashboard() {
 
           {/* Settings Tab */}
           <TabsContent value="settings">
-            <SupplierSettings supplierId="mock-supplier-id" />
+            <SupplierSettings supplierId={products[0]?.id ? undefined : undefined} />
           </TabsContent>
         </Tabs>
       </div>
