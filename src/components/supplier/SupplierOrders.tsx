@@ -275,21 +275,28 @@ export function SupplierOrders({ supplierId, mode = "active" }: SupplierOrdersPr
     }
   };
 
-  const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
+  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
+  const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
 
   const filteredOrders = useMemo(() => {
     let result = orders.filter(o =>
       mode === "history" ? isArchivedOrder(o) : !isArchivedOrder(o)
     );
-    // Sort newest first
     result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-    // Calendar filter (history only)
-    if (mode === "history" && dateFilter) {
-      const filterDay = format(dateFilter, "yyyy-MM-dd");
-      result = result.filter(o => format(new Date(o.created_at), "yyyy-MM-dd") === filterDay);
+    if (mode === "history") {
+      if (dateFrom) {
+        const from = new Date(dateFrom);
+        from.setHours(0, 0, 0, 0);
+        result = result.filter(o => new Date(o.created_at) >= from);
+      }
+      if (dateTo) {
+        const to = new Date(dateTo);
+        to.setHours(23, 59, 59, 999);
+        result = result.filter(o => new Date(o.created_at) <= to);
+      }
     }
     return result;
-  }, [orders, mode, dateFilter]);
+  }, [orders, mode, dateFrom, dateTo]);
 
   const formatDate = (d: string) =>
     new Date(d).toLocaleDateString("uk-UA", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -352,25 +359,44 @@ export function SupplierOrders({ supplierId, mode = "active" }: SupplierOrdersPr
       )}
 
       {mode === "history" && (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline" size="sm" className="gap-2">
                 <CalendarIcon className="h-4 w-4" />
-                {dateFilter ? format(dateFilter, "dd MMM yyyy", { locale: uk }) : "Фільтр за датою"}
+                {dateFrom ? format(dateFrom, "dd.MM.yy", { locale: uk }) : "Від"}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
               <Calendar
                 mode="single"
-                selected={dateFilter}
-                onSelect={setDateFilter}
+                selected={dateFrom}
+                onSelect={setDateFrom}
+                disabled={dateTo ? (date) => date > dateTo : undefined}
                 className="p-3 pointer-events-auto"
               />
             </PopoverContent>
           </Popover>
-          {dateFilter && (
-            <Button variant="ghost" size="sm" onClick={() => setDateFilter(undefined)}>
+          <span className="text-muted-foreground text-sm">—</span>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2">
+                <CalendarIcon className="h-4 w-4" />
+                {dateTo ? format(dateTo, "dd.MM.yy", { locale: uk }) : "До"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={dateTo}
+                onSelect={setDateTo}
+                disabled={dateFrom ? (date) => date < dateFrom : undefined}
+                className="p-3 pointer-events-auto"
+              />
+            </PopoverContent>
+          </Popover>
+          {(dateFrom || dateTo) && (
+            <Button variant="ghost" size="sm" onClick={() => { setDateFrom(undefined); setDateTo(undefined); }}>
               Скинути
             </Button>
           )}
