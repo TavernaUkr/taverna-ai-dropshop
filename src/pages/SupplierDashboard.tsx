@@ -32,6 +32,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { SupplierSettings } from "@/components/supplier/SupplierSettings";
+import { SupplierOrders } from "@/components/supplier/SupplierOrders";
 import { useTelegramAuth } from "@/hooks/useTelegramAuth";
 import { hapticSelection } from "@/lib/haptics";
 
@@ -76,12 +77,14 @@ interface QueuePosition {
 
 export default function SupplierDashboard() {
   const navigate = useNavigate();
+  const { profile } = useTelegramAuth();
   const [activeTab, setActiveTab] = useState("overview");
   const [products, setProducts] = useState<Product[]>([]);
   const [platforms, setPlatforms] = useState<Platform[]>([]);
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [queuePosition, setQueuePosition] = useState<QueuePosition | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentSupplierId, setCurrentSupplierId] = useState<string | null>(null);
   
   // New promotion dialog state
   const [isNewPromoOpen, setIsNewPromoOpen] = useState(false);
@@ -98,22 +101,35 @@ export default function SupplierDashboard() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      // Fetch products - try to filter by supplier if we have one
-      // First find supplier linked to current user
-      const { data: allSuppliers } = await supabase
-        .from("suppliers")
-        .select("id")
-        .eq("is_active", true)
-        .limit(1);
+      let foundSupplierId: string | null = null;
       
-      const currentSupplierId = allSuppliers?.[0]?.id;
+      if (profile?.telegram_id) {
+        const { data: linkedSupplier } = await supabase
+          .from("suppliers")
+          .select("id")
+          .eq("telegram_id", profile.telegram_id)
+          .limit(1);
+        
+        foundSupplierId = linkedSupplier?.[0]?.id || null;
+      }
+      
+      if (!foundSupplierId) {
+        const { data: fallback } = await supabase
+          .from("suppliers")
+          .select("id")
+          .eq("is_active", true)
+          .limit(1);
+        foundSupplierId = fallback?.[0]?.id || null;
+      }
+      
+      setCurrentSupplierId(foundSupplierId);
       
       let productsQuery = supabase
         .from("products")
         .select("id, name, price, images, in_stock");
       
-      if (currentSupplierId) {
-        productsQuery = productsQuery.eq("supplier_id", currentSupplierId);
+      if (foundSupplierId) {
+        productsQuery = productsQuery.eq("supplier_id", foundSupplierId);
       }
       
       const { data: productsData } = await productsQuery.limit(50);
@@ -368,13 +384,16 @@ export default function SupplierDashboard() {
           hapticSelection();
           setActiveTab(value);
         }}>
-          <TabsList className="w-full grid grid-cols-4 mb-4">
+          <TabsList className="w-full grid grid-cols-5 mb-4">
             <TabsTrigger value="overview">Огляд</TabsTrigger>
+            <TabsTrigger value="orders">
+              <Package className="h-4 w-4 mr-1" />
+              <span className="hidden sm:inline">Замовлення</span>
+            </TabsTrigger>
             <TabsTrigger value="post">Пости</TabsTrigger>
             <TabsTrigger value="ads">Реклама</TabsTrigger>
             <TabsTrigger value="settings" className="gap-1">
               <Settings className="h-4 w-4" />
-              <span className="hidden sm:inline">Налаштування</span>
             </TabsTrigger>
           </TabsList>
 
@@ -711,9 +730,21 @@ export default function SupplierDashboard() {
             </Card>
           </TabsContent>
 
+          {/* Orders Tab */}
+          <TabsContent value="orders">
+            {currentSupplierId ? (
+              <SupplierOrders supplierId={currentSupplierId} />
+            ) : (
+              <div className="text-center py-12 text-muted-foreground">
+                <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>Магазин не прив'язано</p>
+              </div>
+            )}
+          </TabsContent>
+
           {/* Settings Tab */}
           <TabsContent value="settings">
-            <SupplierSettings supplierId={products[0]?.id ? undefined : undefined} />
+            <SupplierSettings supplierId={currentSupplierId || undefined} />
           </TabsContent>
         </Tabs>
       </div>

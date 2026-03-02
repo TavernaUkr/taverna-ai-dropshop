@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 interface Message {
   id: string;
   ticket_id: string;
-  sender_role: "user" | "admin" | "supplier" | "bot";
+  sender_role: "user" | "admin" | "supplier" | "bot" | "moderator";
   message_text: string;
   created_at: string;
 }
@@ -66,8 +66,9 @@ const topicOptions = [
 export default function SupportChat() {
   const navigate = useNavigate();
   const { ticketId } = useParams<{ ticketId: string }>();
-  const { profile, sessionToken } = useTelegramAuthContext();
+  const { profile, sessionToken, roles } = useTelegramAuthContext();
   const [ticket, setTicket] = useState<Ticket | null>(null);
+  const isStaff = roles.includes("admin") || roles.includes("moderator") || roles.includes("supplier");
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -125,13 +126,15 @@ export default function SupportChat() {
         setMessages(messagesData as Message[]);
       }
 
-      // Check if this is a supplier_question with no messages → start guided flow
-      if (ticketData.type === "supplier_question" && (!messagesData || messagesData.length === 0)) {
+      // Staff (moderator/admin/supplier) skip guided flow entirely - just chat directly
+      if (isStaff) {
+        setIsGuidedFlow(false);
+        setFlowStage("ai_chat");
+      } else if (ticketData.type === "supplier_question" && (!messagesData || messagesData.length === 0)) {
         setIsGuidedFlow(true);
         setFlowStage("initial");
         addBotMessage("Вітаю! 👋 Я AI-асистент Taverna. Допоможу вам з будь-яким питанням щодо замовлень та товарів.\n\nЧи стосується ваше питання конкретного замовлення?");
       } else if (ticketData.type === "supplier_question" && messagesData && messagesData.length > 0) {
-        // Already has messages - go to AI chat directly
         setIsGuidedFlow(true);
         setFlowStage("ai_chat");
       }
@@ -358,10 +361,11 @@ export default function SupportChat() {
     };
     setMessages((prev) => [...prev, optimisticMsg]);
 
-    // Save to DB
+    // Save to DB - staff sends as "moderator", users as "user"
+    const senderRole = isStaff ? "moderator" : "user";
     const { data, error } = await supabase
       .from("ticket_messages")
-      .insert({ ticket_id: ticketId, sender_role: "user", message_text: messageText })
+      .insert({ ticket_id: ticketId, sender_role: senderRole, message_text: messageText })
       .select().single();
 
     if (error) {
@@ -375,7 +379,7 @@ export default function SupportChat() {
     setIsSending(false);
 
     // If in AI chat mode for supplier questions, call AI
-    if (isGuidedFlow && flowStage === "ai_chat") {
+    if (!isStaff && isGuidedFlow && flowStage === "ai_chat") {
       setIsAiThinking(true);
       try {
         // Build AI context
@@ -445,8 +449,9 @@ export default function SupportChat() {
 
   const getSenderLabel = (role: string) => {
     switch (role) {
-      case "user": return "Ви";
+      case "user": return isStaff ? "Клієнт" : "Ви";
       case "admin": return "AI-асистент";
+      case "moderator": return isStaff ? "Ви (модератор)" : "Модератор";
       case "supplier": return "Менеджер";
       default: return "Система";
     }
@@ -460,7 +465,7 @@ export default function SupportChat() {
     );
   }
 
-  const showTextInput = !isGuidedFlow || flowStage === "ai_chat" || flowStage === "escalated";
+  const showTextInput = isStaff || !isGuidedFlow || flowStage === "ai_chat" || flowStage === "escalated";
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -616,7 +621,7 @@ export default function SupportChat() {
         {/* DB Messages */}
         <AnimatePresence initial={false}>
           {messages.filter(m => !m.message_text.startsWith("[Автоматичний контекст]")).map((message, index) => {
-            const isUser = message.sender_role === "user";
+            const isUser = isStaff ? (message.sender_role === "moderator" || message.sender_role === "admin") : message.sender_role === "user";
             const allVisible = messages.filter(m => !m.message_text.startsWith("[Автоматичний контекст]"));
             const visibleIndex = allVisible.indexOf(message);
             const showDate = visibleIndex === 0 || new Date(message.created_at).toDateString() !== new Date(allVisible[visibleIndex - 1]?.created_at).toDateString();
