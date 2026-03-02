@@ -12,7 +12,7 @@ import {
 import { Loader2, ShieldCheck, User } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
-type AppRole = 'admin' | 'moderator' | 'supplier' | 'customer';
+type AppRole = 'admin' | 'moderator' | 'supplier' | 'shop_manager' | 'customer';
 type TestRole = 'guest' | AppRole;
 
 const DEV_ROLE_STORAGE_KEY = 'taverna_dev_role_override';

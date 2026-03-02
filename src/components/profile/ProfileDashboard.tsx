@@ -34,7 +34,7 @@ import { DevRoleSwitcher } from "@/components/profile/DevRoleSwitcher";
 import { AccountSettings } from "@/components/AccountSettings";
 import { useBonuses } from "@/hooks/useBonuses";
 
-type TestRole = "guest" | "customer" | "supplier" | "moderator" | "admin";
+type TestRole = "guest" | "customer" | "supplier" | "shop_manager" | "moderator" | "admin";
 
 export const ProfileDashboard = () => {
   const navigate = useNavigate();
@@ -64,6 +64,7 @@ export const ProfileDashboard = () => {
 
   const isSupplier = roles.includes('supplier') || roles.includes('admin');
   const isOnlySupplier = roles.includes('supplier');
+  const isShopManager = roles.includes('shop_manager');
   const isAdmin = roles.includes('admin');
   const isModerator = roles.includes('moderator');
 
@@ -165,6 +166,11 @@ export const ProfileDashboard = () => {
                 {isModerator && (
                   <span className="text-xs bg-orange-500/10 text-orange-500 px-2 py-0.5 rounded-full font-medium">
                     Модератор
+                  </span>
+                )}
+                {isShopManager && !isOnlySupplier && (
+                  <span className="text-xs bg-teal-500/10 text-teal-500 px-2 py-0.5 rounded-full font-medium">
+                    Менеджер магазину
                   </span>
                 )}
               </div>
@@ -291,8 +297,8 @@ export const ProfileDashboard = () => {
         </button>
       )}
 
-      {/* Store Orders Button - ONLY for Suppliers */}
-      {isAuthenticated && isOnlySupplier && !isAdmin && (
+      {/* Store Orders Button - For Suppliers and Shop Managers */}
+      {isAuthenticated && (isOnlySupplier || isShopManager) && !isAdmin && (
         <button
           onClick={() => {
             hapticSelection();
@@ -313,8 +319,8 @@ export const ProfileDashboard = () => {
         </button>
       )}
 
-      {/* Store Management Button - ONLY for Suppliers (not Admin — admin manages stores from admin panel) */}
-      {isAuthenticated && isOnlySupplier && !isAdmin && (
+      {/* Store Management Button - ONLY for Suppliers (not Admin, not Shop Manager) */}
+      {isAuthenticated && isOnlySupplier && !isAdmin && !isShopManager && (
         <button
           onClick={() => {
             hapticSelection();
@@ -328,15 +334,15 @@ export const ProfileDashboard = () => {
           <div className="flex-1 text-left">
             <h4 className="font-semibold text-foreground">Керування магазином</h4>
             <p className="text-xs text-muted-foreground">
-              Обкладинка, правила, відгуки, запити
+              Обкладинка, правила, відгуки, менеджер
             </p>
           </div>
           <ChevronRight className="h-5 w-5 text-teal-500" />
         </button>
       )}
 
-      {/* Become Partner Button - For Customers (not suppliers/admin/moderator) */}
-      {isAuthenticated && !isOnlySupplier && !isAdmin && !isModerator && (
+      {/* Become Partner Button - For Customers (not suppliers/admin/moderator/shop_manager) */}
+      {isAuthenticated && !isOnlySupplier && !isAdmin && !isModerator && !isShopManager && (
         <button
           onClick={() => navigate("/partner")}
           className="w-full flex items-center gap-4 p-4 rounded-xl border transition-all bg-card border-border hover:border-primary/50"
