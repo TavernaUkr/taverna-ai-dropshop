@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { hapticNotification } from "@/lib/haptics";
+import { RatingBonusBanner } from "@/components/RatingBonusBanner";
 
 interface PersonalBonus {
   id: string;
@@ -69,6 +70,11 @@ export function CheckoutDiscounts({
 
   return (
     <div className="space-y-3">
+      {/* Rating Bonus Banner */}
+      {isAuthenticated && (
+        <RatingBonusBanner variant="checkout" />
+      )}
+
       <div className="flex items-center gap-2 text-sm font-medium text-foreground">
         <Gift className="h-4 w-4 text-primary" />
         Знижки та бонуси

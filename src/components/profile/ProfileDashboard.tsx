@@ -19,6 +19,7 @@ import {
   MapPin,
   Megaphone,
   Archive,
+  Star,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ import { CustomerGuideModal } from "@/components/CustomerGuideModal";
 import { hapticSelection } from "@/lib/haptics";
 import { DevRoleSwitcher } from "@/components/profile/DevRoleSwitcher";
 import { AccountSettings } from "@/components/AccountSettings";
+import { useBonuses } from "@/hooks/useBonuses";
 
 type TestRole = "guest" | "customer" | "supplier" | "moderator" | "admin";
 
@@ -58,6 +60,7 @@ export const ProfileDashboard = () => {
   const [showSupplierGuide, setShowSupplierGuide] = useState(false);
   const [showCustomerGuide, setShowCustomerGuide] = useState(false);
   const [showAccountSettings, setShowAccountSettings] = useState(false);
+  const { reputationScore, balance } = useBonuses();
 
   const isSupplier = roles.includes('supplier') || roles.includes('admin');
   const isOnlySupplier = roles.includes('supplier');
@@ -170,6 +173,23 @@ export const ProfileDashboard = () => {
             )}
           </div>
         </div>
+        {/* Reputation & Bonus mini-stats */}
+        {isAuthenticated && (
+          <div className="flex items-center gap-3 mt-3 pt-3 border-t border-border">
+            {reputationScore !== null && (
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted text-xs font-medium">
+                <Star className="h-3.5 w-3.5 text-warning fill-warning" />
+                <span className="text-foreground">Репутація: {reputationScore}</span>
+              </div>
+            )}
+            {balance > 0 && (
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-xs font-medium text-primary">
+                <Gift className="h-3.5 w-3.5" />
+                {balance}₴
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Authorization Button for Guests */}

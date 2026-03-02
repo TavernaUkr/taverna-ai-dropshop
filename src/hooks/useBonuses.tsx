@@ -7,6 +7,8 @@ interface BonusData {
   balance: number;
   totalEarned: number;
   totalSpent: number;
+  reputationScore: number | null;
+  reputationMultiplier: number;
 }
 
 export function useBonuses() {
@@ -34,11 +36,28 @@ export function useBonuses() {
       if (fetchError) throw fetchError;
 
       if (data) {
+        // Fetch customer reputation score
+        const { data: ratings } = await supabase
+          .from("app_ratings")
+          .select("rating")
+          .eq("rating_type", "customer")
+          .eq("rated_profile_id", profile.id);
+        
+        let reputationScore: number | null = null;
+        let reputationMultiplier = 1.0;
+        if (ratings && ratings.length > 0) {
+          reputationScore = Math.round((ratings.reduce((s, r) => s + r.rating, 0) / ratings.length) * 10) / 10;
+          if (reputationScore >= 4.5) reputationMultiplier = 1.2;
+          else if (reputationScore < 3.0) reputationMultiplier = 0.8;
+        }
+
         setBonusData({
           id: data.id,
           balance: data.balance || 0,
           totalEarned: data.total_earned || 0,
           totalSpent: data.total_spent || 0,
+          reputationScore,
+          reputationMultiplier,
         });
       } else {
         // Create initial bonus record if doesn't exist
@@ -55,6 +74,8 @@ export function useBonuses() {
           balance: 0,
           totalEarned: 0,
           totalSpent: 0,
+          reputationScore: null,
+          reputationMultiplier: 1.0,
         });
       }
     } catch (err: any) {
@@ -131,6 +152,8 @@ export function useBonuses() {
     balance: bonusData?.balance || 0,
     totalEarned: bonusData?.totalEarned || 0,
     totalSpent: bonusData?.totalSpent || 0,
+    reputationScore: bonusData?.reputationScore ?? null,
+    reputationMultiplier: bonusData?.reputationMultiplier ?? 1.0,
     isLoading,
     error,
     spendBonuses,

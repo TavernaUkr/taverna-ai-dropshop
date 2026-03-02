@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Package, Loader2, Truck, Clock, CheckCircle2, XCircle, ChevronRight,
-  RefreshCw, RotateCcw, Eye, Archive, Copy, MapPin, MessageSquare, CalendarIcon, Sparkles
+  RefreshCw, RotateCcw, Eye, Archive, Copy, MapPin, MessageSquare, CalendarIcon, Sparkles,
+  Star, UserCheck, TrendingUp
 } from "lucide-react";
 import { format } from "date-fns";
 import { uk } from "date-fns/locale";
@@ -47,7 +48,7 @@ function isArchivedOrder(order: { status: string; updated_at: string }): boolean
   return false;
 }
 
-type SupplierOrder = MockOrder & { customer_name?: string };
+type SupplierOrder = MockOrder & { customer_name?: string; profile_id?: string };
 
 export function SupplierOrders({ supplierId, mode = "active" }: SupplierOrdersProps) {
   const navigate = useNavigate();
@@ -57,10 +58,74 @@ export function SupplierOrders({ supplierId, mode = "active" }: SupplierOrdersPr
   const [ttnInput, setTtnInput] = useState("");
   const [isSavingTtn, setIsSavingTtn] = useState(false);
   const [useMockData, setUseMockData] = useState(false);
+  const [customerRating, setCustomerRating] = useState(0);
+  const [showCustomerRating, setShowCustomerRating] = useState(false);
+  const [supplierAvgRating, setSupplierAvgRating] = useState<number | null>(null);
+  const [supplierReviewCount, setSupplierReviewCount] = useState(0);
 
   useEffect(() => {
-    if (supplierId) fetchOrders();
+    if (supplierId) {
+      fetchOrders();
+      fetchSupplierRating();
+    }
   }, [supplierId]);
+
+  const fetchSupplierRating = async () => {
+    if (supplierId === "demo") {
+      setSupplierAvgRating(4.6);
+      setSupplierReviewCount(23);
+      return;
+    }
+    try {
+      const { data: products } = await supabase
+        .from("products")
+        .select("id")
+        .eq("supplier_id", supplierId);
+      
+      if (products?.length) {
+        const { data: reviews } = await supabase
+          .from("reviews")
+          .select("rating")
+          .in("product_id", products.map(p => p.id));
+        
+        if (reviews?.length) {
+          const avg = reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
+          setSupplierAvgRating(Math.round(avg * 10) / 10);
+          setSupplierReviewCount(reviews.length);
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching supplier rating:", err);
+    }
+  };
+
+  const getMarkupTier = () => {
+    if (supplierAvgRating === null) return { markup: 33, label: "Стандарт", next: "Отримайте 4.5+ для 28%" };
+    if (supplierAvgRating >= 4.8 && supplierReviewCount >= 50) return { markup: 25, label: "Преміум", next: "Максимальна знижка!" };
+    if (supplierAvgRating >= 4.5) return { markup: 28, label: "Знижена", next: `${supplierReviewCount}/50 відгуків для 25%` };
+    return { markup: 33, label: "Стандарт", next: `Рейтинг ${supplierAvgRating}/4.5 для 28%` };
+  };
+
+  const handleRateCustomer = async (orderId: string, profileId: string) => {
+    if (customerRating === 0) {
+      toast.error("Оберіть оцінку");
+      return;
+    }
+    try {
+      await supabase.from("app_ratings").insert({
+        rating: customerRating,
+        rating_type: "customer",
+        rated_profile_id: profileId,
+        order_id: orderId,
+      });
+      toast.success(`Оцінку клієнта збережено: ${customerRating}/5`);
+      setShowCustomerRating(false);
+      setCustomerRating(0);
+    } catch (err) {
+      console.error("Error rating customer:", err);
+      toast.error("Помилка збереження оцінки");
+    }
+  };
 
   const fetchOrders = async () => {
     setIsLoading(true);
@@ -239,8 +304,33 @@ export function SupplierOrders({ supplierId, mode = "active" }: SupplierOrdersPr
 
   const title = mode === "history" ? "Історія замовлень" : "Замовлення з моїми товарами";
 
+  const markupTier = getMarkupTier();
+
   return (
     <div className="space-y-4">
+      {/* Rating Tier Banner */}
+      {supplierAvgRating !== null && (
+        <div className="bg-card border border-border rounded-xl p-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Star className="h-5 w-5 text-warning fill-warning" />
+              <span className="font-semibold text-foreground">{supplierAvgRating}</span>
+              <span className="text-xs text-muted-foreground">({supplierReviewCount} відгуків)</span>
+            </div>
+            <Badge variant="outline" className="text-xs">
+              Націнка: {markupTier.markup}% ({markupTier.label})
+            </Badge>
+          </div>
+          <div className="w-full bg-muted rounded-full h-2 mb-1">
+            <div
+              className="bg-primary h-2 rounded-full transition-all"
+              style={{ width: `${Math.min(100, (supplierAvgRating / 5) * 100)}%` }}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">{markupTier.next}</p>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-foreground flex items-center gap-2">
           {mode === "history" ? <Archive className="h-5 w-5 text-muted-foreground" /> : <Package className="h-5 w-5 text-primary" />}
@@ -498,6 +588,38 @@ export function SupplierOrders({ supplierId, mode = "active" }: SupplierOrdersPr
                     )}
                   </div>
                 </div>
+
+                {/* Customer Rating - for received orders */}
+                {["received", "delivered"].includes(selectedOrder.status) && (
+                  <div className="space-y-2 pt-2 border-t border-border">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Оцінка клієнта</p>
+                    {showCustomerRating ? (
+                      <div className="space-y-3 bg-muted/50 rounded-xl p-3">
+                        <p className="text-sm text-foreground">Оцініть клієнта:</p>
+                        <div className="flex justify-center gap-2">
+                          {[1, 2, 3, 4, 5].map(s => (
+                            <button key={s} onClick={() => setCustomerRating(s)} className="p-1">
+                              <Star className={cn("h-8 w-8", s <= customerRating ? "text-warning fill-warning" : "text-muted-foreground/30")} />
+                            </button>
+                          ))}
+                        </div>
+                        <div className="flex gap-2">
+                          <Button variant="outline" size="sm" onClick={() => { setShowCustomerRating(false); setCustomerRating(0); }} className="flex-1">
+                            Скасувати
+                          </Button>
+                          <Button size="sm" onClick={() => handleRateCustomer(selectedOrder.id, selectedOrder.profile_id || "")} className="flex-1">
+                            Зберегти
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <Button variant="outline" size="sm" onClick={() => setShowCustomerRating(true)} className="w-full gap-2">
+                        <UserCheck className="h-4 w-4" />
+                        Оцінити клієнта
+                      </Button>
+                    )}
+                  </div>
+                )}
 
                 {/* Notes */}
                 {selectedOrder.notes && (
