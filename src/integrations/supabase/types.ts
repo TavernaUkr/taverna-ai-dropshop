@@ -19,30 +19,54 @@ export type Database = {
           comment: string | null
           created_at: string
           id: string
+          order_id: string | null
           profile_id: string | null
+          rated_profile_id: string | null
           rating: number
           rating_type: string
           target_id: string | null
+          ticket_id: string | null
         }
         Insert: {
           comment?: string | null
           created_at?: string
           id?: string
+          order_id?: string | null
           profile_id?: string | null
+          rated_profile_id?: string | null
           rating?: number
           rating_type?: string
           target_id?: string | null
+          ticket_id?: string | null
         }
         Update: {
           comment?: string | null
           created_at?: string
           id?: string
+          order_id?: string | null
           profile_id?: string | null
+          rated_profile_id?: string | null
           rating?: number
           rating_type?: string
           target_id?: string | null
+          ticket_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "app_ratings_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "app_ratings_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       auto_promotion_queue: {
         Row: {
@@ -814,6 +838,41 @@ export type Database = {
             columns: ["supplier_id"]
             isOneToOne: false
             referencedRelation: "suppliers_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rating_rewards: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          order_id: string | null
+          profile_id: string
+          reward_type: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          id?: string
+          order_id?: string | null
+          profile_id: string
+          reward_type: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          order_id?: string | null
+          profile_id?: string
+          reward_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rating_rewards_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
             referencedColumns: ["id"]
           },
         ]

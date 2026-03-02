@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { 
   Package, Truck, CheckCircle2, Clock, XCircle, ChevronRight, 
   Loader2, MapPin, RefreshCw, RotateCcw, MessageSquare, 
-  Star, Flag, FileText, Receipt, Copy, ShoppingCart, CalendarIcon, Sparkles
+  Star, Flag, FileText, Receipt, Copy, ShoppingCart, CalendarIcon, Sparkles, Gift
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { uk } from 'date-fns/locale';
@@ -15,6 +15,7 @@ import { Button } from './ui/button';
 import { OrderTracking } from './OrderTracking';
 import { toast } from 'sonner';
 import { MOCK_ORDERS, MockOrder } from '@/data/mockOrders';
+import { useRatingRewards } from '@/hooks/useRatingRewards';
 
 type Order = MockOrder;
 
@@ -102,6 +103,18 @@ function OrderDetailsModal({ order, onClose }: { order: Order | null; onClose: (
   const [rating, setRating] = useState(0);
   const [ratingComment, setRatingComment] = useState('');
   const [complaintText, setComplaintText] = useState('');
+  const [alreadyRated, setAlreadyRated] = useState(false);
+  const [bonusAwarded, setBonusAwarded] = useState(0);
+  const { awardForOrderReview, getOrderRewards, isAwarding } = useRatingRewards();
+
+  // Check if order was already rated
+  useEffect(() => {
+    if (order?.id) {
+      getOrderRewards(order.id).then(rewards => {
+        setAlreadyRated(rewards.includes("review_text"));
+      });
+    }
+  }, [order?.id, getOrderRewards]);
 
   if (!order) return null;
 
@@ -176,12 +189,13 @@ function OrderDetailsModal({ order, onClose }: { order: Order | null; onClose: (
       return;
     }
     try {
-      // Save rating to app_ratings table
+      // Save rating to app_ratings table with order_id
       await supabase.from("app_ratings").insert({
         rating,
         rating_type: "order",
         target_id: order.items[0]?.product_id || null,
         comment: ratingComment.trim() || null,
+        order_id: order.id,
       });
 
       // Also save individual product reviews if delivered
@@ -199,7 +213,15 @@ function OrderDetailsModal({ order, onClose }: { order: Order | null; onClose: (
         }
       }
 
-      toast.success(`Дякуємо за оцінку ${rating}/5! Ваш відгук збережено.`);
+      // Award bonus for review
+      const hasPhoto = false; // TODO: add photo upload support
+      const awarded = await awardForOrderReview(order.id, hasPhoto);
+      setBonusAwarded(awarded);
+      setAlreadyRated(true);
+
+      if (awarded === 0) {
+        toast.success(`Дякуємо за оцінку ${rating}/5! Ваш відгук збережено.`);
+      }
     } catch (err) {
       console.error("Error saving rating:", err);
       toast.success(`Дякуємо за оцінку ${rating}/5!`);
@@ -560,10 +582,21 @@ function OrderDetailsModal({ order, onClose }: { order: Order | null; onClose: (
             {isDeliveredOrReceived && (
               <>
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mt-4">Оцінка</p>
-                <Button variant="outline" className="w-full justify-start gap-3 h-12" onClick={() => setShowRating(true)}>
-                  <Star className="h-4 w-4 text-warning" />
-                  <span>Оцінити замовлення</span>
-                </Button>
+                {alreadyRated ? (
+                  <div className="flex items-center gap-3 h-12 px-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                    <span className="text-sm text-emerald-600 font-medium">Оцінку надіслано</span>
+                    {bonusAwarded > 0 && (
+                      <span className="ml-auto text-xs font-bold text-emerald-500">+{bonusAwarded}₴ 🎉</span>
+                    )}
+                  </div>
+                ) : (
+                  <Button variant="outline" className="w-full justify-start gap-3 h-12" onClick={() => setShowRating(true)}>
+                    <Star className="h-4 w-4 text-warning" />
+                    <span>Оцінити замовлення</span>
+                    <span className="ml-auto text-xs text-amber-500 font-medium">+10₴ бонус</span>
+                  </Button>
+                )}
               </>
             )}
 
