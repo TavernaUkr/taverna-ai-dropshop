@@ -44,19 +44,8 @@ export default function SupplierStoreOrders() {
     );
   }
 
-  if (!supplierId) {
-    return (
-      <div className="min-h-screen bg-background p-4">
-        <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="mb-4">
-          <ArrowLeft className="h-4 w-4 mr-2" /> Назад
-        </Button>
-        <div className="text-center py-12">
-          <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <p className="text-muted-foreground">Магазин не знайдено</p>
-        </div>
-      </div>
-    );
-  }
+  // Use "demo" as fallback supplierId for mock data display
+  const effectiveSupplierId = supplierId || "demo";
 
   return (
     <div className="min-h-screen bg-background">
@@ -94,7 +83,7 @@ export default function SupplierStoreOrders() {
           </TabsList>
 
           <TabsContent value="orders" className="mt-4">
-            <SupplierOrders supplierId={supplierId} />
+            <SupplierOrders supplierId={effectiveSupplierId} />
           </TabsContent>
 
           <TabsContent value="chat" className="mt-4">
