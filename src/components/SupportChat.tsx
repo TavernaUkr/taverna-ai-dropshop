@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, ArrowLeft, MessageCircle, Loader2, Bot, Package, Truck, CreditCard, RotateCcw, ArrowLeftRight, ShoppingBag, HelpCircle, User, ChevronRight } from "lucide-react";
+import { Send, ArrowLeft, MessageCircle, Loader2, Bot, Package, Truck, CreditCard, RotateCcw, ArrowLeftRight, ShoppingBag, HelpCircle, User, ChevronRight, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,6 +10,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import { format } from "date-fns";
 import { uk } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { ChatRatingPrompt } from "@/components/ChatRatingPrompt";
+import { toast } from "sonner";
 
 interface Message {
   id: string;
@@ -89,6 +91,8 @@ export default function SupportChat() {
   const [orders, setOrders] = useState<OrderInfo[]>([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
   const [isGuidedFlow, setIsGuidedFlow] = useState(false);
+  const [showChatRating, setShowChatRating] = useState(false);
+  const [isClosingTicket, setIsClosingTicket] = useState(false);
   const [botMessages, setBotMessages] = useState<{ id: string; text: string }[]>([]);
 
   const scrollToBottom = () => {
@@ -437,6 +441,22 @@ export default function SupportChat() {
     navigate("/support");
   };
 
+  const handleCloseTicket = async () => {
+    if (!ticketId) return;
+    setIsClosingTicket(true);
+    try {
+      await supabase.from("support_tickets").update({ status: "closed" }).eq("id", ticketId);
+      setTicket(prev => prev ? { ...prev, status: "closed" } : null);
+      setShowChatRating(true);
+      toast.success("Тікет закрито");
+    } catch (err) {
+      console.error("Error closing ticket:", err);
+      toast.error("Помилка закриття тікету");
+    } finally {
+      setIsClosingTicket(false);
+    }
+  };
+
   const getTicketTypeLabel = (type: string) => {
     switch (type) {
       case "tech_support": return "Технічна підтримка";
@@ -686,6 +706,18 @@ export default function SupportChat() {
           </div>
         )}
 
+        {/* Chat Rating Prompt */}
+        {showChatRating && ticket && (
+          <ChatRatingPrompt
+            ticketId={ticket.id}
+            orderId={ticket.related_order_id}
+            raterRole={isStaff ? "moderator" : "user"}
+            targetRole={isStaff ? "user" : "moderator"}
+            targetLabel={isStaff ? "клієнта" : "менеджера"}
+            onClose={() => setShowChatRating(false)}
+          />
+        )}
+
         <div ref={messagesEndRef} />
       </main>
 
@@ -705,10 +737,22 @@ export default function SupportChat() {
               {isSending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
             </Button>
           </form>
+          {/* Close ticket button for staff */}
+          {isStaff && (
+            <Button variant="outline" size="sm" onClick={handleCloseTicket} disabled={isClosingTicket} className="w-full mt-2 gap-2 text-xs">
+              <Lock className="h-3.5 w-3.5" />
+              {isClosingTicket ? "Закриття..." : "Закрити тікет"}
+            </Button>
+          )}
         </div>
       ) : ticket?.status === "closed" ? (
         <div className="sticky bottom-0 bg-muted/50 border-t p-4 pb-safe text-center">
           <p className="text-sm text-muted-foreground">Цей чат закрито.</p>
+          {!showChatRating && (
+            <Button variant="outline" size="sm" onClick={() => setShowChatRating(true)} className="mt-2 text-xs">
+              Оцінити {isStaff ? "клієнта" : "менеджера"}
+            </Button>
+          )}
         </div>
       ) : null}
     </div>

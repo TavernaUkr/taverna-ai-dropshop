@@ -4,6 +4,7 @@ import {
   Loader2, MapPin, RefreshCw, RotateCcw, MessageSquare, 
   Star, Flag, FileText, Receipt, Copy, ShoppingCart, CalendarIcon, Sparkles, Gift
 } from 'lucide-react';
+import { openAIChatWithContext } from './AIChatAssistant';
 import { format } from 'date-fns';
 import { uk } from 'date-fns/locale';
 import { Calendar } from './ui/calendar';
@@ -136,47 +137,38 @@ function OrderDetailsModal({ order, onClose }: { order: Order | null; onClose: (
   const formatDate = (d: string) =>
     new Date(d).toLocaleDateString('uk-UA', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
-  const handleShowReturnAddress = async () => {
-    setIsLoadingAddress(true);
-    try {
-      const productIds = order.items.map(i => i.product_id).filter(Boolean);
-      if (productIds.length > 0) {
-        const { data: products } = await supabase
-          .from("products")
-          .select("supplier_id")
-          .in("id", productIds);
-        
-        if (products?.length) {
-          const { data: supplier } = await supabase
-            .from("suppliers")
-            .select("return_contact_info, shop_name")
-            .eq("id", products[0].supplier_id!)
-            .single();
-          
-          if (supplier?.return_contact_info) {
-            setReturnAddress(supplier.return_contact_info);
-          } else {
-            setReturnAddress(`Адреса повернення для ${supplier?.shop_name || 'магазину'} не вказана. Зверніться до менеджера.`);
-          }
-        }
-      }
-    } catch (err) {
-      console.error("Error loading return address:", err);
-      setReturnAddress("м. Київ, вул. Хрещатик 22, склад Taverna Group (тестова адреса)");
-    } finally {
-      setIsLoadingAddress(false);
-    }
+  const handleOpenExchange = () => {
+    openAIChatWithContext({
+      order_id: order.id,
+      order_number: order.order_number,
+      topic: "exchange",
+    });
+  };
+
+  const handleOpenReturn = () => {
+    openAIChatWithContext({
+      order_id: order.id,
+      order_number: order.order_number,
+      topic: "return",
+    });
   };
 
   const handleContactManager = () => {
-    const tg = (window as any).Telegram?.WebApp;
-    const startParam = `return_${order.id}`;
-    if (tg?.openTelegramLink) {
-      tg.openTelegramLink(`https://t.me/taverna_support_bot?start=${startParam}`);
-    } else {
-      toast.info("Менеджер буде зв'язаний з вами через чат-бот підтримки");
-    }
+    openAIChatWithContext({
+      order_id: order.id,
+      order_number: order.order_number,
+      topic: "manager",
+    });
   };
+
+  const handleOpenComplaint = () => {
+    openAIChatWithContext({
+      order_id: order.id,
+      order_number: order.order_number,
+      topic: "complaint",
+    });
+  };
+
 
   const handleCopyOrderNumber = () => {
     navigator.clipboard.writeText(order.order_number);
@@ -614,12 +606,12 @@ function OrderDetailsModal({ order, onClose }: { order: Order | null; onClose: (
                         ⏳ Залишилось {daysLeftForReturn} {daysLeftForReturn === 1 ? 'день' : daysLeftForReturn < 5 ? 'дні' : 'днів'}
                       </p>
                     </div>
-                    <Button variant="outline" className="w-full justify-start gap-3 h-12" onClick={handleShowReturnAddress} disabled={isLoadingAddress}>
-                      {isLoadingAddress ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4 text-orange-500" />}
+                    <Button variant="outline" className="w-full justify-start gap-3 h-12" onClick={handleOpenExchange}>
+                      <RefreshCw className="h-4 w-4 text-orange-500" />
                       <span>Подати на обмін</span>
                     </Button>
-                    <Button variant="outline" className="w-full justify-start gap-3 h-12" onClick={handleShowReturnAddress} disabled={isLoadingAddress}>
-                      {isLoadingAddress ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4 text-rose-500" />}
+                    <Button variant="outline" className="w-full justify-start gap-3 h-12" onClick={handleOpenReturn}>
+                      <RotateCcw className="h-4 w-4 text-rose-500" />
                       <span>Подати на повернення</span>
                     </Button>
                   </>
@@ -639,7 +631,7 @@ function OrderDetailsModal({ order, onClose }: { order: Order | null; onClose: (
 
             {/* Complaint */}
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mt-4">Проблеми</p>
-            <Button variant="outline" className="w-full justify-start gap-3 h-12 text-destructive border-destructive/20 hover:bg-destructive/5" onClick={() => setShowComplaint(true)}>
+            <Button variant="outline" className="w-full justify-start gap-3 h-12 text-destructive border-destructive/20 hover:bg-destructive/5" onClick={handleOpenComplaint}>
               <Flag className="h-4 w-4" />
               <span>Поскаржитися на замовлення</span>
             </Button>
