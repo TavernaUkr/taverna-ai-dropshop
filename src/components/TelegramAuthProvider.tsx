@@ -44,6 +44,7 @@ const isTestRole = (value: unknown): value is TestRole => {
     value === 'guest' ||
     value === 'customer' ||
     value === 'supplier' ||
+    value === 'shop_manager' ||
     value === 'moderator' ||
     value === 'admin'
   );
@@ -202,6 +203,7 @@ export function TelegramAuthProvider({ children }: TelegramAuthProviderProps) {
     if (realRoles.includes('admin')) return 'admin';
     if (realRoles.includes('moderator')) return 'moderator';
     if (realRoles.includes('supplier')) return 'supplier';
+    if (realRoles.includes('shop_manager')) return 'shop_manager';
     return 'customer';
   }, [auth.isAuthenticated, realRoles]);
 
@@ -212,7 +214,8 @@ export function TelegramAuthProvider({ children }: TelegramAuthProviderProps) {
     : derivedRealRole;
 
   const roles: AppRole[] = useMemo(() => {
-    if (effectiveRole === 'guest' || effectiveRole === 'customer') return [];
+    if (effectiveRole === 'guest') return [];
+    if (effectiveRole === 'customer') return ['customer'] as AppRole[];
     return [effectiveRole] as AppRole[];
   }, [effectiveRole]);
 
