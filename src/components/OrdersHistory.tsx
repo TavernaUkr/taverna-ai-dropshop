@@ -620,7 +620,29 @@ function OrderDetailsModal({ order, onClose }: { order: Order | null; onClose: (
   );
 }
 
-export function OrdersHistory() {
+// Helper to determine if an order is "archived" (belongs in history)
+function isArchivedOrder(order: Order): boolean {
+  const ARCHIVE_DAYS = 15;
+  const updatedAt = new Date(order.updated_at);
+  const daysSinceUpdate = Math.floor((Date.now() - updatedAt.getTime()) / (1000 * 60 * 60 * 24));
+
+  // Cancelled, exchanged, returned → always archived
+  if (['cancelled', 'exchange', 'return'].includes(order.status)) return true;
+
+  // Received and 15+ days passed without return/exchange → archived
+  if (order.status === 'received' && daysSinceUpdate >= ARCHIVE_DAYS) return true;
+
+  // Delivered and 15+ days passed → archived (assumed received)
+  if (order.status === 'delivered' && daysSinceUpdate >= ARCHIVE_DAYS) return true;
+
+  return false;
+}
+
+interface OrdersHistoryProps {
+  mode?: 'active' | 'history';
+}
+
+export function OrdersHistory({ mode = 'active' }: OrdersHistoryProps) {
   const { isAuthenticated, sessionToken } = useTelegramAuthContext();
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -629,7 +651,6 @@ export function OrdersHistory() {
 
   const fetchOrders = async () => {
     if (!isAuthenticated || !sessionToken) {
-      // Use mock data for testing
       setOrders(MOCK_ORDERS);
       setUseMockData(true);
       setIsLoading(false);
@@ -648,7 +669,6 @@ export function OrdersHistory() {
         setOrders(data.orders);
         setUseMockData(false);
       } else {
-        // Fallback to mock data if no real orders
         setOrders(MOCK_ORDERS);
         setUseMockData(true);
       }
@@ -665,11 +685,19 @@ export function OrdersHistory() {
     fetchOrders();
   }, [isAuthenticated, sessionToken]);
 
+  const filteredOrders = orders.filter(o => 
+    mode === 'history' ? isArchivedOrder(o) : !isArchivedOrder(o)
+  );
+
+  const title = mode === 'history' ? 'Історія замовлень' : 'Мої Замовлення';
+  const emptyText = mode === 'history' 
+    ? 'Архів порожній. Завершені замовлення з\'являться тут через 15 днів після отримання.'
+    : 'У вас поки немає активних замовлень';
+
   if (isLoading) {
     return (
       <div className="space-y-4 pb-28 animate-fade-in">
-        <h2 className="text-lg font-bold text-foreground">Мої Замовлення</h2>
-        <p className="text-sm text-muted-foreground">Історія замовлень</p>
+        <h2 className="text-lg font-bold text-foreground">{title}</h2>
         <div className="flex flex-col items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <p className="text-sm text-muted-foreground mt-4">Завантаження...</p>
@@ -681,10 +709,7 @@ export function OrdersHistory() {
   return (
     <div className="space-y-4 pb-28 animate-fade-in">
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-bold text-foreground">Мої Замовлення</h2>
-          <p className="text-sm text-muted-foreground">Історія замовлень</p>
-        </div>
+        <h2 className="text-lg font-bold text-foreground">{title}</h2>
         <Button variant="ghost" size="sm" onClick={fetchOrders}>
           <RefreshCw className="h-4 w-4" />
         </Button>
@@ -697,11 +722,18 @@ export function OrdersHistory() {
         </div>
       )}
 
-      <div className="space-y-3">
-        {orders.map(order => (
-          <OrderCard key={order.id} order={order} onViewDetails={setSelectedOrder} />
-        ))}
-      </div>
+      {filteredOrders.length === 0 ? (
+        <div className="text-center py-12">
+          <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <p className="text-muted-foreground text-sm">{emptyText}</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filteredOrders.map(order => (
+            <OrderCard key={order.id} order={order} onViewDetails={setSelectedOrder} />
+          ))}
+        </div>
+      )}
 
       <OrderDetailsModal order={selectedOrder} onClose={() => setSelectedOrder(null)} />
     </div>

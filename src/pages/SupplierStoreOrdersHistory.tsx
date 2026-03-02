@@ -1,0 +1,77 @@
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { ArrowLeft, Archive, Loader2, Package } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+import { useTelegramAuth } from "@/hooks/useTelegramAuth";
+import { SupplierOrders } from "@/components/supplier/SupplierOrders";
+import { hapticSelection } from "@/lib/haptics";
+
+export default function SupplierStoreOrdersHistory() {
+  const navigate = useNavigate();
+  const { profile } = useTelegramAuth();
+  const [supplierId, setSupplierId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const findSupplier = async () => {
+      setIsLoading(true);
+      try {
+        if (profile?.telegram_id) {
+          const { data } = await supabase
+            .from("suppliers")
+            .select("id")
+            .eq("telegram_id", profile.telegram_id)
+            .limit(1);
+          setSupplierId(data?.[0]?.id || null);
+        }
+      } catch (err) {
+        console.error("Error finding supplier:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    findSupplier();
+  }, [profile?.telegram_id]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!supplierId) {
+    return (
+      <div className="min-h-screen bg-background p-4">
+        <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="mb-4">
+          <ArrowLeft className="h-4 w-4 mr-2" /> Назад
+        </Button>
+        <div className="text-center py-12">
+          <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <p className="text-muted-foreground">Магазин не знайдено</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <div className="sticky top-0 z-40 bg-background/95 backdrop-blur-md border-b border-border px-4 py-3">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={() => { hapticSelection(); navigate(-1); }}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div className="flex items-center gap-2">
+            <Archive className="h-5 w-5 text-muted-foreground" />
+            <h1 className="font-bold text-lg text-foreground">Історія замовлень магазину</h1>
+          </div>
+        </div>
+      </div>
+      <div className="p-4">
+        <SupplierOrders supplierId={supplierId} mode="history" />
+      </div>
+    </div>
+  );
+}

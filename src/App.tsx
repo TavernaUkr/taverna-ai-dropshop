@@ -25,6 +25,8 @@ import PersonalBonuses from "./pages/PersonalBonuses";
 import BonusAccount from "./pages/BonusAccount";
 import StoreManagement from "./pages/StoreManagement";
 import SupplierStoreOrders from "./pages/SupplierStoreOrders";
+import OrdersHistoryPage from "./pages/OrdersHistoryPage";
+import SupplierStoreOrdersHistory from "./pages/SupplierStoreOrdersHistory";
 import SupportChat from "./components/SupportChat";
 import NotFound from "./pages/NotFound";
 
@@ -112,6 +114,8 @@ function AnimatedRoutes() {
             <Route path="/store-management" element={<StoreManagement />} />
             <Route path="/store-management/:supplierId" element={<StoreManagement />} />
             <Route path="/store-orders" element={<SupplierStoreOrders />} />
+            <Route path="/orders-history" element={<OrdersHistoryPage />} />
+            <Route path="/store-orders-history" element={<SupplierStoreOrdersHistory />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
