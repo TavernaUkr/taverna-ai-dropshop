@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_order_reports: {
+        Row: {
+          ai_summary: string | null
+          created_at: string
+          id: string
+          order_id: string | null
+          report_type: string
+          sentiment_score: number | null
+          supplier_id: string | null
+        }
+        Insert: {
+          ai_summary?: string | null
+          created_at?: string
+          id?: string
+          order_id?: string | null
+          report_type?: string
+          sentiment_score?: number | null
+          supplier_id?: string | null
+        }
+        Update: {
+          ai_summary?: string | null
+          created_at?: string
+          id?: string
+          order_id?: string | null
+          report_type?: string
+          sentiment_score?: number | null
+          supplier_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_order_reports_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       app_ratings: {
         Row: {
           comment: string | null
@@ -1242,6 +1280,7 @@ export type Database = {
           id: string
           related_order_id: string | null
           status: string
+          supplier_id: string | null
           type: string
           updated_at: string
           user_id: string
@@ -1251,6 +1290,7 @@ export type Database = {
           id?: string
           related_order_id?: string | null
           status?: string
+          supplier_id?: string | null
           type: string
           updated_at?: string
           user_id: string
@@ -1260,6 +1300,7 @@ export type Database = {
           id?: string
           related_order_id?: string | null
           status?: string
+          supplier_id?: string | null
           type?: string
           updated_at?: string
           user_id?: string

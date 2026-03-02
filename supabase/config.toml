@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.auto-post]
 verify_jwt = false
+
+[functions.ai-order-audit]
+verify_jwt = false

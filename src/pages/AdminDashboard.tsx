@@ -26,7 +26,7 @@ import {
   MessageSquare,
   Trophy,
   UserPlus,
-  Store,
+  Store, FileText,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -51,6 +51,7 @@ import { SupportChatsViewer } from '@/components/admin/SupportChatsViewer';
 import { GiveawaysManager } from '@/components/admin/GiveawaysManager';
 import { AdminStoreManager } from '@/components/admin/AdminStoreManager';
 import { OrdersManager } from '@/components/admin/OrdersManager';
+import { AIOrderReports } from '@/components/admin/AIOrderReports';
 interface SupplierApplication {
   id: string;
   shop_name: string;
@@ -548,6 +549,10 @@ export default function AdminDashboard() {
                 <Brain className="h-4 w-4" />
                 AI
               </TabsTrigger>
+              <TabsTrigger value="ai-reports" className="text-xs px-3 gap-1">
+                <FileText className="h-4 w-4" />
+                Звіти
+              </TabsTrigger>
               <TabsTrigger value="roles" className="text-xs px-3 gap-1">
                 <UserCog className="h-4 w-4" />
                 Ролі
@@ -826,6 +831,11 @@ export default function AdminDashboard() {
           {/* AI Insights Tab */}
           <TabsContent value="ai-insights">
             <AIInsightsDashboard />
+          </TabsContent>
+
+          {/* AI Reports Tab */}
+          <TabsContent value="ai-reports">
+            <AIOrderReports />
           </TabsContent>
 
           {/* Roles Tab */}
