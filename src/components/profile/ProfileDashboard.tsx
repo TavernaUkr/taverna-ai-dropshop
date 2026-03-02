@@ -18,7 +18,6 @@ import {
   MessageSquare,
   MapPin,
   Megaphone,
-  Wallet,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -312,27 +311,6 @@ export const ProfileDashboard = () => {
         </button>
       )}
 
-      {/* Bonus Account Button - Unified hub for all bonus features */}
-      {isAuthenticated && (
-        <button
-          onClick={() => {
-            hapticSelection();
-            navigate("/bonus-account");
-          }}
-          className="w-full flex items-center gap-4 p-4 rounded-xl border transition-all bg-gradient-to-r from-primary/5 via-emerald-500/5 to-amber-500/5 border-primary/20 hover:border-primary hover:from-primary/10 hover:via-emerald-500/10 hover:to-amber-500/10"
-        >
-          <div className="w-12 h-12 rounded-full flex items-center justify-center bg-gradient-to-br from-primary/20 via-emerald-500/20 to-amber-500/20">
-            <Wallet className="h-6 w-6 text-primary" />
-          </div>
-          <div className="flex-1 text-left">
-            <h4 className="font-semibold text-foreground">Бонусний рахунок</h4>
-            <p className="text-xs text-muted-foreground">
-              Реферали, бонуси, акції, рейтингові нагороди
-            </p>
-          </div>
-          <ChevronRight className="h-5 w-5 text-primary" />
-        </button>
-      )}
 
       {/* Tabs - Only show tabs when authenticated (Orders & Settings only) */}
       {isAuthenticated ? (

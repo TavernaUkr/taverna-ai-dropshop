@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { Shield, Shirt, Watch, Footprints, ChevronRight, LogOut, Loader2 } from "lucide-react";
 import { AIChatAssistant } from "@/components/AIChatAssistant";
 import { Header } from "@/components/Header";
@@ -239,12 +239,15 @@ const AccountTab = () => {
 
 const Index = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { isAuthenticated } = useTelegramAuthContext();
-  
-  // Check for tab query param
-  const urlParams = new URLSearchParams(window.location.search);
-  const initialTab = urlParams.get("tab") || "catalog";
-  const [activeTab, setActiveTab] = useState(initialTab);
+
+  const getTabFromSearch = (search: string) => {
+    const tab = new URLSearchParams(search).get("tab");
+    return ["catalog", "live", "ratings", "account"].includes(tab || "") ? tab! : "catalog";
+  };
+
+  const [activeTab, setActiveTab] = useState(() => getTabFromSearch(location.search));
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
@@ -264,6 +267,21 @@ const Index = () => {
   useEffect(() => {
     fetchProducts({ sortBy: 'trending', limit: 20 });
   }, [fetchProducts]);
+
+  useEffect(() => {
+    const tabFromUrl = getTabFromSearch(location.search);
+    if (tabFromUrl !== activeTab) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [location.search, activeTab]);
+
+  const setMainTab = (tab: string) => {
+    setActiveTab(tab);
+    navigate(
+      { pathname: "/", search: tab === "catalog" ? "" : `?tab=${tab}` },
+      { replace: true }
+    );
+  };
 
   const handleSearch = (query: string) => {
     setIsSearchOpen(false);
@@ -294,7 +312,7 @@ const Index = () => {
     setIsCheckoutOpen(false);
     await clearCart();
     await fetchCart();
-    setActiveTab("orders");
+    setMainTab("account");
     toast.success("Дякуємо за замовлення!");
   };
 
@@ -340,7 +358,7 @@ const Index = () => {
     } else if (tab === "support") {
       navigate("/support");
     } else {
-      setActiveTab(tab);
+      setMainTab(tab);
     }
   };
 
@@ -397,7 +415,7 @@ const Index = () => {
         onNotificationsClick={() => toast.info("Сповіщення")}
         onFavoritesClick={() => setIsWishlistOpen(true)}
         onPromoClick={() => navigate("/promos")}
-        onRatingsClick={() => setActiveTab("ratings")}
+        onRatingsClick={() => setMainTab("ratings")}
       />
       
       <main className="px-4 py-4">
