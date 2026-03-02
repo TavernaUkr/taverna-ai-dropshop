@@ -18,6 +18,7 @@ import {
   MessageSquare,
   MapPin,
   Megaphone,
+  Archive,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -349,8 +350,26 @@ export const ProfileDashboard = () => {
           </TabsList>
 
           {/* Orders Tab */}
-          <TabsContent value="orders" className="mt-4">
-            <OrdersHistory />
+          <TabsContent value="orders" className="mt-4 space-y-4">
+            <OrdersHistory mode="active" />
+            
+            {/* History button */}
+            <button
+              onClick={() => {
+                hapticSelection();
+                navigate("/orders-history");
+              }}
+              className="w-full flex items-center gap-4 p-4 rounded-xl border transition-all bg-card border-border hover:border-muted-foreground/50"
+            >
+              <div className="w-10 h-10 rounded-full flex items-center justify-center bg-muted">
+                <Archive className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <div className="flex-1 text-left">
+                <h4 className="font-medium text-foreground">Історія замовлень</h4>
+                <p className="text-xs text-muted-foreground">Завершені, скасовані, обміняні</p>
+              </div>
+              <ChevronRight className="h-5 w-5 text-muted-foreground" />
+            </button>
           </TabsContent>
 
           {/* Settings Tab */}
