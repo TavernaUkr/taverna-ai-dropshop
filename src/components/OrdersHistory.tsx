@@ -19,6 +19,9 @@ const statusConfig: Record<string, { label: string; icon: React.ElementType; col
   processing: { label: 'В обробці', icon: Package, color: 'text-blue-600', bgColor: 'bg-blue-100' },
   shipped: { label: 'Відправлено', icon: Truck, color: 'text-purple-600', bgColor: 'bg-purple-100' },
   delivered: { label: 'Доставлено', icon: CheckCircle2, color: 'text-green-600', bgColor: 'bg-green-100' },
+  received: { label: 'Отримано', icon: CheckCircle2, color: 'text-emerald-600', bgColor: 'bg-emerald-100' },
+  exchange: { label: 'Обмін', icon: RefreshCw, color: 'text-orange-600', bgColor: 'bg-orange-100' },
+  return: { label: 'Повернення', icon: RotateCcw, color: 'text-rose-600', bgColor: 'bg-rose-100' },
   cancelled: { label: 'Скасовано', icon: XCircle, color: 'text-red-600', bgColor: 'bg-red-100' },
 };
 
@@ -92,7 +95,17 @@ function OrderDetailsModal({ order, onClose }: { order: Order | null; onClose: (
   const status = statusConfig[order.status] || statusConfig.pending;
   const StatusIcon = status.icon;
   const isDelivered = order.status === 'delivered';
-  const canReturn = isDelivered && order.total >= 1500;
+  const isReceived = order.status === 'received';
+  const isDeliveredOrReceived = isDelivered || isReceived;
+  
+  // Ukrainian consumer protection law: 14 days for return/exchange from delivery date
+  // Applies to non-food, non-custom items in original condition
+  const deliveryDate = new Date(order.updated_at);
+  const daysSinceDelivery = Math.floor((Date.now() - deliveryDate.getTime()) / (1000 * 60 * 60 * 24));
+  const RETURN_PERIOD_DAYS = 14;
+  const canRequestReturnExchange = isDeliveredOrReceived && daysSinceDelivery <= RETURN_PERIOD_DAYS;
+  const daysLeftForReturn = Math.max(0, RETURN_PERIOD_DAYS - daysSinceDelivery);
+  const canReturn = isDeliveredOrReceived && order.total >= 1500;
 
   const formatDate = (d: string) =>
     new Date(d).toLocaleDateString('uk-UA', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -530,8 +543,8 @@ function OrderDetailsModal({ order, onClose }: { order: Order | null; onClose: (
               <span>Переглянути чек</span>
             </Button>
 
-            {/* Rating - only for delivered orders */}
-            {isDelivered && (
+            {/* Rating - only for delivered/received orders */}
+            {isDeliveredOrReceived && (
               <>
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mt-4">Оцінка</p>
                 <Button variant="outline" className="w-full justify-start gap-3 h-12" onClick={() => setShowRating(true)}>
@@ -541,16 +554,42 @@ function OrderDetailsModal({ order, onClose }: { order: Order | null; onClose: (
               </>
             )}
 
-            {/* Return/Exchange */}
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mt-4">Обмін та повернення</p>
-            <Button variant="outline" className="w-full justify-start gap-3 h-12" onClick={handleShowReturnAddress} disabled={isLoadingAddress}>
-              {isLoadingAddress ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4 text-primary" />}
-              <span>Адреса обміну/повернення</span>
-            </Button>
-            <Button variant="outline" className="w-full justify-start gap-3 h-12" onClick={handleContactManager}>
-              <MessageSquare className="h-4 w-4 text-primary" />
-              <span>Зв'язатись із менеджером</span>
-            </Button>
+            {/* Return/Exchange - only within 14 days per Ukrainian consumer law */}
+            {isDeliveredOrReceived && (
+              <>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mt-4">Обмін та повернення</p>
+                {canRequestReturnExchange ? (
+                  <>
+                    <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 mb-2">
+                      <p className="text-xs text-foreground">
+                        📋 Відповідно до ст. 9 Закону України «Про захист прав споживачів» — обмін/повернення товару належної якості протягом <strong>14 днів</strong> з моменту отримання.
+                      </p>
+                      <p className="text-xs text-primary font-medium mt-1">
+                        ⏳ Залишилось {daysLeftForReturn} {daysLeftForReturn === 1 ? 'день' : daysLeftForReturn < 5 ? 'дні' : 'днів'}
+                      </p>
+                    </div>
+                    <Button variant="outline" className="w-full justify-start gap-3 h-12" onClick={handleShowReturnAddress} disabled={isLoadingAddress}>
+                      {isLoadingAddress ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4 text-orange-500" />}
+                      <span>Подати на обмін</span>
+                    </Button>
+                    <Button variant="outline" className="w-full justify-start gap-3 h-12" onClick={handleShowReturnAddress} disabled={isLoadingAddress}>
+                      {isLoadingAddress ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4 text-rose-500" />}
+                      <span>Подати на повернення</span>
+                    </Button>
+                  </>
+                ) : (
+                  <div className="bg-muted/50 border border-border rounded-xl p-3">
+                    <p className="text-xs text-muted-foreground">
+                      ⏰ Термін обміну/повернення (14 днів) минув. Зверніться до підтримки для індивідуального розгляду.
+                    </p>
+                  </div>
+                )}
+                <Button variant="outline" className="w-full justify-start gap-3 h-12" onClick={handleContactManager}>
+                  <MessageSquare className="h-4 w-4 text-primary" />
+                  <span>Зв'язатись із менеджером</span>
+                </Button>
+              </>
+            )}
 
             {/* Complaint */}
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mt-4">Проблеми</p>
@@ -560,7 +599,7 @@ function OrderDetailsModal({ order, onClose }: { order: Order | null; onClose: (
             </Button>
 
             {/* Reorder */}
-            {(isDelivered || order.status === 'cancelled') && (
+            {(isDeliveredOrReceived || order.status === 'cancelled') && (
               <>
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mt-4">Повторне замовлення</p>
                 <Button variant="outline" className="w-full justify-start gap-3 h-12" onClick={handleReorder}>
@@ -630,6 +669,7 @@ export function OrdersHistory() {
     return (
       <div className="space-y-4 pb-28 animate-fade-in">
         <h2 className="text-lg font-bold text-foreground">Мої Замовлення</h2>
+        <p className="text-sm text-muted-foreground">Історія замовлень</p>
         <div className="flex flex-col items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <p className="text-sm text-muted-foreground mt-4">Завантаження...</p>
@@ -641,7 +681,10 @@ export function OrdersHistory() {
   return (
     <div className="space-y-4 pb-28 animate-fade-in">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold text-foreground">Мої Замовлення</h2>
+        <div>
+          <h2 className="text-lg font-bold text-foreground">Мої Замовлення</h2>
+          <p className="text-sm text-muted-foreground">Історія замовлень</p>
+        </div>
         <Button variant="ghost" size="sm" onClick={fetchOrders}>
           <RefreshCw className="h-4 w-4" />
         </Button>
