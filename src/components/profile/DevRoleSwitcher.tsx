@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Bug, X, Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
-type TestRole = "guest" | "customer" | "supplier" | "moderator" | "admin";
+type TestRole = "guest" | "customer" | "supplier" | "shop_manager" | "moderator" | "admin";
 
 interface DevRoleSwitcherProps {
   currentRole: TestRole;
@@ -91,6 +91,11 @@ export const DevRoleSwitcher = ({ currentRole, onRoleChange, profileId }: DevRol
       color: "bg-primary/10 text-primary",
       description: "Партнер з товарами"
     },
+    shop_manager: { 
+      label: "👔 Менеджер магазину", 
+      color: "bg-teal-500/10 text-teal-500",
+      description: "Замовлення та чат з клієнтами"
+    },
     moderator: { 
       label: "🛡️ Модератор", 
       color: "bg-orange-500/10 text-orange-500",
@@ -168,6 +173,12 @@ export const DevRoleSwitcher = ({ currentRole, onRoleChange, profileId }: DevRol
               <div className="flex flex-col">
                 <span>📦 Постачальник</span>
                 <span className="text-[10px] text-muted-foreground">Партнер з товарами</span>
+              </div>
+            </SelectItem>
+            <SelectItem value="shop_manager">
+              <div className="flex flex-col">
+                <span>👔 Менеджер магазину</span>
+                <span className="text-[10px] text-muted-foreground">Замовлення та чат</span>
               </div>
             </SelectItem>
             <SelectItem value="moderator">

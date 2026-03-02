@@ -1085,6 +1085,45 @@ export type Database = {
           },
         ]
       }
+      shop_manager_links: {
+        Row: {
+          assigned_at: string
+          assigned_by: string | null
+          id: string
+          profile_id: string
+          supplier_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by?: string | null
+          id?: string
+          profile_id: string
+          supplier_id: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string | null
+          id?: string
+          profile_id?: string
+          supplier_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shop_manager_links_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_manager_links_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       supplier_applications: {
         Row: {
           ai_analysis: Json | null
@@ -1209,6 +1248,7 @@ export type Database = {
           shop_photos: string[] | null
           tax_code: string | null
           telegram_channel_url: string | null
+          telegram_forward_enabled: boolean | null
           telegram_id: number | null
           updated_at: string
           website_url: string | null
@@ -1238,6 +1278,7 @@ export type Database = {
           shop_photos?: string[] | null
           tax_code?: string | null
           telegram_channel_url?: string | null
+          telegram_forward_enabled?: boolean | null
           telegram_id?: number | null
           updated_at?: string
           website_url?: string | null
@@ -1267,6 +1308,7 @@ export type Database = {
           shop_photos?: string[] | null
           tax_code?: string | null
           telegram_channel_url?: string | null
+          telegram_forward_enabled?: boolean | null
           telegram_id?: number | null
           updated_at?: string
           website_url?: string | null
@@ -1524,7 +1566,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "moderator" | "supplier" | "customer"
+      app_role: "admin" | "moderator" | "supplier" | "customer" | "shop_manager"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1652,7 +1694,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "moderator", "supplier", "customer"],
+      app_role: ["admin", "moderator", "supplier", "customer", "shop_manager"],
     },
   },
 } as const

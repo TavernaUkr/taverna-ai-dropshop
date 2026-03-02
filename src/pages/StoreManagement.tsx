@@ -45,6 +45,7 @@ interface ShopData {
   return_contact_info: string;
   manager_telegram: string;
   allow_bot_chat: boolean;
+  telegram_forward_enabled: boolean;
 }
 
 interface Review {
@@ -58,14 +59,6 @@ interface Review {
   product?: { name: string };
 }
 
-interface SupportTicket {
-  id: string;
-  type: string;
-  status: string;
-  created_at: string;
-  updated_at: string;
-  messages_count?: number;
-}
 
 export default function StoreManagement() {
   const navigate = useNavigate();
@@ -75,10 +68,11 @@ export default function StoreManagement() {
   const [isSaving, setIsSaving] = useState(false);
   const [supplierId, setSupplierId] = useState<string | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
-  const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
   const [isUploadingCover, setIsUploadingCover] = useState(false);
+  const [managerTelegramId, setManagerTelegramId] = useState("");
+  const [isAssigningManager, setIsAssigningManager] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [newPhotoUrl, setNewPhotoUrl] = useState("");
@@ -102,6 +96,7 @@ export default function StoreManagement() {
     return_contact_info: "",
     manager_telegram: "",
     allow_bot_chat: true,
+    telegram_forward_enabled: false,
   });
 
   useEffect(() => {
@@ -140,9 +135,10 @@ export default function StoreManagement() {
           return_contact_info: s.return_contact_info || "",
           manager_telegram: s.manager_telegram || "",
           allow_bot_chat: s.allow_bot_chat !== false,
+          telegram_forward_enabled: (s as any).telegram_forward_enabled === true,
         });
 
-        await Promise.all([loadReviews(s.id), loadTickets()]);
+        await loadReviews(s.id);
       }
     } catch (err) {
       console.error("Error loading supplier:", err);
@@ -169,30 +165,6 @@ export default function StoreManagement() {
     }
   };
 
-  const loadTickets = async () => {
-    const { data } = await supabase
-      .from("support_tickets")
-      .select("*")
-      .in("type", ["supplier_question", "return_request", "exchange_request"])
-      .order("updated_at", { ascending: false })
-      .limit(30);
-    
-    if (data) {
-      const { data: msgs } = await supabase
-        .from("ticket_messages")
-        .select("ticket_id");
-      
-      const countMap: Record<string, number> = {};
-      (msgs || []).forEach(m => {
-        countMap[m.ticket_id] = (countMap[m.ticket_id] || 0) + 1;
-      });
-
-      setTickets(data.map(t => ({
-        ...t,
-        messages_count: countMap[t.id] || 0,
-      })));
-    }
-  };
 
   const uploadFile = async (file: File, folder: string): Promise<string | null> => {
     try {
@@ -281,6 +253,7 @@ export default function StoreManagement() {
           return_contact_info: shopData.return_contact_info.trim(),
           manager_telegram: shopData.manager_telegram.trim(),
           allow_bot_chat: shopData.allow_bot_chat,
+          telegram_forward_enabled: shopData.telegram_forward_enabled,
           updated_at: new Date().toISOString(),
         } as any)
         .eq("id", supplierId);
@@ -322,23 +295,6 @@ export default function StoreManagement() {
     }
   };
 
-  const handleTicketClick = (ticket: SupportTicket) => {
-    const tg = (window as any).Telegram?.WebApp;
-    if (tg?.showConfirm) {
-      tg.showConfirm(
-        "Де бажаєте вести розмову?",
-        (confirmed: boolean) => {
-          if (confirmed) {
-            navigate(`/support/chat/${ticket.id}`);
-          } else {
-            toast.info("Перейдіть до бота @taverna_support_bot для продовження");
-          }
-        }
-      );
-    } else {
-      navigate(`/support/chat/${ticket.id}`);
-    }
-  };
 
   const handleReplyToReview = async (reviewId: string) => {
     if (!replyText.trim()) return;
@@ -523,7 +479,7 @@ export default function StoreManagement() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={(v) => { hapticSelection(); setActiveTab(v); }}>
-        <TabsList className="w-full grid grid-cols-4 mx-4 mt-3" style={{ width: "calc(100% - 2rem)" }}>
+        <TabsList className="w-full grid grid-cols-3 mx-4 mt-3" style={{ width: "calc(100% - 2rem)" }}>
           <TabsTrigger value="shop" className="text-xs gap-1">
             <Store className="h-3.5 w-3.5" />
             Магазин
@@ -531,10 +487,6 @@ export default function StoreManagement() {
           <TabsTrigger value="reviews" className="text-xs gap-1">
             <Star className="h-3.5 w-3.5" />
             Відгуки
-          </TabsTrigger>
-          <TabsTrigger value="messages" className="text-xs gap-1">
-            <MessageSquare className="h-3.5 w-3.5" />
-            Запити
           </TabsTrigger>
           <TabsTrigger value="policies" className="text-xs gap-1">
             <FileText className="h-3.5 w-3.5" />
@@ -631,8 +583,9 @@ export default function StoreManagement() {
               <CardDescription>Налаштування зв'язку з клієнтами</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Manager Telegram username */}
               <div className="space-y-2">
-                <Label className="text-sm">Telegram менеджера</Label>
+                <Label className="text-sm">Telegram менеджера (нікнейм)</Label>
                 <Input
                   value={shopData.manager_telegram}
                   onChange={e => handleChange("manager_telegram", e.target.value)}
@@ -641,6 +594,79 @@ export default function StoreManagement() {
                 <p className="text-xs text-muted-foreground">
                   Менеджер отримуватиме сповіщення від бота при зверненнях клієнтів та нових замовленнях
                 </p>
+              </div>
+
+              {/* Assign Manager by Telegram ID */}
+              <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <UserCog className="h-4 w-4 text-primary" />
+                  <p className="text-sm font-medium text-foreground">Призначити менеджера магазину</p>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Введіть Telegram ID вашого менеджера. Він отримає роль «Менеджер магазину» і зможе бачити 
+                  «Замовлення магазину» та відповідати клієнтам у додатку.
+                </p>
+                <div className="flex gap-2">
+                  <Input
+                    value={managerTelegramId}
+                    onChange={e => setManagerTelegramId(e.target.value.replace(/\D/g, ""))}
+                    placeholder="Telegram ID (числовий)"
+                    type="text"
+                    inputMode="numeric"
+                    className="flex-1"
+                  />
+                  <Button
+                    size="sm"
+                    disabled={!managerTelegramId.trim() || isAssigningManager}
+                    onClick={async () => {
+                      if (!managerTelegramId.trim() || !supplierId) return;
+                      setIsAssigningManager(true);
+                      try {
+                        // Find profile by telegram_id
+                        const { data: profiles } = await supabase
+                          .from("profiles")
+                          .select("id, first_name, last_name, telegram_id")
+                          .eq("telegram_id", parseInt(managerTelegramId))
+                          .limit(1);
+
+                        if (!profiles?.length) {
+                          toast.error("Користувача з таким Telegram ID не знайдено. Попросіть його спочатку відкрити додаток.");
+                          setIsAssigningManager(false);
+                          return;
+                        }
+
+                        const targetProfile = profiles[0];
+
+                        // Add shop_manager role
+                        await supabase
+                          .from("user_roles")
+                          .upsert(
+                            { user_id: targetProfile.id, role: "shop_manager" as any },
+                            { onConflict: "user_id,role" }
+                          );
+
+                        // Create link
+                        await supabase
+                          .from("shop_manager_links" as any)
+                          .upsert(
+                            { profile_id: targetProfile.id, supplier_id: supplierId, assigned_by: null },
+                            { onConflict: "profile_id,supplier_id" }
+                          );
+
+                        toast.success(
+                          `Менеджера ${targetProfile.first_name || ""} ${targetProfile.last_name || ""} призначено!`
+                        );
+                        setManagerTelegramId("");
+                      } catch (err: any) {
+                        toast.error(err.message || "Помилка призначення");
+                      } finally {
+                        setIsAssigningManager(false);
+                      }
+                    }}
+                  >
+                    {isAssigningManager ? <Loader2 className="h-4 w-4 animate-spin" /> : "Призначити"}
+                  </Button>
+                </div>
               </div>
 
               {/* Bot Communication Toggle */}
@@ -660,60 +686,35 @@ export default function StoreManagement() {
                     onCheckedChange={v => handleChange("allow_bot_chat", v)}
                   />
                 </div>
+              </div>
 
-                {/* Communication Flow Explanation */}
-                <div className="p-4 space-y-3 border-t border-border">
-                  {shopData.allow_bot_chat ? (
-                    <div className="space-y-2">
-                      <div className="flex items-start gap-2">
-                        <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                          <span className="text-xs font-bold text-primary">1</span>
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          Клієнт натискає «Звернутись до продавця» → відкривається чат-бот
-                        </p>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                          <span className="text-xs font-bold text-primary">2</span>
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          Бот анонімно пересилає повідомлення менеджеру ({shopData.manager_telegram || "не вказано"})
-                        </p>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                          <span className="text-xs font-bold text-primary">3</span>
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          Менеджер відповідає через бота або Mini App — клієнт бачить лише ID тікета
-                        </p>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <div className="w-5 h-5 rounded-full bg-warning/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                          <Shield className="h-3 w-3 text-warning" />
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          Якщо спір не вирішено — автоматично залучається модератор платформи
-                        </p>
-                      </div>
+              {/* Telegram Forwarding Toggle */}
+              <div className="rounded-xl border border-border overflow-hidden">
+                <div className="flex items-center justify-between p-4 bg-muted/30">
+                  <div className="flex items-center gap-3">
+                    <MessageSquare className="h-5 w-5 text-primary" />
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Дублювати в Telegram</p>
+                      <p className="text-xs text-muted-foreground">
+                        {shopData.telegram_forward_enabled 
+                          ? "Увімкнено — усі запити/скарги дублюються менеджеру в Telegram" 
+                          : "Вимкнено — усе контролюється лише в додатку"}
+                      </p>
                     </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <div className="flex items-start gap-2 p-3 bg-warning/5 rounded-lg">
-                        <Info className="h-4 w-4 text-warning flex-shrink-0 mt-0.5" />
-                        <div className="space-y-1">
-                          <p className="text-xs font-medium text-foreground">Бот вимкнений — усі звернення обробляє модератор</p>
-                          <p className="text-xs text-muted-foreground">
-                            Клієнти зможуть зв'язатись лише через підтримку платформи. 
-                            Модератор виступатиме посередником у всіх питаннях: повернення, обмін, скарги. 
-                            Ваші контакти залишаються повністю конфіденційними.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                  </div>
+                  <Switch
+                    checked={shopData.telegram_forward_enabled}
+                    onCheckedChange={v => handleChange("telegram_forward_enabled", v)}
+                  />
                 </div>
+                {shopData.telegram_forward_enabled && !shopData.manager_telegram && (
+                  <div className="p-3 border-t border-border bg-warning/5">
+                    <p className="text-xs text-warning flex items-center gap-2">
+                      <AlertTriangle className="h-3.5 w-3.5" />
+                      Вкажіть Telegram нікнейм менеджера для дублювання повідомлень
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Anonymity Notice */}
@@ -721,8 +722,7 @@ export default function StoreManagement() {
                 <Shield className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
                 <p className="text-xs text-muted-foreground">
                   <strong className="text-foreground">Конфіденційність гарантована.</strong> Клієнти ніколи не бачать ваших контактів. 
-                  Уся комунікація проходить через анонімний «Міст» платформи. 
-                  Менеджер бачить лише ID тікета та текст повідомлення.
+                  Уся комунікація проходить через анонімний «Міст» платформи.
                 </p>
               </div>
             </CardContent>
@@ -824,89 +824,8 @@ export default function StoreManagement() {
           </ScrollArea>
         </TabsContent>
 
-        {/* === MESSAGES/TICKETS TAB === */}
-        <TabsContent value="messages" className="p-4 pb-24 space-y-4">
-          <div className="bg-primary/5 border border-primary/20 rounded-xl p-4">
-            <div className="flex items-start gap-3">
-              <Shield className="h-5 w-5 text-primary mt-0.5" />
-              <div>
-                <h4 className="font-semibold text-foreground text-sm">Система «Міст» — Анонімна комунікація</h4>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Клієнт бачить лише ID тікета. Менеджер {shopData.manager_telegram ? `@${shopData.manager_telegram.replace('@', '')}` : '(не призначений)'} отримує сповіщення.
-                  {!shopData.allow_bot_chat && " Бот вимкнений — усі запити обробляє модератор."}
-                </p>
-              </div>
-            </div>
-          </div>
+        {/* Messages tab removed — all communication now through AI bot & Store Orders */}
 
-          {!shopData.manager_telegram && (
-            <div className="bg-warning/10 border border-warning/30 rounded-xl p-3">
-              <p className="text-xs text-warning flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4" />
-                Призначте менеджера у вкладці «Магазин» → «Менеджер та комунікація»
-              </p>
-            </div>
-          )}
-
-          <ScrollArea className="h-[400px]">
-            <div className="space-y-3 pr-2">
-              {tickets.length === 0 ? (
-                <div className="text-center py-12">
-                  <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-                  <p className="text-muted-foreground">Немає звернень</p>
-                </div>
-              ) : tickets.map(ticket => (
-                <Card 
-                  key={ticket.id} 
-                  className="cursor-pointer hover:border-primary/50 transition-colors"
-                  onClick={() => handleTicketClick(ticket)}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className={cn(
-                          "w-10 h-10 rounded-full flex items-center justify-center",
-                          ticket.type === "return_request" ? "bg-destructive/10" :
-                          ticket.type === "exchange_request" ? "bg-warning/10" : "bg-primary/10"
-                        )}>
-                          {ticket.type === "return_request" ? (
-                            <RotateCcw className="h-5 w-5 text-destructive" />
-                          ) : ticket.type === "exchange_request" ? (
-                            <AlertTriangle className="h-5 w-5 text-warning" />
-                          ) : (
-                            <MessageSquare className="h-5 w-5 text-primary" />
-                          )}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium text-sm text-foreground">
-                              {ticket.type === "return_request" ? "Повернення" :
-                               ticket.type === "exchange_request" ? "Обмін" : "Запитання"}
-                            </p>
-                            <Badge variant={ticket.status === "open" ? "default" : "secondary"} className="text-xs">
-                              {ticket.status === "open" ? "Відкритий" : "Закритий"}
-                            </Badge>
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            {ticket.messages_count || 0} повідомлень • {new Date(ticket.updated_at).toLocaleDateString("uk-UA")}
-                          </p>
-                          {shopData.manager_telegram && (
-                            <p className="text-xs text-primary mt-0.5">
-                              Менеджер: @{shopData.manager_telegram.replace('@', '')}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </ScrollArea>
-        </TabsContent>
-
-        {/* === POLICIES TAB === */}
         <TabsContent value="policies" className="p-4 pb-24 space-y-5">
           {/* Shipping Schedule */}
           <Card>
