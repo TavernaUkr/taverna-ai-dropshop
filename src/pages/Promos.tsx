@@ -111,7 +111,7 @@ export const Promos = () => {
   };
 
   const handleBack = () => {
-    navigate("/");
+    navigate(-1);
   };
 
   const formatDate = (date: Date) => {
