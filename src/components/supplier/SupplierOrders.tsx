@@ -61,6 +61,14 @@ export function SupplierOrders({ supplierId, mode = "active" }: SupplierOrdersPr
   const fetchOrders = async () => {
     setIsLoading(true);
     try {
+      // Demo/fallback mode - use mock data directly
+      if (supplierId === "demo") {
+        setOrders(MOCK_ORDERS.map(o => ({ ...o, customer_name: o.delivery_address.recipient_name })));
+        setUseMockData(true);
+        setIsLoading(false);
+        return;
+      }
+
       const { data: supplierProducts } = await supabase
         .from("products")
         .select("id")
