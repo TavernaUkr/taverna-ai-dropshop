@@ -1,9 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { 
   Package, Truck, CheckCircle2, Clock, XCircle, ChevronRight, 
   Loader2, MapPin, RefreshCw, RotateCcw, MessageSquare, 
-  Star, Flag, FileText, Receipt, Copy, ShoppingCart
+  Star, Flag, FileText, Receipt, Copy, ShoppingCart, CalendarIcon, Sparkles
 } from 'lucide-react';
+import { format } from 'date-fns';
+import { uk } from 'date-fns/locale';
+import { Calendar } from './ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { cn } from '@/lib/utils';
 import { useTelegramAuthContext } from './TelegramAuthProvider';
 import { supabase } from '@/integrations/supabase/client';
@@ -35,8 +39,17 @@ function OrderCard({ order, onViewDetails }: { order: Order; onViewDetails: (o: 
   const itemsPreview = order.items.slice(0, 3);
   const moreItemsCount = order.items.length - 3;
 
+  const isNew = order.status === 'pending';
+
   return (
-    <button onClick={() => onViewDetails(order)} className="w-full bg-card rounded-xl border border-border p-4 hover:shadow-md transition-all text-left">
+    <button onClick={() => onViewDetails(order)} className="w-full bg-card rounded-xl border border-border p-4 hover:shadow-md transition-all text-left relative">
+      {isNew && (
+        <div className="absolute -top-2 -right-2 z-10">
+          <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary text-primary-foreground shadow-sm">
+            <Sparkles className="h-3 w-3" /> Нове
+          </span>
+        </div>
+      )}
       <div className="flex items-center justify-between mb-3">
         <div>
           <span className="font-semibold text-foreground">{order.order_number}</span>
@@ -685,9 +698,21 @@ export function OrdersHistory({ mode = 'active' }: OrdersHistoryProps) {
     fetchOrders();
   }, [isAuthenticated, sessionToken]);
 
-  const filteredOrders = orders.filter(o => 
-    mode === 'history' ? isArchivedOrder(o) : !isArchivedOrder(o)
-  );
+  const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
+
+  const filteredOrders = useMemo(() => {
+    let result = orders.filter(o => 
+      mode === 'history' ? isArchivedOrder(o) : !isArchivedOrder(o)
+    );
+    // Sort newest first
+    result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    // Calendar filter (history only)
+    if (mode === 'history' && dateFilter) {
+      const filterDay = format(dateFilter, 'yyyy-MM-dd');
+      result = result.filter(o => format(new Date(o.created_at), 'yyyy-MM-dd') === filterDay);
+    }
+    return result;
+  }, [orders, mode, dateFilter]);
 
   const title = mode === 'history' ? 'Історія замовлень' : 'Мої Замовлення';
   const emptyText = mode === 'history' 
@@ -719,6 +744,32 @@ export function OrdersHistory({ mode = 'active' }: OrdersHistoryProps) {
         <div className="bg-warning/10 border border-warning/30 rounded-xl p-3 flex items-center gap-2">
           <Package className="h-4 w-4 text-warning flex-shrink-0" />
           <p className="text-xs text-foreground">Тестові замовлення для перегляду функціоналу</p>
+        </div>
+      )}
+
+      {mode === 'history' && (
+        <div className="flex items-center gap-2">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2">
+                <CalendarIcon className="h-4 w-4" />
+                {dateFilter ? format(dateFilter, 'dd MMM yyyy', { locale: uk }) : 'Фільтр за датою'}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={dateFilter}
+                onSelect={setDateFilter}
+                className="p-3 pointer-events-auto"
+              />
+            </PopoverContent>
+          </Popover>
+          {dateFilter && (
+            <Button variant="ghost" size="sm" onClick={() => setDateFilter(undefined)}>
+              Скинути
+            </Button>
+          )}
         </div>
       )}
 

@@ -42,19 +42,7 @@ export default function SupplierStoreOrdersHistory() {
     );
   }
 
-  if (!supplierId) {
-    return (
-      <div className="min-h-screen bg-background p-4">
-        <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="mb-4">
-          <ArrowLeft className="h-4 w-4 mr-2" /> Назад
-        </Button>
-        <div className="text-center py-12">
-          <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <p className="text-muted-foreground">Магазин не знайдено</p>
-        </div>
-      </div>
-    );
-  }
+  const effectiveSupplierId = supplierId || "demo";
 
   return (
     <div className="min-h-screen bg-background">
@@ -70,7 +58,7 @@ export default function SupplierStoreOrdersHistory() {
         </div>
       </div>
       <div className="p-4">
-        <SupplierOrders supplierId={supplierId} mode="history" />
+        <SupplierOrders supplierId={effectiveSupplierId} mode="history" />
       </div>
     </div>
   );

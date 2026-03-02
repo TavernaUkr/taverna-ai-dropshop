@@ -1,9 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Package, Loader2, Truck, Clock, CheckCircle2, XCircle, ChevronRight,
-  RefreshCw, RotateCcw, Eye, Archive, Copy, MapPin, MessageSquare
+  RefreshCw, RotateCcw, Eye, Archive, Copy, MapPin, MessageSquare, CalendarIcon, Sparkles
 } from "lucide-react";
+import { format } from "date-fns";
+import { uk } from "date-fns/locale";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -206,9 +210,21 @@ export function SupplierOrders({ supplierId, mode = "active" }: SupplierOrdersPr
     }
   };
 
-  const filteredOrders = orders.filter(o =>
-    mode === "history" ? isArchivedOrder(o) : !isArchivedOrder(o)
-  );
+  const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
+
+  const filteredOrders = useMemo(() => {
+    let result = orders.filter(o =>
+      mode === "history" ? isArchivedOrder(o) : !isArchivedOrder(o)
+    );
+    // Sort newest first
+    result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    // Calendar filter (history only)
+    if (mode === "history" && dateFilter) {
+      const filterDay = format(dateFilter, "yyyy-MM-dd");
+      result = result.filter(o => format(new Date(o.created_at), "yyyy-MM-dd") === filterDay);
+    }
+    return result;
+  }, [orders, mode, dateFilter]);
 
   const formatDate = (d: string) =>
     new Date(d).toLocaleDateString("uk-UA", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -245,6 +261,32 @@ export function SupplierOrders({ supplierId, mode = "active" }: SupplierOrdersPr
         </div>
       )}
 
+      {mode === "history" && (
+        <div className="flex items-center gap-2">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2">
+                <CalendarIcon className="h-4 w-4" />
+                {dateFilter ? format(dateFilter, "dd MMM yyyy", { locale: uk }) : "Фільтр за датою"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={dateFilter}
+                onSelect={setDateFilter}
+                className="p-3 pointer-events-auto"
+              />
+            </PopoverContent>
+          </Popover>
+          {dateFilter && (
+            <Button variant="ghost" size="sm" onClick={() => setDateFilter(undefined)}>
+              Скинути
+            </Button>
+          )}
+        </div>
+      )}
+
       <ScrollArea className="h-[calc(100vh-380px)]">
         <div className="space-y-3 pr-2">
           {filteredOrders.length === 0 ? (
@@ -265,10 +307,17 @@ export function SupplierOrders({ supplierId, mode = "active" }: SupplierOrdersPr
                 }}>
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="font-semibold text-sm text-foreground">{order.order_number}</span>
-                      <div className={cn("flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium", status.bgColor, status.color)}>
+                  <span className="font-semibold text-sm text-foreground">{order.order_number}</span>
+                      <div className="flex items-center gap-1.5">
+                        {order.status === "pending" && (
+                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-primary text-primary-foreground">
+                            <Sparkles className="h-2.5 w-2.5" /> Нове
+                          </span>
+                        )}
+                        <div className={cn("flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium", status.bgColor, status.color)}>
                         <StatusIcon className="h-3 w-3" />
                         {status.label}
+                        </div>
                       </div>
                     </div>
                     <div className="flex items-center justify-between text-sm text-muted-foreground mb-2">
