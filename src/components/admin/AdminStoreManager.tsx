@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Store, Settings, ChevronRight, Loader2, UserPlus, Send,
-  Shield, Eye, Edit3, ArrowRightLeft, X, Bot, Check, Package
+  Store, Settings, Loader2, UserPlus, Send, Shield, Eye, ArrowRightLeft,
+  Bot, Package, Crown, AlertTriangle, Users
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { hapticSelection } from "@/lib/haptics";
+import { useTelegramAuthContext } from "@/components/TelegramAuthProvider";
 
 interface AdminSupplier {
   id: string;
@@ -37,8 +37,9 @@ interface AdminSupplier {
   product_count?: number;
 }
 
-export function AdminStoreManager({ filter = 'all' }: { filter?: 'all' | 'partners' }) {
+export function AdminStoreManager({ filter = 'all' }: { filter?: 'all' | 'partners' | 'my' }) {
   const navigate = useNavigate();
+  const { realProfile } = useTelegramAuthContext();
   const [suppliers, setSuppliers] = useState<AdminSupplier[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [transferDialog, setTransferDialog] = useState<{ supplier: AdminSupplier } | null>(null);
@@ -50,37 +51,55 @@ export function AdminStoreManager({ filter = 'all' }: { filter?: 'all' | 'partne
 
   useEffect(() => {
     fetchSuppliers();
-  }, [filter]);
+  }, [filter, realProfile?.id]);
 
   const fetchSuppliers = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("suppliers")
-        .select("id, shop_name, company_name, contact_name, is_active, markup_percentage, created_at, logo_url, cover_image_url, manager_telegram, allow_bot_chat, tax_code, xml_url, description")
-        .order("created_at", { ascending: false });
+      let allSuppliers: AdminSupplier[] = [];
 
-      if (error) throw error;
-      
-      // Fetch product counts
-      const supplierIds = (data || []).map(s => s.id);
-      const { data: products } = await supabase
-        .from("products")
-        .select("supplier_id")
-        .in("supplier_id", supplierIds);
-
-      const countMap: Record<string, number> = {};
-      (products || []).forEach(p => {
-        if (p.supplier_id) countMap[p.supplier_id] = (countMap[p.supplier_id] || 0) + 1;
-      });
-
-      let allSuppliers = (data || []).map(s => ({ ...s, product_count: countMap[s.id] || 0 })) as AdminSupplier[];
-      
-      // Filter for partners: suppliers that have a real manager_telegram assigned (not admin-managed)
-      if (filter === 'partners') {
-        allSuppliers = allSuppliers.filter(s => s.manager_telegram && s.manager_telegram.trim() !== '' && !s.manager_telegram.startsWith('@tg_admin'));
+      if (filter === 'my') {
+        // "Мої магазини": stores without manager_telegram (admin-managed, created by admin)
+        const { data, error } = await supabase
+          .from("suppliers")
+          .select("id, shop_name, company_name, contact_name, is_active, markup_percentage, created_at, logo_url, cover_image_url, manager_telegram, allow_bot_chat, tax_code, xml_url, description")
+          .is("manager_telegram", null)
+          .order("created_at", { ascending: false });
+        if (error) throw error;
+        allSuppliers = data || [];
+      } else if (filter === 'partners') {
+        // "Партнери": stores that have a real owner (manager_telegram is set)
+        const { data, error } = await supabase
+          .from("suppliers")
+          .select("id, shop_name, company_name, contact_name, is_active, markup_percentage, created_at, logo_url, cover_image_url, manager_telegram, allow_bot_chat, tax_code, xml_url, description")
+          .not("manager_telegram", "is", null)
+          .order("created_at", { ascending: false });
+        if (error) throw error;
+        allSuppliers = data || [];
+      } else {
+        // "Усі магазини": all stores
+        const { data, error } = await supabase
+          .from("suppliers")
+          .select("id, shop_name, company_name, contact_name, is_active, markup_percentage, created_at, logo_url, cover_image_url, manager_telegram, allow_bot_chat, tax_code, xml_url, description")
+          .order("created_at", { ascending: false });
+        if (error) throw error;
+        allSuppliers = data || [];
       }
-      
+
+      // Fetch product counts
+      const supplierIds = allSuppliers.map(s => s.id);
+      if (supplierIds.length > 0) {
+        const { data: products } = await supabase
+          .from("products")
+          .select("supplier_id")
+          .in("supplier_id", supplierIds);
+        const countMap: Record<string, number> = {};
+        (products || []).forEach(p => {
+          if (p.supplier_id) countMap[p.supplier_id] = (countMap[p.supplier_id] || 0) + 1;
+        });
+        allSuppliers = allSuppliers.map(s => ({ ...s, product_count: countMap[s.id] || 0 }));
+      }
+
       setSuppliers(allSuppliers);
     } catch (err) {
       console.error("Error fetching suppliers:", err);
@@ -98,7 +117,6 @@ export function AdminStoreManager({ filter = 'all' }: { filter?: 'all' | 'partne
 
     setIsTransferring(true);
     try {
-      // Find user by telegram_id in profiles
       const { data: profiles } = await supabase
         .from("profiles")
         .select("id, telegram_id, first_name, last_name")
@@ -106,9 +124,7 @@ export function AdminStoreManager({ filter = 'all' }: { filter?: 'all' | 'partne
         .limit(1);
 
       if (!profiles?.length) {
-        toast.error(
-          "Користувача з таким Telegram ID не знайдено. Попросіть його спочатку відкрити додаток через Telegram."
-        );
+        toast.error("Користувача з таким Telegram ID не знайдено. Попросіть його спочатку відкрити додаток.");
         setIsTransferring(false);
         return;
       }
@@ -116,18 +132,14 @@ export function AdminStoreManager({ filter = 'all' }: { filter?: 'all' | 'partne
       const targetProfile = profiles[0];
 
       // Add supplier role to user
-      const { error: roleError } = await supabase
+      await supabase
         .from("user_roles")
         .upsert(
           { user_id: targetProfile.id, role: "supplier" as any },
           { onConflict: "user_id,role" }
         );
 
-      if (roleError && roleError.code !== "23505") {
-        throw roleError;
-      }
-
-      // Update supplier manager_telegram and link
+      // Update supplier: set manager_telegram to mark as transferred
       await supabase
         .from("suppliers")
         .update({
@@ -136,8 +148,25 @@ export function AdminStoreManager({ filter = 'all' }: { filter?: 'all' | 'partne
         } as any)
         .eq("id", transferDialog.supplier.id);
 
+      // Remove admin's shop_manager_link for this store (admin loses management)
+      if (realProfile?.id) {
+        await supabase
+          .from("shop_manager_links")
+          .delete()
+          .eq("supplier_id", transferDialog.supplier.id)
+          .eq("profile_id", realProfile.id);
+      }
+
+      // Create shop_manager_link for new owner
+      await supabase
+        .from("shop_manager_links")
+        .upsert(
+          { supplier_id: transferDialog.supplier.id, profile_id: targetProfile.id, assigned_by: realProfile?.id || null },
+          { onConflict: "supplier_id,profile_id" } as any
+        );
+
       toast.success(
-        `Магазин "${transferDialog.supplier.shop_name}" передано користувачу ${targetProfile.first_name || ""} ${targetProfile.last_name || ""} (TG ID: ${transferTelegramId})`
+        `Магазин "${transferDialog.supplier.shop_name}" передано користувачу ${targetProfile.first_name || ""} ${targetProfile.last_name || ""}`
       );
 
       setTransferDialog(null);
@@ -158,11 +187,10 @@ export function AdminStoreManager({ filter = 'all' }: { filter?: 'all' | 'partne
       const { error } = await supabase
         .from("suppliers")
         .update({
-          manager_telegram: managerTelegram.trim(),
+          manager_telegram: managerTelegram.trim() || null,
           updated_at: new Date().toISOString(),
         } as any)
         .eq("id", editManagerDialog.supplier.id);
-
       if (error) throw error;
       toast.success("Менеджера оновлено");
       setEditManagerDialog(null);
@@ -180,7 +208,6 @@ export function AdminStoreManager({ filter = 'all' }: { filter?: 'all' | 'partne
         .from("suppliers")
         .update({ is_active: !supplier.is_active } as any)
         .eq("id", supplier.id);
-
       if (error) throw error;
       toast.success(supplier.is_active ? "Магазин деактивовано" : "Магазин активовано");
       fetchSuppliers();
@@ -197,37 +224,28 @@ export function AdminStoreManager({ filter = 'all' }: { filter?: 'all' | 'partne
     );
   }
 
+  const isMyStores = filter === 'my';
+  const isPartners = filter === 'partners';
+
+  const infoText = isMyStores
+    ? "Магазини, які ви створили через «+ Додати». Ви маєте повний контроль: налаштування, товари, замовлення. Якщо менеджер не призначений — замовлення приходять вам."
+    : isPartners
+    ? "Магазини, якими керують партнери (зареєструвались самі або отримали від вас право власності). Ви можете лише активувати/деактивувати їх."
+    : "Всі магазини платформи. Тут ви бачите повну картину.";
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          {suppliers.length} магазинів зареєстровано
-        </p>
+        <p className="text-sm text-muted-foreground">{suppliers.length} магазинів</p>
       </div>
 
-      {/* Instructions */}
       <Card className="border-primary/20 bg-primary/5">
-        <CardContent className="p-4">
-          <div className="flex items-start gap-3">
-            <Shield className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
-            <div className="space-y-1">
-              <p className="text-sm font-medium text-foreground">Керування магазинами</p>
-              <p className="text-xs text-muted-foreground">
-                Тут ви можете керувати всіма магазинами платформи: призначати менеджерів, 
-                передавати право власності реальним постачальникам через Telegram ID, 
-                та активувати/деактивувати магазини.
-              </p>
-              <div className="mt-2 space-y-1">
-                <p className="text-xs text-muted-foreground">
-                  <strong>Передача магазину:</strong> Натисніть «Передати» → введіть Telegram ID нового власника → 
-                  йому буде автоматично надано роль «supplier» та доступ до панелі партнера.
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  <strong>Менеджер:</strong> Telegram нікнейм менеджера, який отримуватиме сповіщення від бота 
-                  про нові замовлення та звернення клієнтів.
-                </p>
-              </div>
-            </div>
+        <CardContent className="p-3">
+          <div className="flex items-start gap-2">
+            {isMyStores ? <Crown className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" /> :
+             isPartners ? <Users className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" /> :
+             <Shield className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />}
+            <p className="text-xs text-muted-foreground">{infoText}</p>
           </div>
         </CardContent>
       </Card>
@@ -237,15 +255,18 @@ export function AdminStoreManager({ filter = 'all' }: { filter?: 'all' | 'partne
           {suppliers.length === 0 ? (
             <div className="text-center py-12">
               <Store className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">Немає зареєстрованих магазинів</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Зареєструйте постачальника у вкладці «Реєстрація»
+              <p className="text-muted-foreground">
+                {isMyStores ? "У вас немає власних магазинів" : isPartners ? "Немає партнерських магазинів" : "Немає магазинів"}
               </p>
+              {isMyStores && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Створіть магазин через вкладку «+ Додати»
+                </p>
+              )}
             </div>
           ) : (
             suppliers.map((supplier) => (
               <Card key={supplier.id} className="overflow-hidden">
-                {/* Mini cover */}
                 {supplier.cover_image_url && (
                   <div className="h-16 w-full overflow-hidden">
                     <img src={supplier.cover_image_url} alt="" className="w-full h-full object-cover" />
@@ -262,14 +283,12 @@ export function AdminStoreManager({ filter = 'all' }: { filter?: 'all' | 'partne
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <h3 className="font-semibold text-foreground truncate">{supplier.shop_name}</h3>
+                        {isMyStores && <Crown className="h-3.5 w-3.5 text-warning flex-shrink-0" />}
                         <Badge variant={supplier.is_active ? "default" : "secondary"} className="text-xs flex-shrink-0">
                           {supplier.is_active ? "Активний" : "Неактивний"}
                         </Badge>
                       </div>
                       <p className="text-xs text-muted-foreground truncate">{supplier.company_name}</p>
-                      {supplier.tax_code && (
-                        <p className="text-xs text-muted-foreground">ЄДРПОУ: {supplier.tax_code}</p>
-                      )}
                       <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                         <span>Націнка: {supplier.markup_percentage || 33}%</span>
                         <span className="flex items-center gap-1">
@@ -290,48 +309,51 @@ export function AdminStoreManager({ filter = 'all' }: { filter?: 'all' | 'partne
                     />
                   </div>
 
-                    {/* Actions */}
-                    <div className="flex gap-2 mt-3 pt-3 border-t border-border">
-                      <Button
-                        variant="default"
-                        size="sm"
-                        className="flex-1 gap-1.5 text-xs"
-                        onClick={() => navigate(`/store-management/${supplier.id}`)}
-                      >
-                        <Settings className="h-3.5 w-3.5" />
-                        Керувати
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="gap-1.5 text-xs"
-                        onClick={() => {
-                          setEditManagerDialog({ supplier });
-                          setManagerTelegram(supplier.manager_telegram || "");
-                        }}
-                      >
-                        <UserPlus className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="gap-1.5 text-xs"
-                        onClick={() => {
-                          setTransferDialog({ supplier });
-                          setTransferTelegramId("");
-                        }}
-                      >
-                        <ArrowRightLeft className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="gap-1.5 text-xs"
-                        onClick={() => navigate(`/supplier/${supplier.id}`)}
-                      >
-                        <Eye className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
+                  {/* Actions differ by filter */}
+                  <div className="flex gap-2 mt-3 pt-3 border-t border-border">
+                    {isMyStores ? (
+                      <>
+                        <Button variant="default" size="sm" className="flex-1 gap-1.5 text-xs"
+                          onClick={() => navigate(`/store-management/${supplier.id}`)}>
+                          <Settings className="h-3.5 w-3.5" /> Керувати
+                        </Button>
+                        <Button variant="outline" size="sm" className="gap-1.5 text-xs"
+                          onClick={() => { setEditManagerDialog({ supplier }); setManagerTelegram(supplier.manager_telegram || ""); }}>
+                          <UserPlus className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="outline" size="sm" className="gap-1.5 text-xs"
+                          onClick={() => { setTransferDialog({ supplier }); setTransferTelegramId(""); }}>
+                          <ArrowRightLeft className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="gap-1.5 text-xs"
+                          onClick={() => navigate(`/supplier/${supplier.id}`)}>
+                          <Eye className="h-3.5 w-3.5" />
+                        </Button>
+                      </>
+                    ) : isPartners ? (
+                      <>
+                        <Button variant="ghost" size="sm" className="flex-1 gap-1.5 text-xs"
+                          onClick={() => navigate(`/supplier/${supplier.id}`)}>
+                          <Eye className="h-3.5 w-3.5" /> Переглянути
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button variant="default" size="sm" className="flex-1 gap-1.5 text-xs"
+                          onClick={() => navigate(`/store-management/${supplier.id}`)}>
+                          <Settings className="h-3.5 w-3.5" /> Керувати
+                        </Button>
+                        <Button variant="outline" size="sm" className="gap-1.5 text-xs"
+                          onClick={() => { setTransferDialog({ supplier }); setTransferTelegramId(""); }}>
+                          <ArrowRightLeft className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="gap-1.5 text-xs"
+                          onClick={() => navigate(`/supplier/${supplier.id}`)}>
+                          <Eye className="h-3.5 w-3.5" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             ))
@@ -348,19 +370,28 @@ export function AdminStoreManager({ filter = 'all' }: { filter?: 'all' | 'partne
               Передача магазину
             </DialogTitle>
             <DialogDescription>
-              Передайте право власності магазину «{transferDialog?.supplier.shop_name}» 
-              реальному постачальнику через його Telegram ID.
+              Передайте право власності магазину «{transferDialog?.supplier.shop_name}» іншому користувачу.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
-            <div className="p-3 bg-warning/10 border border-warning/30 rounded-lg">
-              <p className="text-xs text-foreground font-medium mb-1">Як отримати Telegram ID?</p>
+            <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-lg">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-xs font-medium text-destructive">Увага! Ця дія незворотна</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Після передачі ви втратите право керування цим магазином. 
+                    Новий власник отримає повний контроль.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-3 bg-muted/50 rounded-lg">
               <p className="text-xs text-muted-foreground">
-                1. Попросіть менеджера магазину відкрити нашого бота (@taverna_ukr_bot)<br />
-                2. Бот автоматично запропонує «Передати Telegram ID для авторизації»<br />
-                3. Менеджер отримає свій ID та зможе повідомити його вам<br />
-                4. Введіть ID нижче та натисніть «Передати»
+                <strong>Як отримати Telegram ID:</strong><br />
+                Попросіть нового власника відкрити бота @taverna_ukr_bot — він отримає свій ID.
               </p>
             </div>
 
@@ -373,39 +404,29 @@ export function AdminStoreManager({ filter = 'all' }: { filter?: 'all' | 'partne
                 type="text"
                 inputMode="numeric"
               />
-              <p className="text-xs text-muted-foreground">
-                Користувач автоматично отримає роль «supplier» і доступ до панелі партнера та керування магазином.
-              </p>
             </div>
 
             <div className="p-3 bg-primary/5 rounded-lg">
-              <p className="text-xs text-muted-foreground">
-                <strong>Що відбудеться:</strong>
-              </p>
+              <p className="text-xs text-muted-foreground"><strong>Що відбудеться:</strong></p>
               <ul className="text-xs text-muted-foreground mt-1 space-y-0.5 list-disc pl-4">
-                <li>Користувачу буде надано роль «supplier»</li>
-                <li>Менеджер магазину буде оновлено</li>
-                <li>Новий власник побачить магазин у «Керування магазином»</li>
-                <li>Ви залишите доступ як адмін</li>
+                <li>Новому власнику надається роль «supplier»</li>
+                <li>Магазин переходить до розділу «Партнери»</li>
+                <li>Ви втрачаєте право керування цим магазином</li>
+                <li>Новий власник зможе призначати свого менеджера</li>
               </ul>
             </div>
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setTransferDialog(null)}>
-              Скасувати
-            </Button>
+            <Button variant="outline" onClick={() => setTransferDialog(null)}>Скасувати</Button>
             <Button
+              variant="destructive"
               onClick={handleTransferOwnership}
               disabled={isTransferring || !transferTelegramId.trim()}
               className="gap-2"
             >
-              {isTransferring ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-              Передати магазин
+              {isTransferring ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              Передати назавжди
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -420,28 +441,27 @@ export function AdminStoreManager({ filter = 'all' }: { filter?: 'all' | 'partne
               Менеджер магазину
             </DialogTitle>
             <DialogDescription>
-              Призначте менеджера для «{editManagerDialog?.supplier.shop_name}» — 
-              він отримуватиме сповіщення про замовлення та звернення через бота.
+              Вкажіть Telegram нікнейм менеджера для «{editManagerDialog?.supplier.shop_name}». 
+              Менеджер отримуватиме сповіщення про замовлення.
             </DialogDescription>
           </DialogHeader>
-
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Telegram нікнейм менеджера</Label>
+              <Label>Telegram менеджера</Label>
               <Input
                 value={managerTelegram}
                 onChange={e => setManagerTelegram(e.target.value)}
-                placeholder="@manager_username"
+                placeholder="@username"
               />
+              <p className="text-xs text-muted-foreground">
+                Залиште порожнім — замовлення будуть приходити вам в адмін-панель.
+              </p>
             </div>
           </div>
-
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditManagerDialog(null)}>
-              Скасувати
-            </Button>
+            <Button variant="outline" onClick={() => setEditManagerDialog(null)}>Скасувати</Button>
             <Button onClick={handleSaveManager} disabled={isSavingManager} className="gap-2">
-              {isSavingManager ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+              {isSavingManager ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               Зберегти
             </Button>
           </DialogFooter>
