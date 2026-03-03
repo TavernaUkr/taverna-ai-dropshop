@@ -37,10 +37,14 @@ interface AdminSupplier {
   product_count?: number;
 }
 
+const isUuid = (value: string | null | undefined) =>
+  !!value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+
 export function AdminStoreManager({ filter = 'all' }: { filter?: 'all' | 'partners' | 'my' }) {
   const navigate = useNavigate();
-  const { realProfile } = useTelegramAuthContext();
+  const { realProfile, profile, effectiveRole } = useTelegramAuthContext();
   const [suppliers, setSuppliers] = useState<AdminSupplier[]>([]);
+  const [mySupplierIds, setMySupplierIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [transferDialog, setTransferDialog] = useState<{ supplier: AdminSupplier } | null>(null);
   const [transferTelegramId, setTransferTelegramId] = useState("");
@@ -49,61 +53,69 @@ export function AdminStoreManager({ filter = 'all' }: { filter?: 'all' | 'partne
   const [managerTelegram, setManagerTelegram] = useState("");
   const [isSavingManager, setIsSavingManager] = useState(false);
 
+  const currentProfileId = realProfile?.id ?? (typeof profile?.id === 'string' ? profile.id : null);
+
   useEffect(() => {
     fetchSuppliers();
-  }, [filter, realProfile?.id]);
+  }, [filter, currentProfileId, effectiveRole]);
 
   const fetchSuppliers = async () => {
     setIsLoading(true);
     try {
-      let allSuppliers: AdminSupplier[] = [];
+      const { data: allRows, error } = await supabase
+        .from("suppliers")
+        .select("id, shop_name, company_name, contact_name, is_active, markup_percentage, created_at, logo_url, cover_image_url, manager_telegram, allow_bot_chat, tax_code, xml_url, description")
+        .order("created_at", { ascending: false });
 
-      if (filter === 'my') {
-        // "Мої магазини": stores without manager_telegram (admin-managed, created by admin)
-        const { data, error } = await supabase
-          .from("suppliers")
-          .select("id, shop_name, company_name, contact_name, is_active, markup_percentage, created_at, logo_url, cover_image_url, manager_telegram, allow_bot_chat, tax_code, xml_url, description")
-          .is("manager_telegram", null)
-          .order("created_at", { ascending: false });
-        if (error) throw error;
-        allSuppliers = data || [];
-      } else if (filter === 'partners') {
-        // "Партнери": stores that have a real owner (manager_telegram is set)
-        const { data, error } = await supabase
-          .from("suppliers")
-          .select("id, shop_name, company_name, contact_name, is_active, markup_percentage, created_at, logo_url, cover_image_url, manager_telegram, allow_bot_chat, tax_code, xml_url, description")
-          .not("manager_telegram", "is", null)
-          .order("created_at", { ascending: false });
-        if (error) throw error;
-        allSuppliers = data || [];
-      } else {
-        // "Усі магазини": all stores
-        const { data, error } = await supabase
-          .from("suppliers")
-          .select("id, shop_name, company_name, contact_name, is_active, markup_percentage, created_at, logo_url, cover_image_url, manager_telegram, allow_bot_chat, tax_code, xml_url, description")
-          .order("created_at", { ascending: false });
-        if (error) throw error;
-        allSuppliers = data || [];
+      if (error) throw error;
+
+      let allSuppliers: AdminSupplier[] = allRows || [];
+      const myIdsSet = new Set<string>();
+
+      if (isUuid(currentProfileId)) {
+        const { data: links } = await supabase
+          .from("shop_manager_links")
+          .select("supplier_id")
+          .eq("profile_id", currentProfileId);
+
+        (links || []).forEach((link) => myIdsSet.add(link.supplier_id));
       }
 
-      // Fetch product counts
-      const supplierIds = allSuppliers.map(s => s.id);
+      if (effectiveRole === 'admin') {
+        allSuppliers
+          .filter((supplier) => !supplier.manager_telegram)
+          .forEach((supplier) => myIdsSet.add(supplier.id));
+      }
+
+      const myIds = Array.from(myIdsSet);
+      setMySupplierIds(myIds);
+
+      const filteredSuppliers = allSuppliers.filter((supplier) => {
+        if (filter === 'my') return myIdsSet.has(supplier.id);
+        if (filter === 'partners') return !myIdsSet.has(supplier.id);
+        return true;
+      });
+
+      const supplierIds = filteredSuppliers.map((s) => s.id);
       if (supplierIds.length > 0) {
         const { data: products } = await supabase
           .from("products")
           .select("supplier_id")
           .in("supplier_id", supplierIds);
-        const countMap: Record<string, number> = {};
-        (products || []).forEach(p => {
-          if (p.supplier_id) countMap[p.supplier_id] = (countMap[p.supplier_id] || 0) + 1;
-        });
-        allSuppliers = allSuppliers.map(s => ({ ...s, product_count: countMap[s.id] || 0 }));
-      }
 
-      setSuppliers(allSuppliers);
+        const countMap: Record<string, number> = {};
+        (products || []).forEach((product) => {
+          if (product.supplier_id) countMap[product.supplier_id] = (countMap[product.supplier_id] || 0) + 1;
+        });
+
+        setSuppliers(filteredSuppliers.map((supplier) => ({ ...supplier, product_count: countMap[supplier.id] || 0 })));
+      } else {
+        setSuppliers([]);
+      }
     } catch (err) {
       console.error("Error fetching suppliers:", err);
       toast.error("Помилка завантаження магазинів");
+      setSuppliers([]);
     } finally {
       setIsLoading(false);
     }
@@ -228,10 +240,10 @@ export function AdminStoreManager({ filter = 'all' }: { filter?: 'all' | 'partne
   const isPartners = filter === 'partners';
 
   const infoText = isMyStores
-    ? "Магазини, які ви створили через «+ Додати». Ви маєте повний контроль: налаштування, товари, замовлення. Якщо менеджер не призначений — замовлення приходять вам."
+    ? "Магазини, які ви додали через «+ Додати» або закріплені за вами. Ви маєте повний контроль: налаштування, товари, замовлення."
     : isPartners
-    ? "Магазини, якими керують партнери (зареєструвались самі або отримали від вас право власності). Ви можете лише активувати/деактивувати їх."
-    : "Всі магазини платформи. Тут ви бачите повну картину.";
+    ? "Партнерські магазини (самореєстрація або передані права). Доступ лише для перегляду та активації/деактивації."
+    : "Всі магазини платформи. Повне керування доступне лише для ваших магазинів.";
 
   return (
     <div className="space-y-4">
@@ -311,48 +323,39 @@ export function AdminStoreManager({ filter = 'all' }: { filter?: 'all' | 'partne
 
                   {/* Actions differ by filter */}
                   <div className="flex gap-2 mt-3 pt-3 border-t border-border">
-                    {isMyStores ? (
-                      <>
-                        <Button variant="default" size="sm" className="flex-1 gap-1.5 text-xs"
-                          onClick={() => navigate(`/store-management/${supplier.id}`)}>
-                          <Settings className="h-3.5 w-3.5" /> Керувати
-                        </Button>
-                        <Button variant="outline" size="sm" className="gap-1.5 text-xs"
-                          onClick={() => { setEditManagerDialog({ supplier }); setManagerTelegram(supplier.manager_telegram || ""); }}>
-                          <UserPlus className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button variant="outline" size="sm" className="gap-1.5 text-xs"
-                          onClick={() => { setTransferDialog({ supplier }); setTransferTelegramId(""); }}>
-                          <ArrowRightLeft className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button variant="ghost" size="sm" className="gap-1.5 text-xs"
-                          onClick={() => navigate(`/supplier/${supplier.id}`)}>
-                          <Eye className="h-3.5 w-3.5" />
-                        </Button>
-                      </>
-                    ) : isPartners ? (
-                      <>
+                    {(() => {
+                      const isMine = mySupplierIds.includes(supplier.id);
+
+                      if (isMyStores || (filter === 'all' && isMine)) {
+                        return (
+                          <>
+                            <Button variant="default" size="sm" className="flex-1 gap-1.5 text-xs"
+                              onClick={() => navigate(`/store-management/${supplier.id}`)}>
+                              <Settings className="h-3.5 w-3.5" /> Керувати
+                            </Button>
+                            <Button variant="outline" size="sm" className="gap-1.5 text-xs"
+                              onClick={() => { setEditManagerDialog({ supplier }); setManagerTelegram(supplier.manager_telegram || ""); }}>
+                              <UserPlus className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="outline" size="sm" className="gap-1.5 text-xs"
+                              onClick={() => { setTransferDialog({ supplier }); setTransferTelegramId(""); }}>
+                              <ArrowRightLeft className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="sm" className="gap-1.5 text-xs"
+                              onClick={() => navigate(`/supplier/${supplier.id}`)}>
+                              <Eye className="h-3.5 w-3.5" />
+                            </Button>
+                          </>
+                        );
+                      }
+
+                      return (
                         <Button variant="ghost" size="sm" className="flex-1 gap-1.5 text-xs"
                           onClick={() => navigate(`/supplier/${supplier.id}`)}>
                           <Eye className="h-3.5 w-3.5" /> Переглянути
                         </Button>
-                      </>
-                    ) : (
-                      <>
-                        <Button variant="default" size="sm" className="flex-1 gap-1.5 text-xs"
-                          onClick={() => navigate(`/store-management/${supplier.id}`)}>
-                          <Settings className="h-3.5 w-3.5" /> Керувати
-                        </Button>
-                        <Button variant="outline" size="sm" className="gap-1.5 text-xs"
-                          onClick={() => { setTransferDialog({ supplier }); setTransferTelegramId(""); }}>
-                          <ArrowRightLeft className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button variant="ghost" size="sm" className="gap-1.5 text-xs"
-                          onClick={() => navigate(`/supplier/${supplier.id}`)}>
-                          <Eye className="h-3.5 w-3.5" />
-                        </Button>
-                      </>
-                    )}
+                      );
+                    })()}
                   </div>
                 </CardContent>
               </Card>

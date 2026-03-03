@@ -62,7 +62,7 @@ interface OrderStats {
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
-  const { isLoading: authLoading, rolesLoading, isAuthenticated, roles, sessionToken } = useTelegramAuthContext();
+  const { isLoading: authLoading, rolesLoading, isAuthenticated, effectiveRole, sessionToken } = useTelegramAuthContext();
   const [activeTab, setActiveTab] = useState('orders');
   const [applications, setApplications] = useState<SupplierApplication[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -80,7 +80,7 @@ export default function AdminDashboard() {
   const [storesSubTab, setStoresSubTab] = useState<'all' | 'partners' | 'my' | 'add'>('all');
   const [ordersSubTab, setOrdersSubTab] = useState<'all' | 'my_stores'>('all');
 
-  const isAdmin = isAuthenticated && roles.includes('admin');
+  const isAdmin = isAuthenticated && effectiveRole === 'admin';
 
   useEffect(() => {
     if (isAdmin) {
