@@ -6,17 +6,14 @@ import {
   Check,
   X,
   Loader2,
-  TrendingUp,
   DollarSign,
   ShoppingCart,
   Package,
-  Clock,
   Eye,
   ChevronDown,
   ChevronUp,
   Shield,
   UserCog,
-  Megaphone,
   AlertTriangle,
   RefreshCw,
   Crown,
@@ -25,8 +22,8 @@ import {
   Brain,
   MessageSquare,
   Trophy,
-  UserPlus,
-  Store, FileText,
+  Store,
+  Megaphone,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -35,7 +32,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
@@ -52,7 +48,7 @@ import { GiveawaysManager } from '@/components/admin/GiveawaysManager';
 import { AdminStoreManager } from '@/components/admin/AdminStoreManager';
 import { OrdersManager } from '@/components/admin/OrdersManager';
 import { AIOrderReports } from '@/components/admin/AIOrderReports';
-import { AdminStoreOrders } from '@/components/admin/AdminStoreOrders';
+
 interface SupplierApplication {
   id: string;
   shop_name: string;
@@ -79,6 +75,7 @@ interface OrderStats {
   totalMargin: number;
   pendingOrders: number;
   openTickets: number;
+  suppliersCount: number;
 }
 
 interface UserWithRole {
@@ -86,16 +83,6 @@ interface UserWithRole {
   first_name: string | null;
   last_name: string | null;
   roles: string[];
-}
-
-interface Supplier {
-  id: string;
-  shop_name: string;
-  company_name: string;
-  contact_name: string;
-  is_active: boolean;
-  markup_percentage: number | null;
-  created_at: string;
 }
 
 export default function AdminDashboard() {
@@ -106,9 +93,8 @@ export default function AdminDashboard() {
     isAuthenticated,
     roles,
     sessionToken,
-    realProfile,
   } = useTelegramAuthContext();
-  const [activeTab, setActiveTab] = useState('moderation');
+  const [activeTab, setActiveTab] = useState('orders');
   const [applications, setApplications] = useState<SupplierApplication[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
@@ -117,25 +103,25 @@ export default function AdminDashboard() {
   const [customMarkup, setCustomMarkup] = useState<Record<string, number>>({});
   const [selectedRole, setSelectedRole] = useState<Record<string, string>>({});
   const [orderStats, setOrderStats] = useState<OrderStats>({
-    totalOrders: 0,
-    totalRevenue: 0,
-    totalMargin: 0,
-    pendingOrders: 0,
-    openTickets: 0,
+    totalOrders: 0, totalRevenue: 0, totalMargin: 0,
+    pendingOrders: 0, openTickets: 0, suppliersCount: 0,
   });
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [usersWithRoles, setUsersWithRoles] = useState<UserWithRole[]>([]);
   const [newUserSearch, setNewUserSearch] = useState('');
   const [searchResults, setSearchResults] = useState<UserWithRole[]>([]);
+  // Sub-tab for marketing
+  const [marketingSubTab, setMarketingSubTab] = useState<'promos' | 'bonuses' | 'giveaways'>('promos');
+  // Sub-tab for analytics
+  const [analyticsSubTab, setAnalyticsSubTab] = useState<'insights' | 'reports'>('insights');
+  // Show registration form in stores tab
+  const [showRegForm, setShowRegForm] = useState(false);
 
   const isAdmin = isAuthenticated && roles.includes('admin');
 
-  // Fetch data
   useEffect(() => {
     if (isAdmin) {
       fetchApplications();
       fetchOrderStats();
-      fetchSuppliers();
       fetchUsersWithRoles();
     }
   }, [isAdmin]);
@@ -148,12 +134,10 @@ export default function AdminDashboard() {
         .select('*')
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
-
       if (error) throw error;
       setApplications(data || []);
     } catch (err) {
       console.error('Error fetching applications:', err);
-      toast.error('Помилка завантаження заявок');
     } finally {
       setIsLoading(false);
     }
@@ -161,234 +145,136 @@ export default function AdminDashboard() {
 
   const fetchOrderStats = async () => {
     try {
-      const [ordersResult, ticketsResult] = await Promise.all([
+      const [ordersResult, ticketsResult, suppliersResult] = await Promise.all([
         supabase.from('orders').select('id, total, subtotal, status'),
         supabase.from('support_tickets').select('id').eq('status', 'open'),
+        supabase.from('suppliers').select('id'),
       ]);
-
       const orders = ordersResult.data || [];
       const tickets = ticketsResult.data || [];
-
-      const stats: OrderStats = {
+      const totalRevenue = orders.reduce((sum, o) => sum + (o.total || 0), 0);
+      setOrderStats({
         totalOrders: orders.length,
-        totalRevenue: orders.reduce((sum, o) => sum + (o.total || 0), 0),
-        totalMargin: 0,
-        pendingOrders: orders.filter((o) => o.status === 'pending').length,
+        totalRevenue,
+        totalMargin: Math.round(totalRevenue * 0.2),
+        pendingOrders: orders.filter(o => o.status === 'pending').length,
         openTickets: tickets.length,
-      };
-
-      stats.totalMargin = Math.round(stats.totalRevenue * 0.2);
-      setOrderStats(stats);
+        suppliersCount: (suppliersResult.data || []).length,
+      });
     } catch (err) {
-      console.error('Error fetching order stats:', err);
-    }
-  };
-
-  const fetchSuppliers = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('suppliers')
-        .select('id, shop_name, company_name, contact_name, is_active, markup_percentage, created_at')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setSuppliers(data || []);
-    } catch (err) {
-      console.error('Error fetching suppliers:', err);
+      console.error('Error fetching stats:', err);
     }
   };
 
   const fetchUsersWithRoles = async () => {
     try {
-      const { data: profiles, error: profilesError } = await supabase
+      const { data: profiles } = await supabase
         .from('profiles_safe' as any)
         .select('id, first_name, last_name')
         .limit(100);
-
-      if (profilesError) throw profilesError;
-
-      const { data: roles, error: rolesError } = await supabase
+      const { data: rolesData } = await supabase
         .from('user_roles')
         .select('user_id, role');
-
-      if (rolesError) throw rolesError;
-
-      const usersWithRolesList: UserWithRole[] = ((profiles || []) as any[]).map((p: any) => ({
+      const list: UserWithRole[] = ((profiles || []) as any[]).map((p: any) => ({
         ...p,
-        roles: (roles || [])
-          .filter(r => r.user_id === p.id)
-          .map(r => r.role),
+        roles: (rolesData || []).filter(r => r.user_id === p.id).map(r => r.role),
       }));
-
-      const usersWithAnyRole = usersWithRolesList.filter(u => u.roles.length > 0);
-      setUsersWithRoles(usersWithAnyRole);
+      setUsersWithRoles(list.filter(u => u.roles.length > 0));
     } catch (err) {
-      console.error('Error fetching users with roles:', err);
+      console.error('Error fetching users:', err);
     }
   };
 
   const searchUsers = async (query: string) => {
-    if (!query.trim()) {
-      setSearchResults([]);
-      return;
-    }
-
+    if (!query.trim()) { setSearchResults([]); return; }
     try {
       const { data: profiles } = await supabase
         .from('profiles_safe' as any)
         .select('id, first_name, last_name')
         .or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%`)
         .limit(10);
-
-      const { data: roles } = await supabase.from('user_roles').select('user_id, role');
-
-      const results: UserWithRole[] = ((profiles || []) as any[]).map((p: any) => ({
+      const { data: rolesData } = await supabase.from('user_roles').select('user_id, role');
+      setSearchResults(((profiles || []) as any[]).map((p: any) => ({
         ...p,
-        roles: (roles || []).filter(r => r.user_id === p.id).map(r => r.role),
-      }));
-
-      setSearchResults(results);
+        roles: (rolesData || []).filter(r => r.user_id === p.id).map(r => r.role),
+      })));
     } catch (err) {
-      console.error('Error searching users:', err);
+      console.error('Error searching:', err);
     }
   };
 
-  const handleApprove = async (application: SupplierApplication, assignRole: string = 'supplier') => {
-    setProcessingId(application.id);
+  const handleApprove = async (app: SupplierApplication, assignRole: string = 'supplier') => {
+    setProcessingId(app.id);
     try {
-      const markup = customMarkup[application.id] || 33;
-
-      const { data, error } = await supabase.functions.invoke('process-supplier-application', {
-        body: {
-          application_id: application.id,
-          action: 'approve',
-          markup_percentage: markup,
-          session_token: sessionToken,
-          assign_role: assignRole,
-        },
+      const markup = customMarkup[app.id] || 33;
+      const { error } = await supabase.functions.invoke('process-supplier-application', {
+        body: { application_id: app.id, action: 'approve', markup_percentage: markup, session_token: sessionToken, assign_role: assignRole },
       });
-
       if (error) throw error;
-
-      toast.success(`Постачальника "${application.shop_name}" схвалено з роллю ${assignRole}!`);
-      setApplications((prev) => prev.filter((a) => a.id !== application.id));
-      fetchSuppliers();
+      toast.success(`"${app.shop_name}" схвалено!`);
+      setApplications(prev => prev.filter(a => a.id !== app.id));
+      fetchOrderStats();
       fetchUsersWithRoles();
     } catch (err) {
-      console.error('Error approving application:', err);
-      toast.error('Помилка схвалення заявки');
+      toast.error('Помилка схвалення');
     } finally {
       setProcessingId(null);
     }
   };
 
-  const handleReject = async (application: SupplierApplication) => {
-    if (!rejectionReason.trim()) {
-      toast.error('Вкажіть причину відхилення');
-      return;
-    }
-
-    setProcessingId(application.id);
+  const handleReject = async (app: SupplierApplication) => {
+    if (!rejectionReason.trim()) { toast.error('Вкажіть причину'); return; }
+    setProcessingId(app.id);
     try {
       const { error } = await supabase
         .from('supplier_applications')
-        .update({
-          status: 'rejected',
-          rejection_reason: rejectionReason,
-          reviewed_at: new Date().toISOString(),
-        })
-        .eq('id', application.id);
-
+        .update({ status: 'rejected', rejection_reason: rejectionReason, reviewed_at: new Date().toISOString() })
+        .eq('id', app.id);
       if (error) throw error;
-
       toast.success('Заявку відхилено');
-      setApplications((prev) => prev.filter((a) => a.id !== application.id));
+      setApplications(prev => prev.filter(a => a.id !== app.id));
       setRejectionReason('');
       setExpandedId(null);
     } catch (err) {
-      console.error('Error rejecting application:', err);
-      toast.error('Помилка відхилення заявки');
+      toast.error('Помилка відхилення');
     } finally {
       setProcessingId(null);
     }
   };
 
-  const handleToggleSupplierStatus = async (supplierId: string, isActive: boolean) => {
+  const handleAddRole = async (userId: string, role: string) => {
+    type AppRole = "admin" | "moderator" | "supplier" | "customer" | "shop_manager";
     try {
-      const { error } = await supabase
-        .from('suppliers')
-        .update({ is_active: !isActive })
-        .eq('id', supplierId);
-
-      if (error) throw error;
-      
-      toast.success(isActive ? 'Постачальника деактивовано' : 'Постачальника активовано');
-      fetchSuppliers();
-    } catch (err) {
-      console.error('Error toggling supplier status:', err);
-      toast.error('Помилка зміни статусу');
-    }
-  };
-
-  const handleAddRole = async (userId: string, role: 'admin' | 'moderator' | 'supplier' | 'customer') => {
-    try {
-      const { error } = await supabase
-        .from('user_roles')
-        .insert({ user_id: userId, role: role as any });
-
+      const { error } = await supabase.from('user_roles').insert({ user_id: userId, role: role as AppRole });
       if (error) {
-        if (error.code === '23505') {
-          toast.error('Користувач вже має цю роль');
-          return;
-        }
+        if (error.code === '23505') { toast.error('Вже має цю роль'); return; }
         throw error;
       }
-
       toast.success(`Роль "${role}" додано`);
       fetchUsersWithRoles();
       setSearchResults([]);
       setNewUserSearch('');
     } catch (err) {
-      console.error('Error adding role:', err);
-      toast.error('Помилка додавання ролі');
+      toast.error('Помилка');
     }
   };
 
-  const handleRemoveRole = async (userId: string, role: 'admin' | 'moderator' | 'supplier' | 'customer') => {
+  const handleRemoveRole = async (userId: string, role: string) => {
+    type AppRole = "admin" | "moderator" | "supplier" | "customer" | "shop_manager";
     try {
-      const { error } = await supabase
-        .from('user_roles')
-        .delete()
-        .eq('user_id', userId)
-        .eq('role', role);
-
+      const { error } = await supabase.from('user_roles').delete().eq('user_id', userId).eq('role', role as AppRole);
       if (error) throw error;
-
       toast.success(`Роль "${role}" видалено`);
       fetchUsersWithRoles();
     } catch (err) {
-      console.error('Error removing role:', err);
       toast.error('Помилка видалення ролі');
     }
   };
 
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('uk-UA', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
+  const formatDate = (d: string) => new Date(d).toLocaleDateString('uk-UA', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
-  // Access denied screen
   if (authLoading || rolesLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
 
   if (!isAuthenticated || !isAdmin) {
@@ -399,12 +285,8 @@ export default function AdminDashboard() {
             <Shield className="h-8 w-8 text-destructive" />
           </div>
           <h1 className="text-xl font-bold text-foreground">Доступ заборонено</h1>
-          <p className="text-muted-foreground">
-            Ця сторінка доступна лише адміністраторам
-          </p>
-          <Button onClick={() => navigate('/')}>
-            На головну
-          </Button>
+          <p className="text-muted-foreground">Ця сторінка доступна лише адміністраторам</p>
+          <Button onClick={() => navigate('/')}>На головну</Button>
         </div>
       </div>
     );
@@ -424,14 +306,11 @@ export default function AdminDashboard() {
                 <Crown className="h-5 w-5 text-warning" />
                 Адмін-панель
               </h1>
-              <p className="text-xs text-muted-foreground">Повний контроль платформи Taverna</p>
+              <p className="text-xs text-muted-foreground">Taverna · Повний контроль</p>
             </div>
           </div>
           <Button variant="outline" size="sm" onClick={() => {
-            fetchApplications();
-            fetchSuppliers();
-            fetchUsersWithRoles();
-            fetchOrderStats();
+            fetchApplications(); fetchOrderStats(); fetchUsersWithRoles();
             toast.success('Дані оновлено');
           }}>
             <RefreshCw className="h-4 w-4" />
@@ -440,143 +319,130 @@ export default function AdminDashboard() {
       </div>
 
       {/* Stats Cards */}
-      <div className="p-4 grid grid-cols-2 gap-3">
+      <div className="p-4 grid grid-cols-3 gap-2">
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                <ShoppingCart className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-foreground">{orderStats.totalOrders}</p>
-                <p className="text-xs text-muted-foreground">Замовлень</p>
-              </div>
-            </div>
+          <CardContent className="p-3 text-center">
+            <ShoppingCart className="h-4 w-4 text-primary mx-auto mb-1" />
+            <p className="text-xl font-bold text-foreground">{orderStats.totalOrders}</p>
+            <p className="text-[10px] text-muted-foreground">Замовлень</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
-                <DollarSign className="h-5 w-5 text-green-500" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-foreground">
-                  {orderStats.totalMargin.toLocaleString()} ₴
-                </p>
-                <p className="text-xs text-muted-foreground">Прибуток</p>
-              </div>
-            </div>
+          <CardContent className="p-3 text-center">
+            <DollarSign className="h-4 w-4 text-green-500 mx-auto mb-1" />
+            <p className="text-xl font-bold text-foreground">{orderStats.totalMargin.toLocaleString()}₴</p>
+            <p className="text-[10px] text-muted-foreground">Прибуток</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
-                <MessageSquare className="h-5 w-5 text-blue-500" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-foreground">{orderStats.openTickets}</p>
-                <p className="text-xs text-muted-foreground">Тікетів</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center">
-                <Package className="h-5 w-5 text-amber-500" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-foreground">{suppliers.length}</p>
-                <p className="text-xs text-muted-foreground">Партнерів</p>
-              </div>
-            </div>
+          <CardContent className="p-3 text-center">
+            <Store className="h-4 w-4 text-amber-500 mx-auto mb-1" />
+            <p className="text-xl font-bold text-foreground">{orderStats.suppliersCount}</p>
+            <p className="text-[10px] text-muted-foreground">Магазинів</p>
           </CardContent>
         </Card>
       </div>
 
+      {/* Alert badges */}
+      <div className="px-4 flex gap-2 flex-wrap">
+        {orderStats.pendingOrders > 0 && (
+          <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/30 gap-1">
+            <Package className="h-3 w-3" /> {orderStats.pendingOrders} нових замовлень
+          </Badge>
+        )}
+        {orderStats.openTickets > 0 && (
+          <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-500/30 gap-1">
+            <MessageSquare className="h-3 w-3" /> {orderStats.openTickets} тікетів
+          </Badge>
+        )}
+        {applications.length > 0 && (
+          <Badge variant="outline" className="bg-red-500/10 text-red-600 border-red-500/30 gap-1">
+            <Users className="h-3 w-3" /> {applications.length} заявок
+          </Badge>
+        )}
+      </div>
+
       {/* Tabs */}
       <div className="p-4">
-        <Tabs value={activeTab} onValueChange={(value) => {
-          hapticSelection();
-          setActiveTab(value);
-        }}>
+        <Tabs value={activeTab} onValueChange={(v) => { hapticSelection(); setActiveTab(v); }}>
           <ScrollArea className="w-full pb-2">
             <TabsList className="w-max flex gap-1 mb-4">
               <TabsTrigger value="orders" className="text-xs px-3 gap-1">
-                <ShoppingCart className="h-4 w-4" />
+                <ShoppingCart className="h-3.5 w-3.5" />
                 Замовлення
               </TabsTrigger>
-              <TabsTrigger value="store-orders" className="text-xs px-3 gap-1">
-                <Store className="h-4 w-4" />
-                Мої магазини
-              </TabsTrigger>
-              <TabsTrigger value="moderation" className="text-xs px-3 gap-1">
-                <Users className="h-4 w-4" />
-                Заявки
-                {applications.length > 0 && (
-                  <Badge variant="destructive" className="ml-1 h-4 px-1 text-[10px]">
-                    {applications.length}
-                  </Badge>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="suppliers" className="text-xs px-3 gap-1">
-                <Package className="h-4 w-4" />
-                Партнери
-              </TabsTrigger>
               <TabsTrigger value="stores" className="text-xs px-3 gap-1">
-                <Store className="h-4 w-4" />
+                <Store className="h-3.5 w-3.5" />
                 Магазини
               </TabsTrigger>
-              <TabsTrigger value="register" className="text-xs px-3 gap-1">
-                <UserPlus className="h-4 w-4" />
-                Реєстрація
+              <TabsTrigger value="applications" className="text-xs px-3 gap-1">
+                <Users className="h-3.5 w-3.5" />
+                Заявки
+                {applications.length > 0 && (
+                  <Badge variant="destructive" className="ml-1 h-4 px-1 text-[10px]">{applications.length}</Badge>
+                )}
               </TabsTrigger>
-              <TabsTrigger value="chats" className="text-xs px-3 gap-1">
-                <MessageSquare className="h-4 w-4" />
-                Чати
+              <TabsTrigger value="support" className="text-xs px-3 gap-1">
+                <MessageSquare className="h-3.5 w-3.5" />
+                Підтримка
               </TabsTrigger>
-              <TabsTrigger value="giveaways" className="text-xs px-3 gap-1">
-                <Trophy className="h-4 w-4" />
-                Розіграші
+              <TabsTrigger value="marketing" className="text-xs px-3 gap-1">
+                <Megaphone className="h-3.5 w-3.5" />
+                Маркетинг
               </TabsTrigger>
-              <TabsTrigger value="promos" className="text-xs px-3 gap-1">
-                <Tag className="h-4 w-4" />
-                Промо
-              </TabsTrigger>
-              <TabsTrigger value="bonuses" className="text-xs px-3 gap-1">
-                <Gift className="h-4 w-4" />
-                Бонуси
-              </TabsTrigger>
-              <TabsTrigger value="ai-insights" className="text-xs px-3 gap-1">
-                <Brain className="h-4 w-4" />
-                AI
-              </TabsTrigger>
-              <TabsTrigger value="ai-reports" className="text-xs px-3 gap-1">
-                <FileText className="h-4 w-4" />
-                Звіти
+              <TabsTrigger value="analytics" className="text-xs px-3 gap-1">
+                <Brain className="h-3.5 w-3.5" />
+                Аналітика
               </TabsTrigger>
               <TabsTrigger value="roles" className="text-xs px-3 gap-1">
-                <UserCog className="h-4 w-4" />
+                <UserCog className="h-3.5 w-3.5" />
                 Ролі
               </TabsTrigger>
             </TabsList>
           </ScrollArea>
 
-          {/* Orders Tab */}
+          {/* === ЗАМОВЛЕННЯ === */}
           <TabsContent value="orders">
             <OrdersManager />
           </TabsContent>
 
-          {/* Admin Store Orders Tab */}
-          <TabsContent value="store-orders">
-            <AdminStoreOrders />
+          {/* === МАГАЗИНИ (merged: stores + partners + registration) === */}
+          <TabsContent value="stores">
+            <div className="space-y-3">
+              <div className="flex gap-2">
+                <Button
+                  variant={showRegForm ? "outline" : "default"}
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => setShowRegForm(false)}
+                >
+                  <Store className="h-3.5 w-3.5" />
+                  Усі магазини
+                </Button>
+                <Button
+                  variant={showRegForm ? "default" : "outline"}
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => setShowRegForm(true)}
+                >
+                  <Package className="h-3.5 w-3.5" />
+                  + Додати магазин
+                </Button>
+              </div>
+              {showRegForm ? (
+                <ScrollArea className="h-[calc(100vh-420px)]">
+                  <div className="pr-4">
+                    <ManualSupplierForm onSuccess={() => { setShowRegForm(false); fetchOrderStats(); }} />
+                  </div>
+                </ScrollArea>
+              ) : (
+                <AdminStoreManager />
+              )}
+            </div>
           </TabsContent>
 
-          {/* Moderation Tab */}
-          <TabsContent value="moderation">
+          {/* === ЗАЯВКИ === */}
+          <TabsContent value="applications">
             <ScrollArea className="h-[calc(100vh-380px)]">
               <div className="space-y-4 pr-4">
                 {isLoading ? (
@@ -589,9 +455,7 @@ export default function AdminDashboard() {
                       <Users className="h-8 w-8 text-muted-foreground" />
                     </div>
                     <p className="font-medium text-foreground">Немає нових заявок</p>
-                    <p className="text-sm text-muted-foreground">
-                      Всі заявки на реєстрацію оброблені
-                    </p>
+                    <p className="text-sm text-muted-foreground">Всі заявки оброблені</p>
                   </div>
                 ) : (
                   applications.map((app) => (
@@ -640,11 +504,7 @@ export default function AdminDashboard() {
                         >
                           <Eye className="h-4 w-4" />
                           {expandedId === app.id ? 'Згорнути' : 'Детальніше'}
-                          {expandedId === app.id ? (
-                            <ChevronUp className="h-4 w-4" />
-                          ) : (
-                            <ChevronDown className="h-4 w-4" />
-                          )}
+                          {expandedId === app.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                         </button>
 
                         {expandedId === app.id && (
@@ -676,46 +536,30 @@ export default function AdminDashboard() {
                                 <span className="text-sm text-muted-foreground">Категорії:</span>
                                 <div className="flex flex-wrap gap-1 mt-1">
                                   {app.suggested_categories.map((cat, i) => (
-                                    <Badge key={i} variant="outline" className="text-xs">
-                                      {cat}
-                                    </Badge>
+                                    <Badge key={i} variant="outline" className="text-xs">{cat}</Badge>
                                   ))}
                                 </div>
                               </div>
                             )}
-                            <p className="text-xs text-muted-foreground">
-                              Заявка від: {formatDate(app.created_at)}
-                            </p>
+                            <p className="text-xs text-muted-foreground">Заявка від: {formatDate(app.created_at)}</p>
 
                             <div className="space-y-2">
                               <Label className="text-sm">Націнка (%)</Label>
                               <Input
-                                type="number"
-                                min={20}
-                                max={50}
+                                type="number" min={20} max={50}
                                 value={customMarkup[app.id] || 33}
-                                onChange={(e) =>
-                                  setCustomMarkup((prev) => ({
-                                    ...prev,
-                                    [app.id]: parseInt(e.target.value) || 33,
-                                  }))
-                                }
+                                onChange={e => setCustomMarkup(prev => ({ ...prev, [app.id]: parseInt(e.target.value) || 33 }))}
                                 className="w-24"
                               />
                             </div>
 
                             <div className="space-y-2">
-                              <Label className="text-sm">Призначити роль при схваленні</Label>
-                              <Select
-                                value={selectedRole[app.id] || 'supplier'}
-                                onValueChange={(value) => setSelectedRole(prev => ({ ...prev, [app.id]: value }))}
-                              >
-                                <SelectTrigger className="w-full">
-                                  <SelectValue placeholder="Оберіть роль" />
-                                </SelectTrigger>
+                              <Label className="text-sm">Роль при схваленні</Label>
+                              <Select value={selectedRole[app.id] || 'supplier'} onValueChange={v => setSelectedRole(prev => ({ ...prev, [app.id]: v }))}>
+                                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="supplier">Постачальник (supplier)</SelectItem>
-                                  <SelectItem value="moderator">Модератор (moderator)</SelectItem>
+                                  <SelectItem value="supplier">Постачальник</SelectItem>
+                                  <SelectItem value="moderator">Модератор</SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>
@@ -724,8 +568,8 @@ export default function AdminDashboard() {
                               <Label className="text-sm">Причина відхилення</Label>
                               <Textarea
                                 value={rejectionReason}
-                                onChange={(e) => setRejectionReason(e.target.value)}
-                                placeholder="Вкажіть причину відхилення..."
+                                onChange={e => setRejectionReason(e.target.value)}
+                                placeholder="Вкажіть причину..."
                                 rows={2}
                               />
                             </div>
@@ -733,27 +577,12 @@ export default function AdminDashboard() {
                         )}
 
                         <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="flex-1"
-                            onClick={() => handleReject(app)}
-                            disabled={processingId === app.id}
-                          >
+                          <Button variant="outline" size="sm" className="flex-1" onClick={() => handleReject(app)} disabled={processingId === app.id}>
                             <X className="h-4 w-4 mr-1 text-destructive" />
                             Відхилити
                           </Button>
-                          <Button
-                            size="sm"
-                            className="flex-1"
-                            onClick={() => handleApprove(app, selectedRole[app.id] || 'supplier')}
-                            disabled={processingId === app.id}
-                          >
-                            {processingId === app.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                            ) : (
-                              <Check className="h-4 w-4 mr-1" />
-                            )}
+                          <Button size="sm" className="flex-1" onClick={() => handleApprove(app, selectedRole[app.id] || 'supplier')} disabled={processingId === app.id}>
+                            {processingId === app.id ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Check className="h-4 w-4 mr-1" />}
                             Схвалити
                           </Button>
                         </div>
@@ -765,90 +594,48 @@ export default function AdminDashboard() {
             </ScrollArea>
           </TabsContent>
 
-          {/* Suppliers Tab */}
-          <TabsContent value="suppliers">
-            <ScrollArea className="h-[calc(100vh-380px)]">
-              <div className="space-y-3 pr-4">
-                {suppliers.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-muted-foreground">Немає зареєстрованих постачальників</p>
-                  </div>
-                ) : (
-                  suppliers.map((supplier) => (
-                    <Card key={supplier.id}>
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <h3 className="font-medium text-foreground truncate">{supplier.shop_name}</h3>
-                              <Badge variant={supplier.is_active ? 'default' : 'secondary'}>
-                                {supplier.is_active ? 'Активний' : 'Неактивний'}
-                              </Badge>
-                            </div>
-                            <p className="text-sm text-muted-foreground truncate">{supplier.company_name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              Націнка: {supplier.markup_percentage || 33}% • {formatDate(supplier.created_at)}
-                            </p>
-                          </div>
-                          <Switch
-                            checked={supplier.is_active}
-                            onCheckedChange={() => handleToggleSupplierStatus(supplier.id, supplier.is_active)}
-                          />
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))
-                )}
-              </div>
-            </ScrollArea>
-          </TabsContent>
-
-          {/* Manual Registration Tab */}
-          <TabsContent value="register">
-            <ScrollArea className="h-[calc(100vh-380px)]">
-              <div className="pr-4">
-                <ManualSupplierForm onSuccess={() => { fetchSuppliers(); }} />
-              </div>
-            </ScrollArea>
-          </TabsContent>
-
-          {/* Admin Store Manager Tab */}
-          <TabsContent value="stores">
-            <AdminStoreManager />
-          </TabsContent>
-
-          {/* Support Chats Tab */}
-          <TabsContent value="chats">
+          {/* === ПІДТРИМКА === */}
+          <TabsContent value="support">
             <SupportChatsViewer />
           </TabsContent>
 
-          {/* Giveaways Tab */}
-          <TabsContent value="giveaways">
-            <GiveawaysManager />
+          {/* === МАРКЕТИНГ (merged: promos + bonuses + giveaways) === */}
+          <TabsContent value="marketing">
+            <div className="space-y-3">
+              <div className="flex gap-2">
+                <Button variant={marketingSubTab === 'promos' ? 'default' : 'outline'} size="sm" className="gap-1 text-xs" onClick={() => setMarketingSubTab('promos')}>
+                  <Tag className="h-3.5 w-3.5" /> Промокоди
+                </Button>
+                <Button variant={marketingSubTab === 'bonuses' ? 'default' : 'outline'} size="sm" className="gap-1 text-xs" onClick={() => setMarketingSubTab('bonuses')}>
+                  <Gift className="h-3.5 w-3.5" /> Бонуси
+                </Button>
+                <Button variant={marketingSubTab === 'giveaways' ? 'default' : 'outline'} size="sm" className="gap-1 text-xs" onClick={() => setMarketingSubTab('giveaways')}>
+                  <Trophy className="h-3.5 w-3.5" /> Розіграші
+                </Button>
+              </div>
+              {marketingSubTab === 'promos' && <PromoCodesManager />}
+              {marketingSubTab === 'bonuses' && <BonusesManager />}
+              {marketingSubTab === 'giveaways' && <GiveawaysManager />}
+            </div>
           </TabsContent>
 
-          {/* Promo Codes Tab */}
-          <TabsContent value="promos">
-            <PromoCodesManager />
+          {/* === АНАЛІТИКА (merged: AI insights + reports) === */}
+          <TabsContent value="analytics">
+            <div className="space-y-3">
+              <div className="flex gap-2">
+                <Button variant={analyticsSubTab === 'insights' ? 'default' : 'outline'} size="sm" className="gap-1 text-xs" onClick={() => setAnalyticsSubTab('insights')}>
+                  <Brain className="h-3.5 w-3.5" /> AI Інсайти
+                </Button>
+                <Button variant={analyticsSubTab === 'reports' ? 'default' : 'outline'} size="sm" className="gap-1 text-xs" onClick={() => setAnalyticsSubTab('reports')}>
+                  <Package className="h-3.5 w-3.5" /> Звіти
+                </Button>
+              </div>
+              {analyticsSubTab === 'insights' && <AIInsightsDashboard />}
+              {analyticsSubTab === 'reports' && <AIOrderReports />}
+            </div>
           </TabsContent>
 
-          {/* Bonuses Tab */}
-          <TabsContent value="bonuses">
-            <BonusesManager />
-          </TabsContent>
-
-          {/* AI Insights Tab */}
-          <TabsContent value="ai-insights">
-            <AIInsightsDashboard />
-          </TabsContent>
-
-          {/* AI Reports Tab */}
-          <TabsContent value="ai-reports">
-            <AIOrderReports />
-          </TabsContent>
-
-          {/* Roles Tab */}
+          {/* === РОЛІ === */}
           <TabsContent value="roles">
             <ScrollArea className="h-[calc(100vh-380px)]">
               <div className="space-y-4 pr-4">
@@ -861,43 +648,35 @@ export default function AdminDashboard() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <p className="text-xs text-muted-foreground">
-                      <strong>admin</strong> — повний доступ до системи<br/>
-                      <strong>moderator</strong> — модерація заявок, спорів, підтримка<br/>
-                      <strong>supplier</strong> — доступ до панелі постачальника<br/>
-                      <strong>customer</strong> — звичайний покупець
+                      <strong>admin</strong> — повний доступ<br/>
+                      <strong>moderator</strong> — модерація, спори, підтримка<br/>
+                      <strong>supplier</strong> — панель постачальника<br/>
+                      <strong>shop_manager</strong> — замовлення магазину<br/>
+                      <strong>customer</strong> — покупець
                     </p>
 
-                    {/* Add new role to user */}
                     <div className="space-y-2">
                       <Label className="text-sm">Додати роль користувачу</Label>
                       <Input
                         value={newUserSearch}
-                        onChange={(e) => {
-                          setNewUserSearch(e.target.value);
-                          searchUsers(e.target.value);
-                        }}
-                        placeholder="Пошук за ім'ям або @username..."
+                        onChange={e => { setNewUserSearch(e.target.value); searchUsers(e.target.value); }}
+                        placeholder="Пошук за ім'ям..."
                       />
                       {searchResults.length > 0 && (
                         <div className="border rounded-lg p-2 space-y-1">
                           {searchResults.map(user => (
                             <div key={user.id} className="flex items-center justify-between p-2 hover:bg-muted rounded">
                               <div>
-                                <p className="text-sm font-medium">
-                                  {user.first_name} {user.last_name}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  ID: {user.id.slice(0, 8)}…
-                                </p>
+                                <p className="text-sm font-medium">{user.first_name} {user.last_name}</p>
+                                <p className="text-xs text-muted-foreground">ID: {user.id.slice(0, 8)}…</p>
                               </div>
-                              <Select onValueChange={(v: 'admin' | 'moderator' | 'supplier' | 'customer') => handleAddRole(user.id, v)}>
-                                <SelectTrigger className="w-32">
-                                  <SelectValue placeholder="Роль..." />
-                                </SelectTrigger>
+                              <Select onValueChange={v => handleAddRole(user.id, v)}>
+                                <SelectTrigger className="w-36"><SelectValue placeholder="Роль..." /></SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="admin">admin</SelectItem>
                                   <SelectItem value="moderator">moderator</SelectItem>
                                   <SelectItem value="supplier">supplier</SelectItem>
+                                  <SelectItem value="shop_manager">shop_manager</SelectItem>
                                   <SelectItem value="customer">customer</SelectItem>
                                 </SelectContent>
                               </Select>
@@ -912,50 +691,35 @@ export default function AdminDashboard() {
                 {usersWithRoles.length === 0 ? (
                   <div className="text-center py-12">
                     <UserCog className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-muted-foreground">Немає користувачів з особливими ролями</p>
+                    <p className="text-muted-foreground">Немає користувачів з ролями</p>
                   </div>
                 ) : (
-                  usersWithRoles.map((user) => (
+                  usersWithRoles.map(user => (
                     <Card key={user.id}>
                       <CardContent className="p-4 space-y-3">
                         <div>
-                          <h3 className="font-medium text-foreground">
-                            {user.first_name || ''} {user.last_name || ''}
-                          </h3>
-                          <p className="text-sm text-muted-foreground">
-                            ID: {user.id.slice(0, 8)}…
-                          </p>
+                          <h3 className="font-medium text-foreground">{user.first_name || ''} {user.last_name || ''}</h3>
+                          <p className="text-sm text-muted-foreground">ID: {user.id.slice(0, 8)}…</p>
                         </div>
-                        
                         <div className="flex flex-wrap gap-2">
-                          {user.roles.map((role) => (
+                          {user.roles.map(role => (
                             <Badge key={role} variant="default" className="gap-1">
                               {role}
-                              <button
-                                onClick={() => handleRemoveRole(user.id, role as 'admin' | 'moderator' | 'supplier' | 'customer')}
-                                className="ml-1 hover:text-destructive"
-                              >
+                              <button onClick={() => handleRemoveRole(user.id, role)} className="ml-1 hover:text-destructive">
                                 <X className="h-3 w-3" />
                               </button>
                             </Badge>
                           ))}
                         </div>
-
-                        <div className="flex gap-2">
-                          <Select onValueChange={(value: 'admin' | 'moderator' | 'supplier' | 'customer') => handleAddRole(user.id, value)}>
-                            <SelectTrigger className="flex-1">
-                              <SelectValue placeholder="Додати роль..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {['admin', 'moderator', 'supplier', 'customer']
-                                .filter(r => !user.roles.includes(r))
-                                .map((role) => (
-                                  <SelectItem key={role} value={role}>{role}</SelectItem>
-                                ))
-                              }
-                            </SelectContent>
-                          </Select>
-                        </div>
+                        <Select onValueChange={v => handleAddRole(user.id, v)}>
+                          <SelectTrigger><SelectValue placeholder="Додати роль..." /></SelectTrigger>
+                          <SelectContent>
+                            {['admin', 'moderator', 'supplier', 'shop_manager', 'customer']
+                              .filter(r => !user.roles.includes(r))
+                              .map(role => <SelectItem key={role} value={role}>{role}</SelectItem>)
+                            }
+                          </SelectContent>
+                        </Select>
                       </CardContent>
                     </Card>
                   ))
