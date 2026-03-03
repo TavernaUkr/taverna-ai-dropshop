@@ -626,6 +626,44 @@ serve(async (req) => {
       }
     }
     
+    // Auto-link as shop_manager if telegram_username matches any supplier's manager_telegram
+    if (telegramUser.username) {
+      const cleanUsername = telegramUser.username.toLowerCase();
+      const { data: matchingSuppliers } = await supabase
+        .from('suppliers')
+        .select('id')
+        .or(`manager_telegram.ilike.@${cleanUsername},manager_telegram.ilike.${cleanUsername}`)
+        .eq('is_active', true);
+      
+      if (matchingSuppliers && matchingSuppliers.length > 0) {
+        // Add shop_manager role
+        await supabase
+          .from('user_roles')
+          .upsert({ user_id: profile.id, role: 'shop_manager' }, { onConflict: 'user_id,role' });
+        
+        // Create shop_manager_links for each matching supplier
+        for (const supplier of matchingSuppliers) {
+          const { data: existingLink } = await supabase
+            .from('shop_manager_links')
+            .select('id')
+            .eq('profile_id', profile.id)
+            .eq('supplier_id', supplier.id)
+            .maybeSingle();
+          
+          if (!existingLink) {
+            await supabase
+              .from('shop_manager_links')
+              .insert({
+                profile_id: profile.id,
+                supplier_id: supplier.id,
+              });
+          }
+        }
+        
+        console.log(`Auto-linked @${cleanUsername} as shop_manager for ${matchingSuppliers.length} supplier(s)`);
+      }
+    }
+
     // Fetch user roles from secure table
     const { data: userRoles } = await supabase
       .from('user_roles')

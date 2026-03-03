@@ -57,6 +57,43 @@ export function ManualSupplierForm({ onSuccess }: ManualSupplierFormProps) {
 
       if (supplierError) throw supplierError;
 
+      // Auto-link manager
+      if (formData.manager_telegram && supplier) {
+        const cleanUsername = formData.manager_telegram.replace('@', '').trim();
+        // Try to find existing profile by telegram_username
+        const { data: managerProfile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('telegram_username', cleanUsername)
+          .single();
+        
+        if (managerProfile) {
+          // Assign shop_manager role and link
+          await supabase.from('user_roles')
+            .upsert({ user_id: managerProfile.id, role: 'shop_manager' as any }, { onConflict: 'user_id,role' });
+          await supabase.from('shop_manager_links')
+            .insert({ profile_id: managerProfile.id, supplier_id: supplier.id });
+          toast.success(`Менеджера @${cleanUsername} призначено`);
+        } else {
+          toast.info(`Менеджер @${cleanUsername} буде автоматично підключений при першому вході в додаток`);
+        }
+      }
+
+      // If no manager specified, auto-link admin as manager
+      if (!formData.manager_telegram && supplier) {
+        // Get current admin profile via session
+        const { data: sessionData } = await supabase.functions.invoke('telegram-auth', {
+          body: { action: 'validate', session_token: localStorage.getItem('session_token') },
+        });
+        if (sessionData?.profile?.id) {
+          await supabase.from('shop_manager_links')
+            .upsert({ 
+              profile_id: sessionData.profile.id, 
+              supplier_id: supplier.id 
+            }, { onConflict: 'profile_id,supplier_id' } as any);
+        }
+      }
+
       // Trigger XML import if URL provided
       if (formData.xml_url && supplier) {
         await supabase.functions.invoke("parse-xml", {
@@ -69,7 +106,7 @@ export function ManualSupplierForm({ onSuccess }: ManualSupplierFormProps) {
       }
 
       hapticNotification("success");
-      toast.success(`Магазин "${formData.shop_name}" створено! Для передачі власнику — використайте вкладку "Магазини".`);
+      toast.success(`Магазин "${formData.shop_name}" створено!${!formData.manager_telegram ? ' Ви автоматично призначені менеджером.' : ''}`);
 
       setFormData({ shop_name: "", telegram_channel_url: "", manager_telegram: "", xml_url: "" });
       onSuccess?.();
@@ -168,8 +205,9 @@ export function ManualSupplierForm({ onSuccess }: ManualSupplierFormProps) {
           {/* Info box */}
           <div className="p-3 bg-muted/40 rounded-lg border text-xs text-muted-foreground space-y-1">
             <p className="font-medium text-foreground">ℹ️ Після створення магазину:</p>
-            <p>• Передача прав реальному власнику — у вкладці <strong>«Магазини»</strong></p>
-            <p>• Власник сам заповнить всі юридичні дані при реєстрації</p>
+            <p>• Якщо менеджер <strong>вказаний</strong> — він автоматично підключиться при вході в додаток</p>
+            <p>• Якщо менеджер <strong>НЕ вказаний</strong> — ви стаєте менеджером автоматично</p>
+            <p>• Передача прав власнику — у вкладці <strong>«Магазини»</strong></p>
             <p>• Націнка однакова для всіх: <strong>33%</strong></p>
           </div>
 

@@ -79,6 +79,7 @@ const SupplierRegistration = () => {
       const telegramId = profile?.telegram_id || 
         (window as any).Telegram?.WebApp?.initDataUnsafe?.user?.id;
 
+      const managerTelegram = (getValues as any)('managerTelegram') || '';
       const applicationData = {
         supplier_type: supplierType,
         full_name: data.fullName,
@@ -92,6 +93,7 @@ const SupplierRegistration = () => {
         telegram_channel: data.telegramChannel,
         description: data.description,
         telegram_id: telegramId,
+        manager_telegram: managerTelegram,
       };
 
       const { data: result, error } = await supabase.functions.invoke('process-supplier-application', {
