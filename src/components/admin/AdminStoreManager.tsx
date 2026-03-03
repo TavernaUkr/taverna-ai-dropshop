@@ -37,7 +37,7 @@ interface AdminSupplier {
   product_count?: number;
 }
 
-export function AdminStoreManager() {
+export function AdminStoreManager({ filter = 'all' }: { filter?: 'all' | 'partners' }) {
   const navigate = useNavigate();
   const [suppliers, setSuppliers] = useState<AdminSupplier[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -50,7 +50,7 @@ export function AdminStoreManager() {
 
   useEffect(() => {
     fetchSuppliers();
-  }, []);
+  }, [filter]);
 
   const fetchSuppliers = async () => {
     setIsLoading(true);
@@ -74,7 +74,14 @@ export function AdminStoreManager() {
         if (p.supplier_id) countMap[p.supplier_id] = (countMap[p.supplier_id] || 0) + 1;
       });
 
-      setSuppliers((data || []).map(s => ({ ...s, product_count: countMap[s.id] || 0 })) as AdminSupplier[]);
+      let allSuppliers = (data || []).map(s => ({ ...s, product_count: countMap[s.id] || 0 })) as AdminSupplier[];
+      
+      // Filter for partners: suppliers that have a real manager_telegram assigned
+      if (filter === 'partners') {
+        allSuppliers = allSuppliers.filter(s => s.manager_telegram && s.manager_telegram.trim() !== '');
+      }
+      
+      setSuppliers(allSuppliers);
     } catch (err) {
       console.error("Error fetching suppliers:", err);
       toast.error("Помилка завантаження магазинів");

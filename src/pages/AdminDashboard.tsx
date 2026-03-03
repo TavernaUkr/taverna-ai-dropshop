@@ -46,6 +46,7 @@ import { ManualSupplierForm } from '@/components/admin/ManualSupplierForm';
 import { SupportChatsViewer } from '@/components/admin/SupportChatsViewer';
 import { GiveawaysManager } from '@/components/admin/GiveawaysManager';
 import { AdminStoreManager } from '@/components/admin/AdminStoreManager';
+import { AdminStoreOrders } from '@/components/admin/AdminStoreOrders';
 import { OrdersManager } from '@/components/admin/OrdersManager';
 import { AIOrderReports } from '@/components/admin/AIOrderReports';
 
@@ -113,8 +114,8 @@ export default function AdminDashboard() {
   const [marketingSubTab, setMarketingSubTab] = useState<'promos' | 'bonuses' | 'giveaways'>('promos');
   // Sub-tab for analytics
   const [analyticsSubTab, setAnalyticsSubTab] = useState<'insights' | 'reports'>('insights');
-  // Show registration form in stores tab
-  const [showRegForm, setShowRegForm] = useState(false);
+  // Sub-tab for stores
+  const [storesSubTab, setStoresSubTab] = useState<'all' | 'partners' | 'my' | 'add'>('all');
 
   const isAdmin = isAuthenticated && roles.includes('admin');
 
@@ -406,37 +407,37 @@ export default function AdminDashboard() {
             <OrdersManager />
           </TabsContent>
 
-          {/* === МАГАЗИНИ (merged: stores + partners + registration) === */}
+          {/* === МАГАЗИНИ === */}
           <TabsContent value="stores">
             <div className="space-y-3">
-              <div className="flex gap-2">
-                <Button
-                  variant={showRegForm ? "outline" : "default"}
-                  size="sm"
-                  className="gap-1.5"
-                  onClick={() => setShowRegForm(false)}
-                >
-                  <Store className="h-3.5 w-3.5" />
-                  Усі магазини
-                </Button>
-                <Button
-                  variant={showRegForm ? "default" : "outline"}
-                  size="sm"
-                  className="gap-1.5"
-                  onClick={() => setShowRegForm(true)}
-                >
-                  <Package className="h-3.5 w-3.5" />
-                  + Додати магазин
-                </Button>
+              <div className="flex gap-2 flex-wrap">
+                {(['all', 'partners', 'my', 'add'] as const).map((tab) => {
+                  const labels = { all: 'Усі магазини', partners: 'Партнери', my: 'Мої магазини', add: '+ Додати' };
+                  const icons = { all: <Store className="h-3.5 w-3.5" />, partners: <Users className="h-3.5 w-3.5" />, my: <Crown className="h-3.5 w-3.5" />, add: <Package className="h-3.5 w-3.5" /> };
+                  return (
+                    <Button
+                      key={tab}
+                      variant={storesSubTab === tab ? "default" : "outline"}
+                      size="sm"
+                      className="gap-1.5 text-xs"
+                      onClick={() => setStoresSubTab(tab)}
+                    >
+                      {icons[tab]}
+                      {labels[tab]}
+                    </Button>
+                  );
+                })}
               </div>
-              {showRegForm ? (
+              {storesSubTab === 'add' ? (
                 <ScrollArea className="h-[calc(100vh-420px)]">
                   <div className="pr-4">
-                    <ManualSupplierForm onSuccess={() => { setShowRegForm(false); fetchOrderStats(); }} />
+                    <ManualSupplierForm onSuccess={() => { setStoresSubTab('all'); fetchOrderStats(); }} />
                   </div>
                 </ScrollArea>
+              ) : storesSubTab === 'my' ? (
+                <AdminStoreOrders />
               ) : (
-                <AdminStoreManager />
+                <AdminStoreManager filter={storesSubTab === 'partners' ? 'partners' : 'all'} />
               )}
             </div>
           </TabsContent>
