@@ -76,9 +76,9 @@ export function AdminStoreManager({ filter = 'all' }: { filter?: 'all' | 'partne
 
       let allSuppliers = (data || []).map(s => ({ ...s, product_count: countMap[s.id] || 0 })) as AdminSupplier[];
       
-      // Filter for partners: suppliers that have a real manager_telegram assigned
+      // Filter for partners: suppliers that have a real manager_telegram assigned (not admin-managed)
       if (filter === 'partners') {
-        allSuppliers = allSuppliers.filter(s => s.manager_telegram && s.manager_telegram.trim() !== '');
+        allSuppliers = allSuppliers.filter(s => s.manager_telegram && s.manager_telegram.trim() !== '' && !s.manager_telegram.startsWith('@tg_admin'));
       }
       
       setSuppliers(allSuppliers);

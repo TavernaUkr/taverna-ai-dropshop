@@ -49,6 +49,7 @@ import { AdminStoreManager } from '@/components/admin/AdminStoreManager';
 import { AdminStoreOrders } from '@/components/admin/AdminStoreOrders';
 import { OrdersManager } from '@/components/admin/OrdersManager';
 import { AIOrderReports } from '@/components/admin/AIOrderReports';
+import { AdminRolesManager } from '@/components/admin/AdminRolesManager';
 
 interface SupplierApplication {
   id: string;
@@ -85,7 +86,6 @@ interface UserWithRole {
   last_name: string | null;
   roles: string[];
 }
-
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const {
@@ -107,9 +107,6 @@ export default function AdminDashboard() {
     totalOrders: 0, totalRevenue: 0, totalMargin: 0,
     pendingOrders: 0, openTickets: 0, suppliersCount: 0,
   });
-  const [usersWithRoles, setUsersWithRoles] = useState<UserWithRole[]>([]);
-  const [newUserSearch, setNewUserSearch] = useState('');
-  const [searchResults, setSearchResults] = useState<UserWithRole[]>([]);
   // Sub-tab for marketing
   const [marketingSubTab, setMarketingSubTab] = useState<'promos' | 'bonuses' | 'giveaways'>('promos');
   // Sub-tab for analytics
@@ -123,7 +120,6 @@ export default function AdminDashboard() {
     if (isAdmin) {
       fetchApplications();
       fetchOrderStats();
-      fetchUsersWithRoles();
     }
   }, [isAdmin]);
 
@@ -167,43 +163,6 @@ export default function AdminDashboard() {
     }
   };
 
-  const fetchUsersWithRoles = async () => {
-    try {
-      const { data: profiles } = await supabase
-        .from('profiles_safe' as any)
-        .select('id, first_name, last_name')
-        .limit(100);
-      const { data: rolesData } = await supabase
-        .from('user_roles')
-        .select('user_id, role');
-      const list: UserWithRole[] = ((profiles || []) as any[]).map((p: any) => ({
-        ...p,
-        roles: (rolesData || []).filter(r => r.user_id === p.id).map(r => r.role),
-      }));
-      setUsersWithRoles(list.filter(u => u.roles.length > 0));
-    } catch (err) {
-      console.error('Error fetching users:', err);
-    }
-  };
-
-  const searchUsers = async (query: string) => {
-    if (!query.trim()) { setSearchResults([]); return; }
-    try {
-      const { data: profiles } = await supabase
-        .from('profiles_safe' as any)
-        .select('id, first_name, last_name')
-        .or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%`)
-        .limit(10);
-      const { data: rolesData } = await supabase.from('user_roles').select('user_id, role');
-      setSearchResults(((profiles || []) as any[]).map((p: any) => ({
-        ...p,
-        roles: (rolesData || []).filter(r => r.user_id === p.id).map(r => r.role),
-      })));
-    } catch (err) {
-      console.error('Error searching:', err);
-    }
-  };
-
   const handleApprove = async (app: SupplierApplication, assignRole: string = 'supplier') => {
     setProcessingId(app.id);
     try {
@@ -215,7 +174,6 @@ export default function AdminDashboard() {
       toast.success(`"${app.shop_name}" схвалено!`);
       setApplications(prev => prev.filter(a => a.id !== app.id));
       fetchOrderStats();
-      fetchUsersWithRoles();
     } catch (err) {
       toast.error('Помилка схвалення');
     } finally {
@@ -240,35 +198,6 @@ export default function AdminDashboard() {
       toast.error('Помилка відхилення');
     } finally {
       setProcessingId(null);
-    }
-  };
-
-  const handleAddRole = async (userId: string, role: string) => {
-    type AppRole = "admin" | "moderator" | "supplier" | "customer" | "shop_manager";
-    try {
-      const { error } = await supabase.from('user_roles').insert({ user_id: userId, role: role as AppRole });
-      if (error) {
-        if (error.code === '23505') { toast.error('Вже має цю роль'); return; }
-        throw error;
-      }
-      toast.success(`Роль "${role}" додано`);
-      fetchUsersWithRoles();
-      setSearchResults([]);
-      setNewUserSearch('');
-    } catch (err) {
-      toast.error('Помилка');
-    }
-  };
-
-  const handleRemoveRole = async (userId: string, role: string) => {
-    type AppRole = "admin" | "moderator" | "supplier" | "customer" | "shop_manager";
-    try {
-      const { error } = await supabase.from('user_roles').delete().eq('user_id', userId).eq('role', role as AppRole);
-      if (error) throw error;
-      toast.success(`Роль "${role}" видалено`);
-      fetchUsersWithRoles();
-    } catch (err) {
-      toast.error('Помилка видалення ролі');
     }
   };
 
@@ -311,7 +240,7 @@ export default function AdminDashboard() {
             </div>
           </div>
           <Button variant="outline" size="sm" onClick={() => {
-            fetchApplications(); fetchOrderStats(); fetchUsersWithRoles();
+            fetchApplications(); fetchOrderStats();
             toast.success('Дані оновлено');
           }}>
             <RefreshCw className="h-4 w-4" />
@@ -636,97 +565,8 @@ export default function AdminDashboard() {
             </div>
           </TabsContent>
 
-          {/* === РОЛІ === */}
           <TabsContent value="roles">
-            <ScrollArea className="h-[calc(100vh-380px)]">
-              <div className="space-y-4 pr-4">
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm flex items-center gap-2">
-                      <Shield className="h-4 w-4" />
-                      Керування ролями
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <p className="text-xs text-muted-foreground">
-                      <strong>admin</strong> — повний доступ<br/>
-                      <strong>moderator</strong> — модерація, спори, підтримка<br/>
-                      <strong>supplier</strong> — панель постачальника<br/>
-                      <strong>shop_manager</strong> — замовлення магазину<br/>
-                      <strong>customer</strong> — покупець
-                    </p>
-
-                    <div className="space-y-2">
-                      <Label className="text-sm">Додати роль користувачу</Label>
-                      <Input
-                        value={newUserSearch}
-                        onChange={e => { setNewUserSearch(e.target.value); searchUsers(e.target.value); }}
-                        placeholder="Пошук за ім'ям..."
-                      />
-                      {searchResults.length > 0 && (
-                        <div className="border rounded-lg p-2 space-y-1">
-                          {searchResults.map(user => (
-                            <div key={user.id} className="flex items-center justify-between p-2 hover:bg-muted rounded">
-                              <div>
-                                <p className="text-sm font-medium">{user.first_name} {user.last_name}</p>
-                                <p className="text-xs text-muted-foreground">ID: {user.id.slice(0, 8)}…</p>
-                              </div>
-                              <Select onValueChange={v => handleAddRole(user.id, v)}>
-                                <SelectTrigger className="w-36"><SelectValue placeholder="Роль..." /></SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="admin">admin</SelectItem>
-                                  <SelectItem value="moderator">moderator</SelectItem>
-                                  <SelectItem value="supplier">supplier</SelectItem>
-                                  <SelectItem value="shop_manager">shop_manager</SelectItem>
-                                  <SelectItem value="customer">customer</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {usersWithRoles.length === 0 ? (
-                  <div className="text-center py-12">
-                    <UserCog className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-muted-foreground">Немає користувачів з ролями</p>
-                  </div>
-                ) : (
-                  usersWithRoles.map(user => (
-                    <Card key={user.id}>
-                      <CardContent className="p-4 space-y-3">
-                        <div>
-                          <h3 className="font-medium text-foreground">{user.first_name || ''} {user.last_name || ''}</h3>
-                          <p className="text-sm text-muted-foreground">ID: {user.id.slice(0, 8)}…</p>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          {user.roles.map(role => (
-                            <Badge key={role} variant="default" className="gap-1">
-                              {role}
-                              <button onClick={() => handleRemoveRole(user.id, role)} className="ml-1 hover:text-destructive">
-                                <X className="h-3 w-3" />
-                              </button>
-                            </Badge>
-                          ))}
-                        </div>
-                        <Select onValueChange={v => handleAddRole(user.id, v)}>
-                          <SelectTrigger><SelectValue placeholder="Додати роль..." /></SelectTrigger>
-                          <SelectContent>
-                            {['admin', 'moderator', 'supplier', 'shop_manager', 'customer']
-                              .filter(r => !user.roles.includes(r))
-                              .map(role => <SelectItem key={role} value={role}>{role}</SelectItem>)
-                            }
-                          </SelectContent>
-                        </Select>
-                      </CardContent>
-                    </Card>
-                  ))
-                )}
-              </div>
-            </ScrollArea>
+            <AdminRolesManager />
           </TabsContent>
         </Tabs>
       </div>

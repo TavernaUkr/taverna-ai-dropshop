@@ -1438,6 +1438,39 @@ export type Database = {
           },
         ]
       }
+      user_bans: {
+        Row: {
+          banned_at: string
+          banned_by: string | null
+          created_at: string
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          profile_id: string
+          reason: string
+        }
+        Insert: {
+          banned_at?: string
+          banned_by?: string | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          profile_id: string
+          reason: string
+        }
+        Update: {
+          banned_at?: string
+          banned_by?: string | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          profile_id?: string
+          reason?: string
+        }
+        Relationships: []
+      }
       user_bonuses: {
         Row: {
           balance: number | null
