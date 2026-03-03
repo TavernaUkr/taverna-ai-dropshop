@@ -1,29 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ArrowLeft,
-  Users,
-  Check,
-  X,
-  Loader2,
-  DollarSign,
-  ShoppingCart,
-  Package,
-  Eye,
-  ChevronDown,
-  ChevronUp,
-  Shield,
-  UserCog,
-  AlertTriangle,
-  RefreshCw,
-  Crown,
-  Tag,
-  Gift,
-  Brain,
-  MessageSquare,
-  Trophy,
-  Store,
-  Megaphone,
+  ArrowLeft, Users, Check, X, Loader2, DollarSign, ShoppingCart, Package,
+  Eye, ChevronDown, ChevronUp, Shield, UserCog, AlertTriangle, RefreshCw,
+  Crown, Tag, Gift, Brain, MessageSquare, Trophy, Store, Megaphone,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -80,21 +60,9 @@ interface OrderStats {
   suppliersCount: number;
 }
 
-interface UserWithRole {
-  id: string;
-  first_name: string | null;
-  last_name: string | null;
-  roles: string[];
-}
 export default function AdminDashboard() {
   const navigate = useNavigate();
-  const {
-    isLoading: authLoading,
-    rolesLoading,
-    isAuthenticated,
-    roles,
-    sessionToken,
-  } = useTelegramAuthContext();
+  const { isLoading: authLoading, rolesLoading, isAuthenticated, roles, sessionToken } = useTelegramAuthContext();
   const [activeTab, setActiveTab] = useState('orders');
   const [applications, setApplications] = useState<SupplierApplication[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -107,12 +75,10 @@ export default function AdminDashboard() {
     totalOrders: 0, totalRevenue: 0, totalMargin: 0,
     pendingOrders: 0, openTickets: 0, suppliersCount: 0,
   });
-  // Sub-tab for marketing
   const [marketingSubTab, setMarketingSubTab] = useState<'promos' | 'bonuses' | 'giveaways'>('promos');
-  // Sub-tab for analytics
   const [analyticsSubTab, setAnalyticsSubTab] = useState<'insights' | 'reports'>('insights');
-  // Sub-tab for stores
   const [storesSubTab, setStoresSubTab] = useState<'all' | 'partners' | 'my' | 'add'>('all');
+  const [ordersSubTab, setOrdersSubTab] = useState<'all' | 'my_stores'>('all');
 
   const isAdmin = isAuthenticated && roles.includes('admin');
 
@@ -250,27 +216,21 @@ export default function AdminDashboard() {
 
       {/* Stats Cards */}
       <div className="p-4 grid grid-cols-3 gap-2">
-        <Card>
-          <CardContent className="p-3 text-center">
-            <ShoppingCart className="h-4 w-4 text-primary mx-auto mb-1" />
-            <p className="text-xl font-bold text-foreground">{orderStats.totalOrders}</p>
-            <p className="text-[10px] text-muted-foreground">Замовлень</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3 text-center">
-            <DollarSign className="h-4 w-4 text-green-500 mx-auto mb-1" />
-            <p className="text-xl font-bold text-foreground">{orderStats.totalMargin.toLocaleString()}₴</p>
-            <p className="text-[10px] text-muted-foreground">Прибуток</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3 text-center">
-            <Store className="h-4 w-4 text-amber-500 mx-auto mb-1" />
-            <p className="text-xl font-bold text-foreground">{orderStats.suppliersCount}</p>
-            <p className="text-[10px] text-muted-foreground">Магазинів</p>
-          </CardContent>
-        </Card>
+        <Card><CardContent className="p-3 text-center">
+          <ShoppingCart className="h-4 w-4 text-primary mx-auto mb-1" />
+          <p className="text-xl font-bold text-foreground">{orderStats.totalOrders}</p>
+          <p className="text-[10px] text-muted-foreground">Замовлень</p>
+        </CardContent></Card>
+        <Card><CardContent className="p-3 text-center">
+          <DollarSign className="h-4 w-4 text-green-500 mx-auto mb-1" />
+          <p className="text-xl font-bold text-foreground">{orderStats.totalMargin.toLocaleString()}₴</p>
+          <p className="text-[10px] text-muted-foreground">Прибуток</p>
+        </CardContent></Card>
+        <Card><CardContent className="p-3 text-center">
+          <Store className="h-4 w-4 text-amber-500 mx-auto mb-1" />
+          <p className="text-xl font-bold text-foreground">{orderStats.suppliersCount}</p>
+          <p className="text-[10px] text-muted-foreground">Магазинів</p>
+        </CardContent></Card>
       </div>
 
       {/* Alert badges */}
@@ -298,42 +258,61 @@ export default function AdminDashboard() {
           <ScrollArea className="w-full pb-2">
             <TabsList className="w-max flex gap-1 mb-4">
               <TabsTrigger value="orders" className="text-xs px-3 gap-1">
-                <ShoppingCart className="h-3.5 w-3.5" />
-                Замовлення
+                <ShoppingCart className="h-3.5 w-3.5" /> Замовлення
               </TabsTrigger>
               <TabsTrigger value="stores" className="text-xs px-3 gap-1">
-                <Store className="h-3.5 w-3.5" />
-                Магазини
+                <Store className="h-3.5 w-3.5" /> Магазини
               </TabsTrigger>
               <TabsTrigger value="applications" className="text-xs px-3 gap-1">
-                <Users className="h-3.5 w-3.5" />
-                Заявки
+                <Users className="h-3.5 w-3.5" /> Заявки
                 {applications.length > 0 && (
                   <Badge variant="destructive" className="ml-1 h-4 px-1 text-[10px]">{applications.length}</Badge>
                 )}
               </TabsTrigger>
               <TabsTrigger value="support" className="text-xs px-3 gap-1">
-                <MessageSquare className="h-3.5 w-3.5" />
-                Підтримка
+                <MessageSquare className="h-3.5 w-3.5" /> Підтримка
               </TabsTrigger>
               <TabsTrigger value="marketing" className="text-xs px-3 gap-1">
-                <Megaphone className="h-3.5 w-3.5" />
-                Маркетинг
+                <Megaphone className="h-3.5 w-3.5" /> Маркетинг
               </TabsTrigger>
               <TabsTrigger value="analytics" className="text-xs px-3 gap-1">
-                <Brain className="h-3.5 w-3.5" />
-                Аналітика
+                <Brain className="h-3.5 w-3.5" /> Аналітика
               </TabsTrigger>
               <TabsTrigger value="roles" className="text-xs px-3 gap-1">
-                <UserCog className="h-3.5 w-3.5" />
-                Ролі
+                <UserCog className="h-3.5 w-3.5" /> Ролі
               </TabsTrigger>
             </TabsList>
           </ScrollArea>
 
           {/* === ЗАМОВЛЕННЯ === */}
           <TabsContent value="orders">
-            <OrdersManager />
+            <div className="space-y-3">
+              <div className="flex gap-2">
+                <Button
+                  variant={ordersSubTab === 'all' ? "default" : "outline"}
+                  size="sm"
+                  className="gap-1.5 text-xs"
+                  onClick={() => setOrdersSubTab('all')}
+                >
+                  <ShoppingCart className="h-3.5 w-3.5" />
+                  Усі замовлення
+                </Button>
+                <Button
+                  variant={ordersSubTab === 'my_stores' ? "default" : "outline"}
+                  size="sm"
+                  className="gap-1.5 text-xs"
+                  onClick={() => setOrdersSubTab('my_stores')}
+                >
+                  <Crown className="h-3.5 w-3.5" />
+                  Замовлення магазинів
+                </Button>
+              </div>
+              {ordersSubTab === 'all' ? (
+                <OrdersManager />
+              ) : (
+                <AdminStoreOrders />
+              )}
+            </div>
           </TabsContent>
 
           {/* === МАГАЗИНИ === */}
@@ -360,13 +339,11 @@ export default function AdminDashboard() {
               {storesSubTab === 'add' ? (
                 <ScrollArea className="h-[calc(100vh-420px)]">
                   <div className="pr-4">
-                    <ManualSupplierForm onSuccess={() => { setStoresSubTab('all'); fetchOrderStats(); }} />
+                    <ManualSupplierForm onSuccess={() => { setStoresSubTab('my'); fetchOrderStats(); }} />
                   </div>
                 </ScrollArea>
-              ) : storesSubTab === 'my' ? (
-                <AdminStoreOrders />
               ) : (
-                <AdminStoreManager filter={storesSubTab === 'partners' ? 'partners' : 'all'} />
+                <AdminStoreManager filter={storesSubTab === 'partners' ? 'partners' : storesSubTab === 'my' ? 'my' : 'all'} />
               )}
             </div>
           </TabsContent>
@@ -421,101 +398,87 @@ export default function AdminDashboard() {
                               </Badge>
                             )}
                             {app.plagiarism_score !== null && (
-                              <Badge variant={app.plagiarism_score > 30 ? 'destructive' : 'secondary'}>
+                              <Badge variant={app.plagiarism_score > 50 ? 'destructive' : 'secondary'}>
                                 Плагіат: {app.plagiarism_score}%
                               </Badge>
                             )}
                           </div>
                         )}
 
-                        <button
-                          onClick={() => setExpandedId(expandedId === app.id ? null : app.id)}
-                          className="flex items-center gap-1 text-sm text-primary"
-                        >
-                          <Eye className="h-4 w-4" />
-                          {expandedId === app.id ? 'Згорнути' : 'Детальніше'}
-                          {expandedId === app.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                        </button>
-
-                        {expandedId === app.id && (
-                          <div className="space-y-4 pt-2 border-t border-border">
-                            <div>
-                              <span className="text-sm text-muted-foreground">ЄДРПОУ:</span>
-                              <p className="text-sm text-foreground">{app.tax_id}</p>
-                            </div>
-                            {app.company_name && (
-                              <div>
-                                <span className="text-sm text-muted-foreground">Компанія:</span>
-                                <p className="text-sm text-foreground">{app.company_name}</p>
-                              </div>
-                            )}
-                            {app.description && (
-                              <div>
-                                <span className="text-sm text-muted-foreground">Опис:</span>
-                                <p className="text-sm text-foreground">{app.description}</p>
-                              </div>
-                            )}
-                            {app.xml_url && (
-                              <div>
-                                <span className="text-sm text-muted-foreground">XML прайс:</span>
-                                <p className="text-sm text-primary truncate">{app.xml_url}</p>
-                              </div>
-                            )}
-                            {app.suggested_categories && app.suggested_categories.length > 0 && (
-                              <div>
-                                <span className="text-sm text-muted-foreground">Категорії:</span>
-                                <div className="flex flex-wrap gap-1 mt-1">
-                                  {app.suggested_categories.map((cat, i) => (
-                                    <Badge key={i} variant="outline" className="text-xs">{cat}</Badge>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                            <p className="text-xs text-muted-foreground">Заявка від: {formatDate(app.created_at)}</p>
-
-                            <div className="space-y-2">
-                              <Label className="text-sm">Націнка (%)</Label>
-                              <Input
-                                type="number" min={20} max={50}
-                                value={customMarkup[app.id] || 33}
-                                onChange={e => setCustomMarkup(prev => ({ ...prev, [app.id]: parseInt(e.target.value) || 33 }))}
-                                className="w-24"
-                              />
-                            </div>
-
-                            <div className="space-y-2">
-                              <Label className="text-sm">Роль при схваленні</Label>
-                              <Select value={selectedRole[app.id] || 'supplier'} onValueChange={v => setSelectedRole(prev => ({ ...prev, [app.id]: v }))}>
-                                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="supplier">Постачальник</SelectItem>
-                                  <SelectItem value="moderator">Модератор</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-
-                            <div className="space-y-2">
-                              <Label className="text-sm">Причина відхилення</Label>
-                              <Textarea
-                                value={rejectionReason}
-                                onChange={e => setRejectionReason(e.target.value)}
-                                placeholder="Вкажіть причину..."
-                                rows={2}
-                              />
-                            </div>
-                          </div>
+                        {app.description && (
+                          <p className="text-sm text-muted-foreground line-clamp-2">{app.description}</p>
                         )}
 
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2">
+                            <Label className="text-xs whitespace-nowrap">Націнка %:</Label>
+                            <Input
+                              type="number"
+                              value={customMarkup[app.id] || 33}
+                              onChange={e => setCustomMarkup(prev => ({ ...prev, [app.id]: parseInt(e.target.value) || 33 }))}
+                              className="w-20 h-8 text-sm"
+                              min={1}
+                              max={100}
+                            />
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <Label className="text-xs whitespace-nowrap">Роль:</Label>
+                            <Select
+                              value={selectedRole[app.id] || 'supplier'}
+                              onValueChange={v => setSelectedRole(prev => ({ ...prev, [app.id]: v }))}
+                            >
+                              <SelectTrigger className="h-8 text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="supplier">Постачальник</SelectItem>
+                                <SelectItem value="shop_manager">Менеджер магазину</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
                         <div className="flex gap-2">
-                          <Button variant="outline" size="sm" className="flex-1" onClick={() => handleReject(app)} disabled={processingId === app.id}>
-                            <X className="h-4 w-4 mr-1 text-destructive" />
-                            Відхилити
-                          </Button>
-                          <Button size="sm" className="flex-1" onClick={() => handleApprove(app, selectedRole[app.id] || 'supplier')} disabled={processingId === app.id}>
-                            {processingId === app.id ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Check className="h-4 w-4 mr-1" />}
+                          <Button
+                            className="flex-1 gap-2"
+                            onClick={() => handleApprove(app, selectedRole[app.id] || 'supplier')}
+                            disabled={processingId === app.id}
+                          >
+                            {processingId === app.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
                             Схвалити
                           </Button>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => setExpandedId(expandedId === app.id ? null : app.id)}
+                          >
+                            {expandedId === app.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                          </Button>
                         </div>
+
+                        {expandedId === app.id && (
+                          <div className="space-y-2 border-t pt-3 border-border">
+                            <Textarea
+                              value={rejectionReason}
+                              onChange={e => setRejectionReason(e.target.value)}
+                              placeholder="Причина відхилення..."
+                              className="text-sm"
+                            />
+                            <Button
+                              variant="destructive"
+                              className="w-full gap-2"
+                              onClick={() => handleReject(app)}
+                              disabled={processingId === app.id}
+                            >
+                              <X className="h-4 w-4" />
+                              Відхилити
+                            </Button>
+                            <p className="text-xs text-muted-foreground text-center">
+                              Подано: {formatDate(app.created_at)}
+                            </p>
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                   ))
@@ -529,19 +492,26 @@ export default function AdminDashboard() {
             <SupportChatsViewer />
           </TabsContent>
 
-          {/* === МАРКЕТИНГ (merged: promos + bonuses + giveaways) === */}
+          {/* === МАРКЕТИНГ === */}
           <TabsContent value="marketing">
             <div className="space-y-3">
               <div className="flex gap-2">
-                <Button variant={marketingSubTab === 'promos' ? 'default' : 'outline'} size="sm" className="gap-1 text-xs" onClick={() => setMarketingSubTab('promos')}>
-                  <Tag className="h-3.5 w-3.5" /> Промокоди
-                </Button>
-                <Button variant={marketingSubTab === 'bonuses' ? 'default' : 'outline'} size="sm" className="gap-1 text-xs" onClick={() => setMarketingSubTab('bonuses')}>
-                  <Gift className="h-3.5 w-3.5" /> Бонуси
-                </Button>
-                <Button variant={marketingSubTab === 'giveaways' ? 'default' : 'outline'} size="sm" className="gap-1 text-xs" onClick={() => setMarketingSubTab('giveaways')}>
-                  <Trophy className="h-3.5 w-3.5" /> Розіграші
-                </Button>
+                {[
+                  { key: 'promos' as const, label: 'Промокоди', icon: <Tag className="h-3.5 w-3.5" /> },
+                  { key: 'bonuses' as const, label: 'Бонуси', icon: <Trophy className="h-3.5 w-3.5" /> },
+                  { key: 'giveaways' as const, label: 'Розіграші', icon: <Gift className="h-3.5 w-3.5" /> },
+                ].map(tab => (
+                  <Button
+                    key={tab.key}
+                    variant={marketingSubTab === tab.key ? "default" : "outline"}
+                    size="sm"
+                    className="gap-1.5 text-xs"
+                    onClick={() => setMarketingSubTab(tab.key)}
+                  >
+                    {tab.icon}
+                    {tab.label}
+                  </Button>
+                ))}
               </div>
               {marketingSubTab === 'promos' && <PromoCodesManager />}
               {marketingSubTab === 'bonuses' && <BonusesManager />}
@@ -549,22 +519,34 @@ export default function AdminDashboard() {
             </div>
           </TabsContent>
 
-          {/* === АНАЛІТИКА (merged: AI insights + reports) === */}
+          {/* === АНАЛІТИКА === */}
           <TabsContent value="analytics">
             <div className="space-y-3">
               <div className="flex gap-2">
-                <Button variant={analyticsSubTab === 'insights' ? 'default' : 'outline'} size="sm" className="gap-1 text-xs" onClick={() => setAnalyticsSubTab('insights')}>
-                  <Brain className="h-3.5 w-3.5" /> AI Інсайти
+                <Button
+                  variant={analyticsSubTab === 'insights' ? "default" : "outline"}
+                  size="sm"
+                  className="gap-1.5 text-xs"
+                  onClick={() => setAnalyticsSubTab('insights')}
+                >
+                  <Brain className="h-3.5 w-3.5" />
+                  AI Інсайти
                 </Button>
-                <Button variant={analyticsSubTab === 'reports' ? 'default' : 'outline'} size="sm" className="gap-1 text-xs" onClick={() => setAnalyticsSubTab('reports')}>
-                  <Package className="h-3.5 w-3.5" /> Звіти
+                <Button
+                  variant={analyticsSubTab === 'reports' ? "default" : "outline"}
+                  size="sm"
+                  className="gap-1.5 text-xs"
+                  onClick={() => setAnalyticsSubTab('reports')}
+                >
+                  <Package className="h-3.5 w-3.5" />
+                  Звіти
                 </Button>
               </div>
-              {analyticsSubTab === 'insights' && <AIInsightsDashboard />}
-              {analyticsSubTab === 'reports' && <AIOrderReports />}
+              {analyticsSubTab === 'insights' ? <AIInsightsDashboard /> : <AIOrderReports />}
             </div>
           </TabsContent>
 
+          {/* === РОЛІ === */}
           <TabsContent value="roles">
             <AdminRolesManager />
           </TabsContent>
