@@ -4,8 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Store, Settings, ShoppingCart, Eye } from "lucide-react";
+import { Loader2, Store, Settings, Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTelegramAuthContext } from "@/components/TelegramAuthProvider";
 import { SupplierOrders } from "@/components/supplier/SupplierOrders";
@@ -17,10 +16,11 @@ interface ManagedShop {
 
 export function AdminStoreOrders() {
   const navigate = useNavigate();
-  const { realProfile } = useTelegramAuthContext();
+  const { realProfile, roles } = useTelegramAuthContext();
   const [shops, setShops] = useState<ManagedShop[]>([]);
   const [selectedShop, setSelectedShop] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
+  const isAdmin = roles.includes('admin');
 
   useEffect(() => {
     if (!realProfile?.id) return;
@@ -28,27 +28,55 @@ export function AdminStoreOrders() {
     const fetchManagedShops = async () => {
       setIsLoading(true);
       try {
-        const { data: links } = await supabase
-          .from('shop_manager_links')
-          .select('supplier_id')
-          .eq('profile_id', realProfile.id);
-        
-        if (links && links.length > 0) {
-          const supplierIds = links.map(l => l.supplier_id);
-          const { data: suppliers } = await supabase
-            .from('suppliers')
-            .select('id, shop_name')
-            .in('id', supplierIds)
-            .eq('is_active', true);
+        // For admin: get shops from shop_manager_links OR all shops without manager_telegram (admin-managed)
+        if (isAdmin) {
+          const [linksResult, unmanagedResult] = await Promise.all([
+            supabase.from('shop_manager_links').select('supplier_id').eq('profile_id', realProfile.id),
+            supabase.from('suppliers').select('id, shop_name').is('manager_telegram', null),
+          ]);
+
+          const linkedIds = (linksResult.data || []).map(l => l.supplier_id);
+          const unmanagedShops = (unmanagedResult.data || []).filter(s => !linkedIds.includes(s.id));
           
-          const managed: ManagedShop[] = (suppliers || []).map(s => ({
-            supplier_id: s.id,
-            shop_name: s.shop_name,
-          }));
+          // Get linked shop names
+          let linkedShops: ManagedShop[] = [];
+          if (linkedIds.length > 0) {
+            const { data: suppliers } = await supabase
+              .from('suppliers')
+              .select('id, shop_name')
+              .in('id', linkedIds);
+            linkedShops = (suppliers || []).map(s => ({ supplier_id: s.id, shop_name: s.shop_name }));
+          }
+
+          // Combine: explicitly linked + unmanaged (no manager = admin manages)
+          const allManaged = [
+            ...linkedShops,
+            ...unmanagedShops.map(s => ({ supplier_id: s.id, shop_name: s.shop_name })),
+          ];
           
-          setShops(managed);
-          if (managed.length > 0 && !selectedShop) {
-            setSelectedShop(managed[0].supplier_id);
+          setShops(allManaged);
+          if (allManaged.length > 0 && !selectedShop) {
+            setSelectedShop(allManaged[0].supplier_id);
+          }
+        } else {
+          // Regular shop_manager flow
+          const { data: links } = await supabase
+            .from('shop_manager_links')
+            .select('supplier_id')
+            .eq('profile_id', realProfile.id);
+          
+          if (links && links.length > 0) {
+            const supplierIds = links.map(l => l.supplier_id);
+            const { data: suppliers } = await supabase
+              .from('suppliers')
+              .select('id, shop_name')
+              .in('id', supplierIds);
+            
+            const managed = (suppliers || []).map(s => ({ supplier_id: s.id, shop_name: s.shop_name }));
+            setShops(managed);
+            if (managed.length > 0 && !selectedShop) {
+              setSelectedShop(managed[0].supplier_id);
+            }
           }
         }
       } catch (err) {
@@ -59,7 +87,7 @@ export function AdminStoreOrders() {
     };
     
     fetchManagedShops();
-  }, [realProfile?.id]);
+  }, [realProfile?.id, isAdmin]);
 
   if (isLoading) {
     return (
@@ -83,7 +111,6 @@ export function AdminStoreOrders() {
 
   return (
     <div className="space-y-4">
-      {/* Shop selector + actions */}
       <Card>
         <CardContent className="p-4 space-y-3">
           <div className="flex items-center gap-3">
@@ -102,7 +129,7 @@ export function AdminStoreOrders() {
                 </SelectContent>
               </Select>
             </div>
-            <Badge variant="secondary">{shops.length}</Badge>
+            <Badge variant="secondary">{shops.length} магазинів</Badge>
           </div>
           {selectedShop && (
             <div className="flex gap-2">
@@ -129,7 +156,6 @@ export function AdminStoreOrders() {
         </CardContent>
       </Card>
 
-      {/* Orders for selected shop */}
       {selectedShop && (
         <SupplierOrders key={selectedShop} supplierId={selectedShop} mode="active" />
       )}
