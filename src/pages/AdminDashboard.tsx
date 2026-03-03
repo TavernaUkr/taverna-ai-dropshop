@@ -52,6 +52,7 @@ import { GiveawaysManager } from '@/components/admin/GiveawaysManager';
 import { AdminStoreManager } from '@/components/admin/AdminStoreManager';
 import { OrdersManager } from '@/components/admin/OrdersManager';
 import { AIOrderReports } from '@/components/admin/AIOrderReports';
+import { AdminStoreOrders } from '@/components/admin/AdminStoreOrders';
 interface SupplierApplication {
   id: string;
   shop_name: string;
@@ -508,6 +509,10 @@ export default function AdminDashboard() {
                 <ShoppingCart className="h-4 w-4" />
                 Замовлення
               </TabsTrigger>
+              <TabsTrigger value="store-orders" className="text-xs px-3 gap-1">
+                <Store className="h-4 w-4" />
+                Мої магазини
+              </TabsTrigger>
               <TabsTrigger value="moderation" className="text-xs px-3 gap-1">
                 <Users className="h-4 w-4" />
                 Заявки
@@ -563,6 +568,11 @@ export default function AdminDashboard() {
           {/* Orders Tab */}
           <TabsContent value="orders">
             <OrdersManager />
+          </TabsContent>
+
+          {/* Admin Store Orders Tab */}
+          <TabsContent value="store-orders">
+            <AdminStoreOrders />
           </TabsContent>
 
           {/* Moderation Tab */}

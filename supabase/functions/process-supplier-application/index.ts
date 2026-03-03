@@ -173,6 +173,7 @@ XML URL: ${application.xml_url || 'Не вказано'}
           xml_url: application.xml_url,
           telegram_channel: application.telegram_channel,
           description: application.description,
+          manager_telegram: application.manager_telegram || null,
           ai_analysis: plagiarismAnalysis || {},
           similar_suppliers: existingSuppliers || [],
           plagiarism_score: plagiarismAnalysis?.plagiarism_score || 0,
@@ -268,15 +269,20 @@ ${existingSuppliers.map(s => `• ${s.name}`).join('\n')}` : ''}
         }
 
         // Create supplier record
+        const managerTg = app.manager_telegram || '';
         const { data: newSupplier, error: supplierError } = await supabase
           .from('suppliers')
           .insert({
-            name: app.shop_name,
-            slug: app.shop_name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-            contact_email: app.email,
+            shop_name: app.shop_name,
+            company_name: app.company_name || app.shop_name,
+            contact_name: app.full_name,
             contact_phone: app.phone,
-            xml_feed_url: app.xml_url,
+            contact_email: app.email,
+            legal_type: app.supplier_type || 'individual',
+            tax_code: app.tax_id,
+            xml_url: app.xml_url,
             description: app.description,
+            manager_telegram: managerTg || null,
             markup_percentage: markup_percentage,
             is_active: true,
           })
@@ -303,7 +309,68 @@ ${existingSuppliers.map(s => `• ${s.name}`).join('\n')}` : ''}
               role: 'supplier' 
             }, { onConflict: 'user_id,role' });
           
+          // Link supplier owner as a manager too
+          await supabase
+            .from('shop_manager_links')
+            .insert({
+              profile_id: app.profile_id,
+              supplier_id: newSupplier.id,
+              assigned_by: session.profile.id,
+            });
+          
           console.log(`Added supplier role to user ${app.profile_id}`);
+        }
+
+        // Handle manager_telegram: find or invite manager
+        if (managerTg) {
+          const cleanUsername = managerTg.replace('@', '').trim();
+          
+          // Try to find existing profile by telegram_username
+          const { data: managerProfile } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('telegram_username', cleanUsername)
+            .single();
+          
+          if (managerProfile) {
+            // Manager already registered - assign role and link
+            await supabase
+              .from('user_roles')
+              .upsert({ 
+                user_id: managerProfile.id, 
+                role: 'shop_manager' 
+              }, { onConflict: 'user_id,role' });
+            
+            await supabase
+              .from('shop_manager_links')
+              .upsert({
+                profile_id: managerProfile.id,
+                supplier_id: newSupplier.id,
+                assigned_by: session.profile.id,
+              }, { onConflict: 'profile_id,supplier_id' });
+            
+            console.log(`Linked existing manager @${cleanUsername} to supplier ${newSupplier.id}`);
+          }
+          
+          // Send Telegram invitation to manager
+          if (TELEGRAM_BOT_TOKEN) {
+            // We need to resolve username to chat_id - this requires the manager to have started the bot
+            // Send via username mention in admin notification instead
+            console.log(`Manager @${cleanUsername} will be auto-linked on first login`);
+          }
+        }
+
+        // If no manager specified and approver is admin, auto-link admin as manager
+        if (!managerTg) {
+          await supabase
+            .from('shop_manager_links')
+            .upsert({
+              profile_id: session.profile.id,
+              supplier_id: newSupplier.id,
+              assigned_by: session.profile.id,
+            }, { onConflict: 'profile_id,supplier_id' });
+          
+          console.log(`Admin ${session.profile.id} auto-linked as manager for supplier ${newSupplier.id}`);
         }
 
         // Update application status
@@ -338,9 +405,24 @@ ${existingSuppliers.map(s => `• ${s.name}`).join('\n')}` : ''}
 
         // Notify supplier via Telegram if possible
         if (TELEGRAM_BOT_TOKEN && app.telegram_id) {
+          let managerMsg = '';
+          if (managerTg) {
+            managerMsg = `\n\n👨‍💼 Менеджер магазину: @${managerTg.replace('@', '')} — отримає запрошення зареєструватись у нашому додатку.`;
+          }
           await notifyAdmin(TELEGRAM_BOT_TOKEN, app.telegram_id.toString(), 
-            `✅ <b>Вітаємо!</b> Вашу заявку на магазин "${app.shop_name}" схвалено!\n\nТепер ви можете завантажити товари через панель постачальника.`
+            `✅ <b>Вітаємо!</b> Вашу заявку на магазин "${app.shop_name}" схвалено!\n\nТепер ви можете завантажити товари через панель постачальника.${managerMsg}`
           );
+        }
+
+        // Send invitation to manager via Telegram bot
+        if (TELEGRAM_BOT_TOKEN && managerTg) {
+          const cleanUsername = managerTg.replace('@', '').trim();
+          // Notify admin about manager invitation
+          if (ADMIN_CHAT_ID) {
+            await notifyAdmin(TELEGRAM_BOT_TOKEN, ADMIN_CHAT_ID,
+              `👨‍💼 <b>Менеджер магазину "${app.shop_name}":</b> @${cleanUsername}\n\nПотрібно надіслати йому запрошення в MiniApp для керування замовленнями.`
+            );
+          }
         }
 
         return new Response(

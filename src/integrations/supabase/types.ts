@@ -1133,6 +1133,7 @@ export type Database = {
           email: string
           full_name: string
           id: string
+          manager_telegram: string | null
           phone: string
           plagiarism_score: number | null
           profile_id: string | null
@@ -1160,6 +1161,7 @@ export type Database = {
           email: string
           full_name: string
           id?: string
+          manager_telegram?: string | null
           phone: string
           plagiarism_score?: number | null
           profile_id?: string | null
@@ -1187,6 +1189,7 @@ export type Database = {
           email?: string
           full_name?: string
           id?: string
+          manager_telegram?: string | null
           phone?: string
           plagiarism_score?: number | null
           profile_id?: string | null
