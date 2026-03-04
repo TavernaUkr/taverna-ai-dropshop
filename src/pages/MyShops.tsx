@@ -23,6 +23,16 @@ interface ShopInfo {
   role: "owner" | "manager";
 }
 
+const isLovableDevEnvironment = () => {
+  try {
+    return window.location.hostname.includes('lovable.app') || 
+           window.location.hostname.includes('lovableproject.com') ||
+           window.location.hostname.includes('id-preview--');
+  } catch {
+    return false;
+  }
+};
+
 export default function MyShops() {
   const navigate = useNavigate();
   const { effectiveRole, profile } = useTelegramAuthContext();
@@ -58,7 +68,6 @@ export default function MyShops() {
                 .select("*", { count: "exact", head: true })
                 .eq("supplier_id", shop.id);
 
-              // Get product IDs for review count
               const { data: productIds } = await supabase
                 .from("products")
                 .select("id")
@@ -77,6 +86,32 @@ export default function MyShops() {
                 ...shop,
                 product_count: productCount || 0,
                 review_count: reviewCount,
+                role: "owner",
+              });
+            }
+          }
+        }
+
+        // DEV FALLBACK: In Lovable dev environment, if no owned shops found for supplier role,
+        // fetch first 3 active suppliers as mock "owner" shops for UI testing
+        if (allShops.length === 0 && isLovableDevEnvironment() && isSupplier) {
+          const { data: devShops } = await supabase
+            .from("suppliers")
+            .select("id, shop_name, logo_url, is_active")
+            .eq("is_active", true)
+            .limit(3);
+
+          if (devShops) {
+            for (const shop of devShops) {
+              const { count: productCount } = await supabase
+                .from("products")
+                .select("*", { count: "exact", head: true })
+                .eq("supplier_id", shop.id);
+
+              allShops.push({
+                ...shop,
+                product_count: productCount || 0,
+                review_count: 0,
                 role: "owner",
               });
             }
@@ -109,24 +144,10 @@ export default function MyShops() {
                   .select("*", { count: "exact", head: true })
                   .eq("supplier_id", shop.id);
 
-                const { data: productIds } = await supabase
-                  .from("products")
-                  .select("id")
-                  .eq("supplier_id", shop.id);
-
-                let reviewCount = 0;
-                if (productIds?.length) {
-                  const { count } = await supabase
-                    .from("reviews")
-                    .select("*", { count: "exact", head: true })
-                    .in("product_id", productIds.map(p => p.id));
-                  reviewCount = count || 0;
-                }
-
                 allShops.push({
                   ...shop,
                   product_count: productCount || 0,
-                  review_count: reviewCount,
+                  review_count: 0,
                   role: "manager",
                 });
               }
@@ -142,6 +163,13 @@ export default function MyShops() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Show gear icon for owners, or in dev environment for supplier test role
+  const canEditShop = (shop: ShopInfo) => {
+    if (shop.role === "owner") return true;
+    if (isLovableDevEnvironment() && isSupplier) return true;
+    return false;
   };
 
   return (
@@ -212,8 +240,8 @@ export default function MyShops() {
           shops.map((shop) => (
             <Card key={shop.id} className="overflow-hidden">
               <CardContent className="p-4">
+                {/* Header row: avatar + name + badge + gear icon */}
                 <div className="flex items-start gap-3 mb-3">
-                  {/* Shop avatar */}
                   <Avatar className="h-14 w-14 rounded-xl">
                     <AvatarImage src={shop.logo_url || undefined} alt={shop.shop_name} />
                     <AvatarFallback className="rounded-xl bg-primary/10 text-primary font-bold text-lg">
@@ -221,7 +249,6 @@ export default function MyShops() {
                     </AvatarFallback>
                   </Avatar>
 
-                  {/* Shop info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <h3 className="font-semibold text-foreground truncate">
@@ -252,6 +279,22 @@ export default function MyShops() {
                       </Badge>
                     </div>
                   </div>
+
+                  {/* ⚙️ Gear icon — only for owners (or dev supplier) */}
+                  {canEditShop(shop) && (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="shrink-0 h-10 w-10 rounded-full hover:bg-primary/10"
+                      onClick={() => {
+                        hapticSelection();
+                        navigate(`/store-management/${shop.id}`);
+                      }}
+                      title="Редагувати магазин"
+                    >
+                      <Settings className="h-5 w-5 text-primary" />
+                    </Button>
+                  )}
                 </div>
 
                 {/* Action buttons */}
@@ -277,17 +320,8 @@ export default function MyShops() {
                       navigate(`/store-management/${shop.id}${shop.role === "manager" ? "?mode=manager" : ""}`);
                     }}
                   >
-                    {shop.role === "owner" ? (
-                      <>
-                        <Settings className="h-3.5 w-3.5 mr-1.5" />
-                        Налаштування
-                      </>
-                    ) : (
-                      <>
-                        <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
-                        Відгуки
-                      </>
-                    )}
+                    <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
+                    Відгуки
                   </Button>
                 </div>
               </CardContent>
