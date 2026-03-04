@@ -439,6 +439,70 @@ export type Database = {
           },
         ]
       }
+      order_splits: {
+        Row: {
+          created_at: string
+          id: string
+          markup_percentage: number
+          order_id: string
+          payment_method: string
+          platform_commission: number
+          product_total: number
+          split_status: string
+          supplier_amount: number
+          supplier_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          markup_percentage?: number
+          order_id: string
+          payment_method?: string
+          platform_commission?: number
+          product_total?: number
+          split_status?: string
+          supplier_amount?: number
+          supplier_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          markup_percentage?: number
+          order_id?: string
+          payment_method?: string
+          platform_commission?: number
+          product_total?: number
+          split_status?: string
+          supplier_amount?: number
+          supplier_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_splits_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_splits_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_splits_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
           created_at: string
@@ -1134,6 +1198,9 @@ export type Database = {
           full_name: string
           id: string
           manager_telegram: string | null
+          payment_bank_name: string | null
+          payment_card_holder: string | null
+          payment_iban: string | null
           phone: string
           plagiarism_score: number | null
           profile_id: string | null
@@ -1162,6 +1229,9 @@ export type Database = {
           full_name: string
           id?: string
           manager_telegram?: string | null
+          payment_bank_name?: string | null
+          payment_card_holder?: string | null
+          payment_iban?: string | null
           phone: string
           plagiarism_score?: number | null
           profile_id?: string | null
@@ -1190,6 +1260,9 @@ export type Database = {
           full_name?: string
           id?: string
           manager_telegram?: string | null
+          payment_bank_name?: string | null
+          payment_card_holder?: string | null
+          payment_iban?: string | null
           phone?: string
           plagiarism_score?: number | null
           profile_id?: string | null
@@ -1226,6 +1299,131 @@ export type Database = {
           },
         ]
       }
+      supplier_payment_deadlines: {
+        Row: {
+          amount_due: number
+          auto_ban_triggered: boolean
+          created_at: string
+          deadline_at: string
+          id: string
+          is_paid: boolean
+          order_id: string
+          paid_at: string | null
+          supplier_id: string
+        }
+        Insert: {
+          amount_due?: number
+          auto_ban_triggered?: boolean
+          created_at?: string
+          deadline_at: string
+          id?: string
+          is_paid?: boolean
+          order_id: string
+          paid_at?: string | null
+          supplier_id: string
+        }
+        Update: {
+          amount_due?: number
+          auto_ban_triggered?: boolean
+          created_at?: string
+          deadline_at?: string
+          id?: string
+          is_paid?: boolean
+          order_id?: string
+          paid_at?: string | null
+          supplier_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_payment_deadlines_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_payment_deadlines_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_payment_deadlines_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supplier_payouts: {
+        Row: {
+          amount: number
+          created_at: string
+          error_message: string | null
+          iban: string | null
+          id: string
+          order_split_id: string | null
+          payout_method: string
+          payout_status: string
+          processed_at: string | null
+          scheduled_at: string | null
+          supplier_id: string
+          transaction_id: string | null
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          error_message?: string | null
+          iban?: string | null
+          id?: string
+          order_split_id?: string | null
+          payout_method?: string
+          payout_status?: string
+          processed_at?: string | null
+          scheduled_at?: string | null
+          supplier_id: string
+          transaction_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          error_message?: string | null
+          iban?: string | null
+          id?: string
+          order_split_id?: string | null
+          payout_method?: string
+          payout_status?: string
+          processed_at?: string | null
+          scheduled_at?: string | null
+          supplier_id?: string
+          transaction_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_payouts_order_split_id_fkey"
+            columns: ["order_split_id"]
+            isOneToOne: false
+            referencedRelation: "order_splits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_payouts_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_payouts_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       suppliers: {
         Row: {
           allow_bot_chat: boolean | null
@@ -1243,6 +1441,9 @@ export type Database = {
           logo_url: string | null
           manager_telegram: string | null
           markup_percentage: number | null
+          payment_bank_name: string | null
+          payment_card_holder: string | null
+          payment_iban: string | null
           return_contact_info: string | null
           return_policy: string | null
           shipping_days: string[] | null
@@ -1273,6 +1474,9 @@ export type Database = {
           logo_url?: string | null
           manager_telegram?: string | null
           markup_percentage?: number | null
+          payment_bank_name?: string | null
+          payment_card_holder?: string | null
+          payment_iban?: string | null
           return_contact_info?: string | null
           return_policy?: string | null
           shipping_days?: string[] | null
@@ -1303,6 +1507,9 @@ export type Database = {
           logo_url?: string | null
           manager_telegram?: string | null
           markup_percentage?: number | null
+          payment_bank_name?: string | null
+          payment_card_holder?: string | null
+          payment_iban?: string | null
           return_contact_info?: string | null
           return_policy?: string | null
           shipping_days?: string[] | null

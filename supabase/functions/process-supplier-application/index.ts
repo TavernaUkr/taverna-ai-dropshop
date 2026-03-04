@@ -174,6 +174,9 @@ XML URL: ${application.xml_url || 'Не вказано'}
           telegram_channel: application.telegram_channel,
           description: application.description,
           manager_telegram: application.manager_telegram || null,
+          payment_iban: application.payment_iban || null,
+          payment_card_holder: application.payment_card_holder || null,
+          payment_bank_name: application.payment_bank_name || null,
           ai_analysis: plagiarismAnalysis || {},
           similar_suppliers: existingSuppliers || [],
           plagiarism_score: plagiarismAnalysis?.plagiarism_score || 0,
@@ -285,6 +288,9 @@ ${existingSuppliers.map(s => `• ${s.name}`).join('\n')}` : ''}
             manager_telegram: managerTg || null,
             markup_percentage: markup_percentage,
             is_active: true,
+            payment_iban: app.payment_iban || null,
+            payment_card_holder: app.payment_card_holder || null,
+            payment_bank_name: app.payment_bank_name || null,
           })
           .select()
           .single();
