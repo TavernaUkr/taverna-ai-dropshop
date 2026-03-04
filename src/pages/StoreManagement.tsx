@@ -63,7 +63,9 @@ interface Review {
 export default function StoreManagement() {
   const navigate = useNavigate();
   const { supplierId: paramSupplierId } = useParams<{ supplierId?: string }>();
-  const [activeTab, setActiveTab] = useState("shop");
+  const searchParams = new URLSearchParams(window.location.search);
+  const isManagerMode = searchParams.get("mode") === "manager";
+  const [activeTab, setActiveTab] = useState(isManagerMode ? "reviews" : "shop");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [supplierId, setSupplierId] = useState<string | null>(null);
@@ -364,17 +366,48 @@ export default function StoreManagement() {
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div className="flex-1">
-            <h1 className="text-lg font-bold text-foreground">Керування магазином</h1>
+            <h1 className="text-lg font-bold text-foreground">
+              {isManagerMode ? "Відгуки магазину" : "Керування магазином"}
+            </h1>
             <p className="text-sm text-muted-foreground">{shopData.shop_name || "Мій магазин"}</p>
           </div>
-          <Button onClick={handleSave} disabled={isSaving} size="sm">
-            {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Зберегти"}
-          </Button>
+          {!isManagerMode && (
+            <Button onClick={handleSave} disabled={isSaving} size="sm">
+              {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Зберегти"}
+            </Button>
+          )}
         </div>
       </div>
 
-      {/* === Facebook-Style Cover + Avatar === */}
-      <div className="relative">
+      {isManagerMode ? (
+        /* Manager mode - read-only header */
+        <div className="relative">
+          <div className="w-full h-32 bg-gradient-to-r from-primary/20 via-primary/10 to-accent/20 overflow-hidden">
+            {shopData.cover_image_url && (
+              <img src={shopData.cover_image_url} alt="Cover" className="w-full h-full object-cover" />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
+          </div>
+          <div className="absolute -bottom-8 left-4 z-10">
+            <Avatar className="h-16 w-16 border-4 border-background shadow-xl">
+              <AvatarImage src={shopData.logo_url} alt={shopData.shop_name} />
+              <AvatarFallback className="text-xl font-bold bg-primary/10 text-primary">
+                {shopData.shop_name.charAt(0).toUpperCase() || "M"}
+              </AvatarFallback>
+            </Avatar>
+          </div>
+          <div className="absolute bottom-2 left-24">
+            <h2 className="font-bold text-foreground text-lg drop-shadow">{shopData.shop_name}</h2>
+            <div className="flex items-center gap-2 text-sm">
+              <Star className="h-3.5 w-3.5 text-warning fill-warning" />
+              <span className="text-foreground font-medium">{averageRating.toFixed(1)}</span>
+              <span className="text-muted-foreground">({reviews.length} відгуків)</span>
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* Owner mode - editable cover + avatar */
+        <div className="relative">
         {/* Cover Image - Clickable */}
         <button
           onClick={() => coverInputRef.current?.click()}
@@ -452,12 +485,13 @@ export default function StoreManagement() {
           </div>
         </div>
       </div>
+      )}
 
       {/* Spacer for avatar overlap */}
-      <div className="h-12" />
+      <div className={isManagerMode ? "h-10" : "h-12"} />
 
-      {/* URL inputs (toggled) */}
-      {(showCoverUrlInput || showLogoUrlInput) && (
+      {/* URL inputs (toggled) - owner only */}
+      {!isManagerMode && (showCoverUrlInput || showLogoUrlInput) && (
         <div className="px-4 pt-2 space-y-2">
           {showCoverUrlInput && (
             <div className="flex gap-2">
@@ -490,20 +524,30 @@ export default function StoreManagement() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={(v) => { hapticSelection(); setActiveTab(v); }}>
-        <TabsList className="w-full grid grid-cols-3 mx-4 mt-3" style={{ width: "calc(100% - 2rem)" }}>
-          <TabsTrigger value="shop" className="text-xs gap-1">
-            <Store className="h-3.5 w-3.5" />
-            Магазин
-          </TabsTrigger>
-          <TabsTrigger value="reviews" className="text-xs gap-1">
-            <Star className="h-3.5 w-3.5" />
-            Відгуки
-          </TabsTrigger>
-          <TabsTrigger value="policies" className="text-xs gap-1">
-            <FileText className="h-3.5 w-3.5" />
-            Правила
-          </TabsTrigger>
-        </TabsList>
+        {isManagerMode ? (
+          /* Manager mode - only reviews tab */
+          <TabsList className="w-full grid grid-cols-1 mx-4 mt-3" style={{ width: "calc(100% - 2rem)" }}>
+            <TabsTrigger value="reviews" className="text-xs gap-1">
+              <Star className="h-3.5 w-3.5" />
+              Відгуки
+            </TabsTrigger>
+          </TabsList>
+        ) : (
+          <TabsList className="w-full grid grid-cols-3 mx-4 mt-3" style={{ width: "calc(100% - 2rem)" }}>
+            <TabsTrigger value="shop" className="text-xs gap-1">
+              <Store className="h-3.5 w-3.5" />
+              Магазин
+            </TabsTrigger>
+            <TabsTrigger value="reviews" className="text-xs gap-1">
+              <Star className="h-3.5 w-3.5" />
+              Відгуки
+            </TabsTrigger>
+            <TabsTrigger value="policies" className="text-xs gap-1">
+              <FileText className="h-3.5 w-3.5" />
+              Правила
+            </TabsTrigger>
+          </TabsList>
+        )}
 
         {/* === SHOP TAB === */}
         <TabsContent value="shop" className="p-4 pb-24 space-y-5">

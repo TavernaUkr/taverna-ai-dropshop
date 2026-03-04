@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  ArrowLeft, Store, Plus, Package, Settings, ChevronRight,
-  Loader2, Star, Users, ShoppingCart,
+  ArrowLeft, Store, Plus, Package, Settings, 
+  Loader2, Star, ShoppingCart, MessageSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +19,7 @@ interface ShopInfo {
   logo_url: string | null;
   is_active: boolean;
   product_count: number;
+  review_count: number;
   role: "owner" | "manager";
 }
 
@@ -52,14 +53,30 @@ export default function MyShops() {
 
           if (ownedShops) {
             for (const shop of ownedShops) {
-              const { count } = await supabase
+              const { count: productCount } = await supabase
                 .from("products")
                 .select("*", { count: "exact", head: true })
                 .eq("supplier_id", shop.id);
 
+              // Get product IDs for review count
+              const { data: productIds } = await supabase
+                .from("products")
+                .select("id")
+                .eq("supplier_id", shop.id);
+
+              let reviewCount = 0;
+              if (productIds?.length) {
+                const { count } = await supabase
+                  .from("reviews")
+                  .select("*", { count: "exact", head: true })
+                  .in("product_id", productIds.map(p => p.id));
+                reviewCount = count || 0;
+              }
+
               allShops.push({
                 ...shop,
-                product_count: count || 0,
+                product_count: productCount || 0,
+                review_count: reviewCount,
                 role: "owner",
               });
             }
@@ -67,7 +84,7 @@ export default function MyShops() {
         }
       }
 
-      // 2. Shops managed via shop_manager_links (for shop_manager or supplier with manager links)
+      // 2. Shops managed via shop_manager_links
       if (profile?.id) {
         const { data: links } = await supabase
           .from("shop_manager_links")
@@ -76,7 +93,6 @@ export default function MyShops() {
 
         if (links?.length) {
           const supplierIds = links.map((l) => l.supplier_id);
-          // Filter out shops already in allShops (owned)
           const existingIds = new Set(allShops.map((s) => s.id));
           const newIds = supplierIds.filter((id) => !existingIds.has(id));
 
@@ -88,14 +104,29 @@ export default function MyShops() {
 
             if (managedShops) {
               for (const shop of managedShops) {
-                const { count } = await supabase
+                const { count: productCount } = await supabase
                   .from("products")
                   .select("*", { count: "exact", head: true })
                   .eq("supplier_id", shop.id);
 
+                const { data: productIds } = await supabase
+                  .from("products")
+                  .select("id")
+                  .eq("supplier_id", shop.id);
+
+                let reviewCount = 0;
+                if (productIds?.length) {
+                  const { count } = await supabase
+                    .from("reviews")
+                    .select("*", { count: "exact", head: true })
+                    .in("product_id", productIds.map(p => p.id));
+                  reviewCount = count || 0;
+                }
+
                 allShops.push({
                   ...shop,
-                  product_count: count || 0,
+                  product_count: productCount || 0,
+                  review_count: reviewCount,
                   role: "manager",
                 });
               }
@@ -110,15 +141,6 @@ export default function MyShops() {
       toast.error("Помилка завантаження магазинів");
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleShopAction = (shopId: string, action: "settings" | "orders") => {
-    hapticSelection();
-    if (action === "settings") {
-      navigate(`/store-management/${shopId}`);
-    } else {
-      navigate(`/store-orders/${shopId}`);
     }
   };
 
@@ -139,13 +161,12 @@ export default function MyShops() {
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
-              <h1 className="font-bold text-lg text-foreground">Мої магазини</h1>
+              <h1 className="font-bold text-lg text-foreground">Керування магазинами</h1>
               <p className="text-xs text-muted-foreground">
                 {isShopManager ? "Магазини, якими ви керуєте" : "Ваші магазини та партнерства"}
               </p>
             </div>
           </div>
-          {/* Add new shop button - only for suppliers */}
           {(isSupplier || isAdmin) && (
             <Button
               size="sm"
@@ -162,7 +183,7 @@ export default function MyShops() {
         </div>
       </div>
 
-      <div className="p-4 space-y-3 pb-24">
+      <div className="p-4 space-y-4 pb-24">
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -191,7 +212,7 @@ export default function MyShops() {
           shops.map((shop) => (
             <Card key={shop.id} className="overflow-hidden">
               <CardContent className="p-4">
-                <div className="flex items-start gap-3">
+                <div className="flex items-start gap-3 mb-3">
                   {/* Shop avatar */}
                   <Avatar className="h-14 w-14 rounded-xl">
                     <AvatarImage src={shop.logo_url || undefined} alt={shop.shop_name} />
@@ -208,16 +229,20 @@ export default function MyShops() {
                       </h3>
                       <Badge
                         variant={shop.role === "owner" ? "default" : "secondary"}
-                        className="text-[10px] px-1.5 py-0"
+                        className="text-[10px] px-1.5 py-0 shrink-0"
                       >
                         {shop.role === "owner" ? "Власник" : "Менеджер"}
                       </Badge>
                     </div>
 
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground mb-3">
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <Package className="h-3 w-3" />
                         {shop.product_count} товарів
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Star className="h-3 w-3" />
+                        {shop.review_count} відгуків
                       </span>
                       <Badge
                         variant={shop.is_active ? "default" : "destructive"}
@@ -226,31 +251,44 @@ export default function MyShops() {
                         {shop.is_active ? "Активний" : "Неактивний"}
                       </Badge>
                     </div>
-
-                    {/* Action buttons */}
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="flex-1 h-9"
-                        onClick={() => handleShopAction(shop.id, "orders")}
-                      >
-                        <ShoppingCart className="h-3.5 w-3.5 mr-1.5" />
-                        Замовлення
-                      </Button>
-                      {shop.role === "owner" && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="flex-1 h-9"
-                          onClick={() => handleShopAction(shop.id, "settings")}
-                        >
-                          <Settings className="h-3.5 w-3.5 mr-1.5" />
-                          Налаштування
-                        </Button>
-                      )}
-                    </div>
                   </div>
+                </div>
+
+                {/* Action buttons */}
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1 h-9"
+                    onClick={() => {
+                      hapticSelection();
+                      navigate(`/store-orders/${shop.id}`);
+                    }}
+                  >
+                    <ShoppingCart className="h-3.5 w-3.5 mr-1.5" />
+                    Замовлення
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1 h-9"
+                    onClick={() => {
+                      hapticSelection();
+                      navigate(`/store-management/${shop.id}${shop.role === "manager" ? "?mode=manager" : ""}`);
+                    }}
+                  >
+                    {shop.role === "owner" ? (
+                      <>
+                        <Settings className="h-3.5 w-3.5 mr-1.5" />
+                        Налаштування
+                      </>
+                    ) : (
+                      <>
+                        <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
+                        Відгуки
+                      </>
+                    )}
+                  </Button>
                 </div>
               </CardContent>
             </Card>
