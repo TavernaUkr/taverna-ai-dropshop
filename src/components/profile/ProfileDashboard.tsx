@@ -278,44 +278,44 @@ export const ProfileDashboard = () => {
         </button>
       )}
 
-      {/* Partner Panel Button - ONLY for Suppliers (not Admin/Moderator) */}
-      {isAuthenticated && isOnlySupplier && !isAdmin && !isModerator && (
-        <button
-          onClick={handlePartnerClick}
-          className="w-full flex items-center gap-4 p-4 rounded-xl border transition-all bg-gradient-to-r from-primary/10 to-accent/10 border-primary/30 hover:border-primary"
-        >
-          <div className="w-12 h-12 rounded-full flex items-center justify-center bg-primary/20">
-            <Store className="h-6 w-6 text-primary" />
-          </div>
-          <div className="flex-1 text-left">
-            <h4 className="font-semibold text-foreground">Панель партнера</h4>
-            <p className="text-xs text-muted-foreground">
-              Керуйте своїми товарами
-            </p>
-          </div>
-          <ChevronRight className="h-5 w-5 text-primary" />
-        </button>
-      )}
-
-      {/* My Shops Button - For Suppliers and Shop Managers */}
+      {/* Store Management Button - For Suppliers and Shop Managers */}
       {isAuthenticated && (isOnlySupplier || isShopManager) && !isAdmin && (
         <button
           onClick={() => {
             hapticSelection();
             navigate("/my-shops");
           }}
-          className="w-full flex items-center gap-4 p-4 rounded-xl border transition-all bg-gradient-to-r from-teal-500/5 to-cyan-500/5 border-teal-500/20 hover:border-teal-500 hover:from-teal-500/10 hover:to-cyan-500/10"
+          className="w-full flex items-center gap-4 p-4 rounded-xl border transition-all bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border-emerald-500/30 hover:border-emerald-500"
         >
-          <div className="w-12 h-12 rounded-full flex items-center justify-center bg-gradient-to-br from-teal-500/20 to-cyan-500/20">
-            <Store className="h-6 w-6 text-teal-500" />
+          <div className="w-12 h-12 rounded-full flex items-center justify-center bg-gradient-to-br from-emerald-500/20 to-teal-500/20">
+            <Store className="h-6 w-6 text-emerald-500" />
           </div>
           <div className="flex-1 text-left">
-            <h4 className="font-semibold text-foreground">Мої магазини</h4>
+            <h4 className="font-semibold text-foreground">Керування магазином</h4>
             <p className="text-xs text-muted-foreground">
-              {isShopManager ? "Керуйте замовленнями магазинів" : "Магазини, замовлення, налаштування"}
+              {isShopManager ? "Замовлення магазинів" : "Магазини, замовлення, налаштування"}
             </p>
           </div>
-          <ChevronRight className="h-5 w-5 text-teal-500" />
+          <ChevronRight className="h-5 w-5 text-emerald-500" />
+        </button>
+      )}
+
+      {/* Promotion Panel Button - For Suppliers (not Admin/Moderator, they already have it above) */}
+      {isAuthenticated && isOnlySupplier && !isAdmin && !isModerator && (
+        <button
+          onClick={() => navigate("/manager")}
+          className="w-full flex items-center gap-4 p-4 rounded-xl border transition-all bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/30 hover:border-purple-500"
+        >
+          <div className="w-12 h-12 rounded-full flex items-center justify-center bg-gradient-to-br from-purple-500/20 to-pink-500/20">
+            <Megaphone className="h-6 w-6 text-purple-500" />
+          </div>
+          <div className="flex-1 text-left">
+            <h4 className="font-semibold text-foreground">Просування</h4>
+            <p className="text-xs text-muted-foreground">
+              Постити та рекламувати товари
+            </p>
+          </div>
+          <ChevronRight className="h-5 w-5 text-purple-500" />
         </button>
       )}
 
