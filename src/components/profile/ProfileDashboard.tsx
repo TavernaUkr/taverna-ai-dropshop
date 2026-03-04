@@ -291,9 +291,9 @@ export const ProfileDashboard = () => {
             <Store className="h-6 w-6 text-emerald-500" />
           </div>
           <div className="flex-1 text-left">
-            <h4 className="font-semibold text-foreground">Керування магазином</h4>
+            <h4 className="font-semibold text-foreground">Керування магазинами</h4>
             <p className="text-xs text-muted-foreground">
-              {isShopManager ? "Замовлення магазинів" : "Магазини, замовлення, налаштування"}
+              {isShopManager ? "Замовлення та відгуки магазинів" : "Магазини, замовлення, налаштування"}
             </p>
           </div>
           <ChevronRight className="h-5 w-5 text-emerald-500" />
