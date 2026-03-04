@@ -11,7 +11,7 @@ export default function OrdersHistoryPage() {
     <div className="min-h-screen bg-background">
       <div className="sticky top-0 z-40 bg-background/95 backdrop-blur-md border-b border-border px-4 py-3">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => { hapticSelection(); navigate(-1); }}>
+          <Button variant="ghost" size="icon" onClick={() => { hapticSelection(); navigate("/?tab=account"); }}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div className="flex items-center gap-2">

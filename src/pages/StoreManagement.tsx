@@ -109,10 +109,21 @@ export default function StoreManagement() {
       let query = supabase.from("suppliers").select("*");
       
       if (paramSupplierId) {
-        // Admin accessing specific store by ID
+        // Accessing specific store by ID
         query = query.eq("id", paramSupplierId);
       } else {
-        // Supplier accessing their own store
+        // Supplier accessing their own store - check for multiple
+        const { data: allSuppliers } = await supabase
+          .from("suppliers")
+          .select("id")
+          .eq("is_active", true);
+        
+        if (allSuppliers && allSuppliers.length > 1) {
+          // Multiple shops - redirect to shop selector
+          navigate("/my-shops", { replace: true });
+          return;
+        }
+        
         query = query.eq("is_active", true);
       }
       
@@ -347,7 +358,7 @@ export default function StoreManagement() {
       <div className="sticky top-0 z-40 bg-card border-b border-border">
         <div className="flex items-center gap-3 p-4">
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => navigate(paramSupplierId ? -1 as any : "/my-shops")}
             className="w-10 h-10 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
           >
             <ArrowLeft className="h-5 w-5" />

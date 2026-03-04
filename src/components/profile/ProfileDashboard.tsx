@@ -297,44 +297,22 @@ export const ProfileDashboard = () => {
         </button>
       )}
 
-      {/* Store Orders Button - For Suppliers and Shop Managers */}
+      {/* My Shops Button - For Suppliers and Shop Managers */}
       {isAuthenticated && (isOnlySupplier || isShopManager) && !isAdmin && (
         <button
           onClick={() => {
             hapticSelection();
-            navigate("/store-orders");
-          }}
-          className="w-full flex items-center gap-4 p-4 rounded-xl border transition-all bg-gradient-to-r from-emerald-500/5 to-green-500/5 border-emerald-500/20 hover:border-emerald-500 hover:from-emerald-500/10 hover:to-green-500/10"
-        >
-          <div className="w-12 h-12 rounded-full flex items-center justify-center bg-gradient-to-br from-emerald-500/20 to-green-500/20">
-            <Package className="h-6 w-6 text-emerald-500" />
-          </div>
-          <div className="flex-1 text-left">
-            <h4 className="font-semibold text-foreground">Замовлення магазину</h4>
-            <p className="text-xs text-muted-foreground">
-              Керуйте замовленнями та чат з клієнтами
-            </p>
-          </div>
-          <ChevronRight className="h-5 w-5 text-emerald-500" />
-        </button>
-      )}
-
-      {/* Store Management Button - ONLY for Suppliers (not Admin, not Shop Manager) */}
-      {isAuthenticated && isOnlySupplier && !isAdmin && !isShopManager && (
-        <button
-          onClick={() => {
-            hapticSelection();
-            navigate("/store-management");
+            navigate("/my-shops");
           }}
           className="w-full flex items-center gap-4 p-4 rounded-xl border transition-all bg-gradient-to-r from-teal-500/5 to-cyan-500/5 border-teal-500/20 hover:border-teal-500 hover:from-teal-500/10 hover:to-cyan-500/10"
         >
           <div className="w-12 h-12 rounded-full flex items-center justify-center bg-gradient-to-br from-teal-500/20 to-cyan-500/20">
-            <Settings className="h-6 w-6 text-teal-500" />
+            <Store className="h-6 w-6 text-teal-500" />
           </div>
           <div className="flex-1 text-left">
-            <h4 className="font-semibold text-foreground">Керування магазином</h4>
+            <h4 className="font-semibold text-foreground">Мої магазини</h4>
             <p className="text-xs text-muted-foreground">
-              Обкладинка, правила, відгуки, менеджер
+              {isShopManager ? "Керуйте замовленнями магазинів" : "Магазини, замовлення, налаштування"}
             </p>
           </div>
           <ChevronRight className="h-5 w-5 text-teal-500" />
