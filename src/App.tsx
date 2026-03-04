@@ -27,6 +27,7 @@ import StoreManagement from "./pages/StoreManagement";
 import SupplierStoreOrders from "./pages/SupplierStoreOrders";
 import OrdersHistoryPage from "./pages/OrdersHistoryPage";
 import SupplierStoreOrdersHistory from "./pages/SupplierStoreOrdersHistory";
+import MyShops from "./pages/MyShops";
 import SupportChat from "./components/SupportChat";
 import NotFound from "./pages/NotFound";
 
@@ -114,8 +115,11 @@ function AnimatedRoutes() {
             <Route path="/store-management" element={<StoreManagement />} />
             <Route path="/store-management/:supplierId" element={<StoreManagement />} />
             <Route path="/store-orders" element={<SupplierStoreOrders />} />
+            <Route path="/store-orders/:supplierId" element={<SupplierStoreOrders />} />
+            <Route path="/my-shops" element={<MyShops />} />
             <Route path="/orders-history" element={<OrdersHistoryPage />} />
             <Route path="/store-orders-history" element={<SupplierStoreOrdersHistory />} />
+            <Route path="/store-orders-history/:supplierId" element={<SupplierStoreOrdersHistory />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

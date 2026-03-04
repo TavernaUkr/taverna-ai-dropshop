@@ -1,0 +1,262 @@
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  ArrowLeft, Store, Plus, Package, Settings, ChevronRight,
+  Loader2, Star, Users, ShoppingCart,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { supabase } from "@/integrations/supabase/client";
+import { useTelegramAuthContext } from "@/components/TelegramAuthProvider";
+import { toast } from "sonner";
+import { hapticSelection } from "@/lib/haptics";
+
+interface ShopInfo {
+  id: string;
+  shop_name: string;
+  logo_url: string | null;
+  is_active: boolean;
+  product_count: number;
+  role: "owner" | "manager";
+}
+
+export default function MyShops() {
+  const navigate = useNavigate();
+  const { effectiveRole, profile } = useTelegramAuthContext();
+  const [shops, setShops] = useState<ShopInfo[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const isSupplier = effectiveRole === "supplier";
+  const isShopManager = effectiveRole === "shop_manager";
+  const isAdmin = effectiveRole === "admin";
+
+  useEffect(() => {
+    fetchShops();
+  }, [effectiveRole, profile?.id]);
+
+  const fetchShops = async () => {
+    setIsLoading(true);
+    try {
+      const allShops: ShopInfo[] = [];
+
+      // 1. Shops owned by this supplier (by telegram_id)
+      if (isSupplier || isAdmin) {
+        const telegramId = profile?.telegram_id;
+        if (telegramId) {
+          const { data: ownedShops } = await supabase
+            .from("suppliers")
+            .select("id, shop_name, logo_url, is_active")
+            .eq("telegram_id", telegramId);
+
+          if (ownedShops) {
+            for (const shop of ownedShops) {
+              const { count } = await supabase
+                .from("products")
+                .select("*", { count: "exact", head: true })
+                .eq("supplier_id", shop.id);
+
+              allShops.push({
+                ...shop,
+                product_count: count || 0,
+                role: "owner",
+              });
+            }
+          }
+        }
+      }
+
+      // 2. Shops managed via shop_manager_links (for shop_manager or supplier with manager links)
+      if (profile?.id) {
+        const { data: links } = await supabase
+          .from("shop_manager_links")
+          .select("supplier_id")
+          .eq("profile_id", profile.id);
+
+        if (links?.length) {
+          const supplierIds = links.map((l) => l.supplier_id);
+          // Filter out shops already in allShops (owned)
+          const existingIds = new Set(allShops.map((s) => s.id));
+          const newIds = supplierIds.filter((id) => !existingIds.has(id));
+
+          if (newIds.length) {
+            const { data: managedShops } = await supabase
+              .from("suppliers")
+              .select("id, shop_name, logo_url, is_active")
+              .in("id", newIds);
+
+            if (managedShops) {
+              for (const shop of managedShops) {
+                const { count } = await supabase
+                  .from("products")
+                  .select("*", { count: "exact", head: true })
+                  .eq("supplier_id", shop.id);
+
+                allShops.push({
+                  ...shop,
+                  product_count: count || 0,
+                  role: "manager",
+                });
+              }
+            }
+          }
+        }
+      }
+
+      setShops(allShops);
+    } catch (err) {
+      console.error("Error fetching shops:", err);
+      toast.error("Помилка завантаження магазинів");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleShopAction = (shopId: string, action: "settings" | "orders") => {
+    hapticSelection();
+    if (action === "settings") {
+      navigate(`/store-management/${shopId}`);
+    } else {
+      navigate(`/store-orders/${shopId}`);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <div className="sticky top-0 z-40 bg-background/95 backdrop-blur-md border-b border-border px-4 py-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                hapticSelection();
+                navigate("/?tab=account");
+              }}
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <h1 className="font-bold text-lg text-foreground">Мої магазини</h1>
+              <p className="text-xs text-muted-foreground">
+                {isShopManager ? "Магазини, якими ви керуєте" : "Ваші магазини та партнерства"}
+              </p>
+            </div>
+          </div>
+          {/* Add new shop button - only for suppliers */}
+          {(isSupplier || isAdmin) && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                hapticSelection();
+                navigate("/partner?mode=additional");
+              }}
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              Додати
+            </Button>
+          )}
+        </div>
+      </div>
+
+      <div className="p-4 space-y-3 pb-24">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : shops.length === 0 ? (
+          <div className="text-center py-12 space-y-4">
+            <div className="w-16 h-16 rounded-full bg-muted/50 mx-auto flex items-center justify-center">
+              <Store className="h-8 w-8 text-muted-foreground/50" />
+            </div>
+            <div>
+              <h4 className="font-semibold text-foreground">Магазинів ще немає</h4>
+              <p className="text-sm text-muted-foreground mt-1">
+                {isShopManager
+                  ? "Вас ще не призначено менеджером жодного магазину"
+                  : "Зареєструйте свій перший магазин"}
+              </p>
+            </div>
+            {(isSupplier || isAdmin) && (
+              <Button onClick={() => navigate("/partner")}>
+                <Plus className="h-4 w-4 mr-2" />
+                Зареєструвати магазин
+              </Button>
+            )}
+          </div>
+        ) : (
+          shops.map((shop) => (
+            <Card key={shop.id} className="overflow-hidden">
+              <CardContent className="p-4">
+                <div className="flex items-start gap-3">
+                  {/* Shop avatar */}
+                  <Avatar className="h-14 w-14 rounded-xl">
+                    <AvatarImage src={shop.logo_url || undefined} alt={shop.shop_name} />
+                    <AvatarFallback className="rounded-xl bg-primary/10 text-primary font-bold text-lg">
+                      {shop.shop_name.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+
+                  {/* Shop info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-semibold text-foreground truncate">
+                        {shop.shop_name}
+                      </h3>
+                      <Badge
+                        variant={shop.role === "owner" ? "default" : "secondary"}
+                        className="text-[10px] px-1.5 py-0"
+                      >
+                        {shop.role === "owner" ? "Власник" : "Менеджер"}
+                      </Badge>
+                    </div>
+
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground mb-3">
+                      <span className="flex items-center gap-1">
+                        <Package className="h-3 w-3" />
+                        {shop.product_count} товарів
+                      </span>
+                      <Badge
+                        variant={shop.is_active ? "default" : "destructive"}
+                        className="text-[10px]"
+                      >
+                        {shop.is_active ? "Активний" : "Неактивний"}
+                      </Badge>
+                    </div>
+
+                    {/* Action buttons */}
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 h-9"
+                        onClick={() => handleShopAction(shop.id, "orders")}
+                      >
+                        <ShoppingCart className="h-3.5 w-3.5 mr-1.5" />
+                        Замовлення
+                      </Button>
+                      {shop.role === "owner" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1 h-9"
+                          onClick={() => handleShopAction(shop.id, "settings")}
+                        >
+                          <Settings className="h-3.5 w-3.5 mr-1.5" />
+                          Налаштування
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}

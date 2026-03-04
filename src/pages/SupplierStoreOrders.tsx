@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Package, MessageSquare, Bot, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -10,21 +10,34 @@ import { hapticSelection } from "@/lib/haptics";
 
 export default function SupplierStoreOrders() {
   const navigate = useNavigate();
+  const { supplierId: paramSupplierId } = useParams<{ supplierId?: string }>();
   const { profile } = useTelegramAuth();
-  const [supplierId, setSupplierId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [supplierId, setSupplierId] = useState<string | null>(paramSupplierId || null);
+  const [isLoading, setIsLoading] = useState(!paramSupplierId);
   const [activeTab, setActiveTab] = useState("orders");
 
   useEffect(() => {
+    if (paramSupplierId) {
+      setSupplierId(paramSupplierId);
+      setIsLoading(false);
+      return;
+    }
+    
     const findSupplier = async () => {
       setIsLoading(true);
       try {
         if (profile?.telegram_id) {
+          // Check if user has multiple shops
           const { data } = await supabase
             .from("suppliers")
             .select("id")
-            .eq("telegram_id", profile.telegram_id)
-            .limit(1);
+            .eq("telegram_id", profile.telegram_id);
+          
+          if (data && data.length > 1) {
+            // Multiple shops - redirect to shop selector
+            navigate("/my-shops", { replace: true });
+            return;
+          }
           setSupplierId(data?.[0]?.id || null);
         }
       } catch (err) {
@@ -34,7 +47,7 @@ export default function SupplierStoreOrders() {
       }
     };
     findSupplier();
-  }, [profile?.telegram_id]);
+  }, [profile?.telegram_id, paramSupplierId]);
 
   if (isLoading) {
     return (
@@ -53,7 +66,7 @@ export default function SupplierStoreOrders() {
       <div className="sticky top-0 z-40 bg-background/95 backdrop-blur-md border-b border-border px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => { hapticSelection(); navigate(-1); }}>
+            <Button variant="ghost" size="icon" onClick={() => { hapticSelection(); navigate("/my-shops"); }}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>

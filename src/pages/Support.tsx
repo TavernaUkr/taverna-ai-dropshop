@@ -130,7 +130,8 @@ const Support = () => {
     if (tab === "catalog") navigate("/");
     else if (tab === "suppliers") navigate("/suppliers");
     else if (tab === "support") setActiveTab(tab);
-    else if (tab === "account") navigate("/");
+    else if (tab === "account") navigate("/?tab=account");
+    else if (tab === "live") navigate("/?tab=live");
     else navigate("/");
   };
 

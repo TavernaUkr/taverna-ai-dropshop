@@ -80,9 +80,10 @@ const Suppliers = () => {
     } else if (tab === "support") {
       navigate("/support");
     } else if (tab === "account") {
-      navigate("/");
+      navigate("/?tab=account");
+    } else if (tab === "live") {
+      navigate("/?tab=live");
     } else {
-      setActiveTab(tab);
       navigate("/");
     }
   };

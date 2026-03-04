@@ -190,7 +190,7 @@ const SupplierRegistration = () => {
         <header className="sticky top-0 z-40 bg-card/95 backdrop-blur-md border-b border-border">
           <div className="flex items-center h-14 px-4">
             <button 
-              onClick={() => navigate(-1)}
+              onClick={() => navigate("/?tab=account")}
               className="w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors mr-2"
             >
               <ArrowLeft className="h-5 w-5" />

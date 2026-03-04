@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Archive, Loader2, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,11 +9,17 @@ import { hapticSelection } from "@/lib/haptics";
 
 export default function SupplierStoreOrdersHistory() {
   const navigate = useNavigate();
+  const { supplierId: paramSupplierId } = useParams<{ supplierId?: string }>();
   const { profile } = useTelegramAuth();
-  const [supplierId, setSupplierId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [supplierId, setSupplierId] = useState<string | null>(paramSupplierId || null);
+  const [isLoading, setIsLoading] = useState(!paramSupplierId);
 
   useEffect(() => {
+    if (paramSupplierId) {
+      setSupplierId(paramSupplierId);
+      setIsLoading(false);
+      return;
+    }
     const findSupplier = async () => {
       setIsLoading(true);
       try {
@@ -32,7 +38,7 @@ export default function SupplierStoreOrdersHistory() {
       }
     };
     findSupplier();
-  }, [profile?.telegram_id]);
+  }, [profile?.telegram_id, paramSupplierId]);
 
   if (isLoading) {
     return (
