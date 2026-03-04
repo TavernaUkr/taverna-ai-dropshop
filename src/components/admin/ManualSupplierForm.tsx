@@ -21,6 +21,9 @@ export function ManualSupplierForm({ onSuccess }: ManualSupplierFormProps) {
     telegram_channel_url: "",
     manager_telegram: "",
     xml_url: "",
+    payment_iban: "",
+    payment_card_holder: "",
+    payment_bank_name: "",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -51,6 +54,9 @@ export function ManualSupplierForm({ onSuccess }: ManualSupplierFormProps) {
           manager_telegram: formData.manager_telegram || null,
           markup_percentage: 33,
           is_active: true,
+          payment_iban: formData.payment_iban || null,
+          payment_card_holder: formData.payment_card_holder || null,
+          payment_bank_name: formData.payment_bank_name || null,
         } as any)
         .select()
         .single();
@@ -108,7 +114,7 @@ export function ManualSupplierForm({ onSuccess }: ManualSupplierFormProps) {
       hapticNotification("success");
       toast.success(`Магазин "${formData.shop_name}" створено!${!formData.manager_telegram ? ' Ви автоматично призначені менеджером.' : ''}`);
 
-      setFormData({ shop_name: "", telegram_channel_url: "", manager_telegram: "", xml_url: "" });
+      setFormData({ shop_name: "", telegram_channel_url: "", manager_telegram: "", xml_url: "", payment_iban: "", payment_card_holder: "", payment_bank_name: "" });
       onSuccess?.();
     } catch (err: any) {
       console.error("Error creating supplier:", err);
@@ -202,6 +208,45 @@ export function ManualSupplierForm({ onSuccess }: ManualSupplierFormProps) {
             </p>
           </div>
 
+          {/* Payment IBAN */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2">
+              💳 IBAN рахунок для виплат
+            </Label>
+            <Input
+              value={formData.payment_iban}
+              onChange={(e) => {
+                const val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                setFormData(prev => ({ ...prev, payment_iban: val }));
+              }}
+              placeholder="UA123456789012345678901234567"
+              maxLength={29}
+            />
+            <p className="text-xs text-muted-foreground">
+              Для автоматичних виплат дроп-ціни постачальнику через Monobank API
+            </p>
+          </div>
+
+          {/* Card Holder */}
+          <div className="space-y-2">
+            <Label>ПІБ власника рахунку</Label>
+            <Input
+              value={formData.payment_card_holder}
+              onChange={(e) => setFormData(prev => ({ ...prev, payment_card_holder: e.target.value }))}
+              placeholder="Іваненко Іван Іванович"
+            />
+          </div>
+
+          {/* Bank Name */}
+          <div className="space-y-2">
+            <Label>Назва банку</Label>
+            <Input
+              value={formData.payment_bank_name}
+              onChange={(e) => setFormData(prev => ({ ...prev, payment_bank_name: e.target.value }))}
+              placeholder="Monobank / ПриватБанк / тощо"
+            />
+          </div>
+
           {/* Info box */}
           <div className="p-3 bg-muted/40 rounded-lg border text-xs text-muted-foreground space-y-1">
             <p className="font-medium text-foreground">ℹ️ Після створення магазину:</p>
@@ -209,6 +254,8 @@ export function ManualSupplierForm({ onSuccess }: ManualSupplierFormProps) {
             <p>• Якщо менеджер <strong>НЕ вказаний</strong> — ви стаєте менеджером автоматично</p>
             <p>• Передача прав власнику — у вкладці <strong>«Магазини»</strong></p>
             <p>• Націнка однакова для всіх: <strong>33%</strong></p>
+            <p>• При повній предоплаті дроп-ціна автоматично переказується постачальнику</p>
+            <p>• При наложеному платежі — постачальник має перевести маржу за 14 днів</p>
           </div>
 
           <Button type="submit" className="w-full" disabled={isSubmitting}>

@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ArrowLeft, Building, User, Mail, Phone, FileText, Globe, ChevronRight, Send, Loader2, CheckCircle, AlertCircle, LogIn } from "lucide-react";
+import { ArrowLeft, Building, User, Mail, Phone, FileText, Globe, ChevronRight, Send, Loader2, CheckCircle, AlertCircle, LogIn, Landmark } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useTelegramAuth } from "@/hooks/useTelegramAuth";
@@ -36,6 +36,14 @@ const supplierSchema = z.object({
   telegramChannel: z.string().optional(),
   telegram: z.string().optional(),
   description: z.string().max(1000, "Опис не може перевищувати 1000 символів").optional(),
+  paymentIban: z.string()
+    .min(1, "IBAN обов'язковий для отримання виплат")
+    .regex(/^UA\d{27}$/, "IBAN має бути у форматі UA + 27 цифр")
+    .max(29, "IBAN має містити 29 символів"),
+  paymentCardHolder: z.string()
+    .min(3, "Вкажіть ПІБ власника рахунку")
+    .max(100, "ПІБ занадто довге"),
+  paymentBankName: z.string().optional(),
   agreeToTerms: z.literal(true, { errorMap: () => ({ message: "Необхідно прийняти умови" }) }),
 });
 
@@ -94,6 +102,9 @@ const SupplierRegistration = () => {
         description: data.description,
         telegram_id: telegramId,
         manager_telegram: managerTelegram,
+        payment_iban: data.paymentIban,
+        payment_card_holder: data.paymentCardHolder,
+        payment_bank_name: data.paymentBankName || null,
       };
 
       const { data: result, error } = await supabase.functions.invoke('process-supplier-application', {
@@ -562,6 +573,61 @@ const SupplierRegistration = () => {
                   placeholder="Розкажіть про асортимент, переваги, досвід роботи..."
                   className="w-full px-4 py-3 bg-muted border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                 />
+              </div>
+
+              {/* Payment Details Section */}
+              <div className="p-4 bg-accent/10 border border-accent/20 rounded-xl space-y-4">
+                <h4 className="font-medium text-foreground flex items-center gap-2">
+                  <Landmark className="h-4 w-4 text-accent" />
+                  Реквізити для виплат
+                </h4>
+                <p className="text-xs text-muted-foreground">
+                  Для автоматичного переказу дроп-ціни при повній предоплаті клієнтом
+                </p>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">IBAN рахунок *</label>
+                  <div className="relative">
+                    <Landmark className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                    <input
+                      {...register("paymentIban")}
+                      type="text"
+                      maxLength={29}
+                      placeholder="UA123456789012345678901234567"
+                      className="w-full pl-10 pr-4 py-3 bg-muted border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary uppercase"
+                      onChange={(e) => {
+                        const val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                        setValue('paymentIban', val);
+                      }}
+                    />
+                  </div>
+                  {errors.paymentIban && (
+                    <p className="text-xs text-destructive">{errors.paymentIban.message}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">ПІБ власника рахунку *</label>
+                  <input
+                    {...register("paymentCardHolder")}
+                    type="text"
+                    placeholder="Іваненко Іван Іванович"
+                    className="w-full px-4 py-3 bg-muted border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                  {errors.paymentCardHolder && (
+                    <p className="text-xs text-destructive">{errors.paymentCardHolder.message}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Назва банку</label>
+                  <input
+                    {...register("paymentBankName")}
+                    type="text"
+                    placeholder="Monobank / ПриватБанк / тощо"
+                    className="w-full px-4 py-3 bg-muted border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
               </div>
 
               <label className="flex items-start gap-3 p-4 bg-muted rounded-xl cursor-pointer">
