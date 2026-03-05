@@ -8,8 +8,14 @@ import { Check } from "lucide-react";
 const languages = [
   { code: "uk", label: "Українська", flag: "🇺🇦" },
   { code: "en", label: "English", flag: "🇬🇧" },
-  { code: "pl", label: "Polski", flag: "🇵🇱" },
+  { code: "es", label: "Español", flag: "🇪🇸" },
+  { code: "zh", label: "中文", flag: "🇨🇳" },
+  { code: "hi", label: "हिन्दी", flag: "🇮🇳" },
+  { code: "ar", label: "العربية", flag: "🇸🇦" },
+  { code: "pt", label: "Português", flag: "🇧🇷" },
+  { code: "fr", label: "Français", flag: "🇫🇷" },
   { code: "de", label: "Deutsch", flag: "🇩🇪" },
+  { code: "pl", label: "Polski", flag: "🇵🇱" },
   { code: "it", label: "Italiano", flag: "🇮🇹" },
 ];
 
