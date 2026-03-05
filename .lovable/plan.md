@@ -1,39 +1,42 @@
 
 
-## Problem Analysis
+## Plan: Language Selector & Region/Country Selector in Header
 
-1. **Missing gear icon**: In `MyShops.tsx`, each shop card has two buttons ("Замовлення" and "Налаштування") but no prominent **⚙️ gear icon** next to the shop name/header for quick access to store editing (as you requested).
+### What to build
 
-2. **Dev/test role sync issue**: When using DevRoleSwitcher with `supplier` role, the `fetchShops` function queries `suppliers` by `profile?.telegram_id` which is `123456789` (fake dev user). This returns no results because no suppliers exist with that telegram_id. The page shows "Магазинів ще немає" even though the role is "supplier".
+Two new icon buttons in the Header, positioned **between the logo/brand text and the existing right action icons** (before Wallet). They follow the same visual style as existing header icons.
 
-## Plan
+1. **Language selector** (`Globe` icon from lucide-react) — opens a small modal/popover to pick UI language. Currently only Ukrainian (UA) is active. Future languages: English, Polish, German, Italian, etc.
 
-### 1. Add gear icon to each shop card in MyShops.tsx
+2. **Region/Country selector** (`Flag` icon from lucide-react) — opens a modal showing available regions. Ukraine is active (default). Other countries (Poland, Germany, Italy, USA, etc.) show a "Скоро" badge, disabled.
 
-For each shop where `role === "owner"` (or in dev environment for supplier test role), add a **⚙️ Settings gear button** in the top-right corner of each card, next to the shop name. This button navigates to `/store-management/{shopId}` (full editing: avatar, banner, info, reviews, policies, manager assignment).
+### Layout in Header
 
-Restructure the card layout:
-- Shop header row: avatar + name + badge + **⚙️ gear icon** (top-right, only for owners)
-- Stats row: products count, reviews count, active/inactive badge
-- Action buttons row: "Замовлення" + "Відгуки" (both roles get these two buttons)
-
-The gear icon is the key differentiator: owners see it, managers do not.
-
-### 2. Fix dev/test sync for supplier role
-
-In `fetchShops`, when in Lovable dev environment AND `effectiveRole === "supplier"`, fetch **all active suppliers** as mock owned shops (since there's no real telegram_id match). This ensures the UI shows shops for testing.
-
-Logic:
-```
-if dev environment AND effectiveRole === "supplier" AND no shops found by telegram_id:
-  → fetch first 3 active suppliers as "owner" shops for UI testing
+```text
+[Logo + Taverna Group] [🌐 Lang] [🚩 Region] ... [Wallet] [Trophy] [Gift] [Search] [Heart] [Cart]
 ```
 
-### 3. Keep manager mode unchanged
+The two new buttons sit right after the brand text, visually grouped with the left side but using the same `w-8 h-8` icon button style as the right-side actions.
 
-For `shop_manager` role, the gear icon is hidden. They see "Замовлення" and "Відгуки" buttons only. The "Відгуки" button navigates to `/store-management/{shopId}?mode=manager` (read-only header, reviews tab only).
+### Implementation Details
 
-### Files to modify
+**New files:**
+- `src/components/LanguageSelectorModal.tsx` — Bottom sheet / dialog with language list. UA selected by default, others available but functional (stored in localStorage for now, no i18n library yet — just saves preference).
+- `src/components/RegionSelectorModal.tsx` — Bottom sheet / dialog with country list. Ukraine active, others show "Скоро" / "В проєкті" badge and are disabled.
 
-- **`src/pages/MyShops.tsx`**: Add gear icon per card, fix dev fallback for supplier test role, restructure action buttons.
+**Modified files:**
+- `src/components/Header.tsx` — Add `Globe` and `Flag` icons between logo and right actions. Each opens its respective modal. Language button shows current language code (e.g., tiny "UA" badge). Region button shows a small flag emoji or country code.
+
+### Language Modal
+- List of languages: Українська (active), English, Polski, Deutsch, Italiano
+- Radio-style selection, saves to `localStorage('app-language')`
+- No actual i18n translation yet — just the preference storage and UI. Shows toast "Мову змінено" on selection.
+
+### Region Modal  
+- Ukraine 🇺🇦 — active, selectable
+- Poland 🇵🇱, Germany 🇩🇪, Italy 🇮🇹, USA 🇺🇸 — each with a "Скоро" / "В проєкті" badge, grayed out, not selectable
+- Clean card-based list with flag emojis
+
+### Visual style
+Both buttons use the same pattern as existing header icons: `w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground active:scale-95 transition-all`. The Globe icon gets a subtle blue tint (`text-blue-500`), the Flag icon gets a yellow-blue tint for Ukraine (`text-yellow-500`).
 
