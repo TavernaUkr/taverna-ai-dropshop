@@ -60,7 +60,7 @@ export const Header = ({
             </button>
             <button
               onClick={() => setIsRegionOpen(true)}
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-yellow-500 hover:bg-yellow-500/10 active:scale-95 transition-all"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-emerald-500 hover:bg-emerald-500/10 active:scale-95 transition-all"
               aria-label="Регіон"
             >
               <Flag className="h-4 w-4" />
