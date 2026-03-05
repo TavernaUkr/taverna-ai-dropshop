@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { ShoppingCart, Search, Heart, Gift, Info, Trophy, Wallet } from "lucide-react";
+import { ShoppingCart, Search, Heart, Gift, Info, Trophy, Wallet, Globe, Flag } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import tavernaLogo from "@/assets/taverna-logo.png";
 import { AppInfoModal } from "./AppInfoModal";
+import { LanguageSelectorModal } from "./LanguageSelectorModal";
+import { RegionSelectorModal } from "./RegionSelectorModal";
 
 interface HeaderProps {
   cartCount?: number;
@@ -27,7 +29,8 @@ export const Header = ({
 }: HeaderProps) => {
   const navigate = useNavigate();
   const [isInfoOpen, setIsInfoOpen] = useState(false);
-
+  const [isLangOpen, setIsLangOpen] = useState(false);
+  const [isRegionOpen, setIsRegionOpen] = useState(false);
   return (
     <>
       <header className="sticky top-0 z-40 bg-card border-b border-border">
@@ -48,6 +51,20 @@ export const Header = ({
               <span className="font-brand text-[15px] text-brand-royal">Taverna</span>
               <span className="font-brand text-[9px] uppercase tracking-[0.22em] text-brand-royal">Group</span>
             </div>
+            <button
+              onClick={() => setIsLangOpen(true)}
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-blue-500 hover:bg-blue-500/10 active:scale-95 transition-all"
+              aria-label="Мова"
+            >
+              <Globe className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setIsRegionOpen(true)}
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-yellow-500 hover:bg-yellow-500/10 active:scale-95 transition-all"
+              aria-label="Регіон"
+            >
+              <Flag className="h-4 w-4" />
+            </button>
           </div>
 
           {/* Right actions */}
@@ -106,6 +123,8 @@ export const Header = ({
       </header>
 
       <AppInfoModal isOpen={isInfoOpen} onClose={() => setIsInfoOpen(false)} />
+      <LanguageSelectorModal isOpen={isLangOpen} onClose={() => setIsLangOpen(false)} />
+      <RegionSelectorModal isOpen={isRegionOpen} onClose={() => setIsRegionOpen(false)} />
     </>
   );
 };
