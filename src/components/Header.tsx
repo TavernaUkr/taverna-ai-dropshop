@@ -60,7 +60,7 @@ export const Header = ({
             </button>
             <button
               onClick={() => setIsRegionOpen(true)}
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-rose-500 hover:bg-rose-500/10 active:scale-95 transition-all"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-red-500 hover:bg-red-500/10 active:scale-95 transition-all"
               aria-label="Регіон"
             >
               <Flag className="h-4 w-4" />
@@ -78,14 +78,14 @@ export const Header = ({
             </button>
             <button
               onClick={onRatingsClick}
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-rating hover:bg-rating/10 active:scale-95 transition-all"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-amber-500 hover:bg-amber-500/10 active:scale-95 transition-all"
               aria-label="Рейтинги"
             >
               <Trophy className="h-4 w-4" />
             </button>
             <button
               onClick={onPromoClick}
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-live hover:bg-live/10 active:scale-95 transition-all"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-orange-400 hover:bg-orange-400/10 active:scale-95 transition-all"
               aria-label="Акції"
             >
               <Gift className="h-4 w-4" />
