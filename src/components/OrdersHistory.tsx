@@ -469,7 +469,9 @@ function OrderDetailsModal({ order, onClose }: { order: Order | null; onClose: (
           <div className="flex items-center gap-2">
             <div className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium', status.bgColor, status.color)}>
               <StatusIcon className="h-4 w-4" />
-            {status.label}
+              {status.label}
+            </div>
+            <Button variant="ghost" size="sm" onClick={onClose} className="ml-2">✕</Button>
           </div>
         </div>
 
