@@ -48,8 +48,8 @@ export const Header = ({
               </div>
             </button>
             <div className="flex flex-col leading-none">
-              <span className="font-brand italic text-[15px] bg-gradient-to-r from-emerald-600 via-primary to-teal-500 bg-clip-text text-transparent">Taverna</span>
-              <span className="font-brand italic text-[9px] uppercase tracking-[0.22em] bg-gradient-to-r from-emerald-600 via-primary to-teal-500 bg-clip-text text-transparent">Group</span>
+              <span className="font-brand italic text-[16px] text-brand-royal">Taverna</span>
+              <span className="font-brand text-[8.5px] uppercase tracking-[0.24em] text-brand-royal" style={{ fontStyle: 'normal' }}>Group</span>
             </div>
             <button
               onClick={() => setIsLangOpen(true)}
