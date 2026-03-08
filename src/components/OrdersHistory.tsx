@@ -457,7 +457,7 @@ function OrderDetailsModal({ order, onClose }: { order: Order | null; onClose: (
       <div className="absolute inset-x-0 bottom-0 bg-background rounded-t-3xl max-h-[90vh] flex flex-col animate-slide-up" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border">
-          <div>
+          <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <h2 className="font-bold text-lg text-foreground">{order.order_number}</h2>
               <button onClick={handleCopyOrderNumber} className="text-muted-foreground hover:text-foreground">
@@ -466,9 +466,12 @@ function OrderDetailsModal({ order, onClose }: { order: Order | null; onClose: (
             </div>
             <p className="text-sm text-muted-foreground">{formatDate(order.created_at)}</p>
           </div>
-          <div className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium', status.bgColor, status.color)}>
-            <StatusIcon className="h-4 w-4" />
-            {status.label}
+          <div className="flex items-center gap-2">
+            <div className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium', status.bgColor, status.color)}>
+              <StatusIcon className="h-4 w-4" />
+              {status.label}
+            </div>
+            <Button variant="ghost" size="sm" onClick={onClose} className="ml-2">✕</Button>
           </div>
         </div>
 
