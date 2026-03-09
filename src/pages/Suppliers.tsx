@@ -48,28 +48,65 @@ const Suppliers = () => {
       // Fetch suppliers with logo and cover
       const { data: suppliersData, error } = await supabase
         .from('suppliers')
-        .select('id, shop_name, is_active, logo_url, cover_image_url')
+        .select('id, shop_name, is_active, logo_url, cover_image_url, description')
         .eq('is_active', true);
       
       if (error) throw error;
       
-      // Get product counts for each supplier
-      const suppliersWithCounts = await Promise.all(
+      // Get product counts, reviews, and categories for each supplier
+      const suppliersWithDetails = await Promise.all(
         (suppliersData || []).map(async (supplier) => {
+          // Product count
           const { count } = await supabase
             .from('products')
             .select('*', { count: 'exact', head: true })
             .eq('supplier_id', supplier.id)
             .eq('in_stock', true);
+
+          // Reviews for this supplier's products
+          const { data: productIds } = await supabase
+            .from('products')
+            .select('id')
+            .eq('supplier_id', supplier.id);
+
+          let reviewCount = 0;
+          let avgRating = 0;
+          if (productIds?.length) {
+            const { data: reviews } = await supabase
+              .from('reviews')
+              .select('rating')
+              .in('product_id', productIds.map(p => p.id));
+            
+            reviewCount = reviews?.length || 0;
+            avgRating = reviewCount > 0 
+              ? reviews!.reduce((sum, r) => sum + r.rating, 0) / reviewCount 
+              : 0;
+          }
+
+          // Categories
+          const { data: productCats } = await supabase
+            .from('products')
+            .select('category:categories(name)')
+            .eq('supplier_id', supplier.id)
+            .eq('in_stock', true)
+            .limit(20);
+
+          const categorySet = new Set<string>();
+          (productCats || []).forEach((p: any) => {
+            if (p.category?.name) categorySet.add(p.category.name);
+          });
           
           return {
             ...supplier,
             product_count: count || 0,
+            review_count: reviewCount,
+            avg_rating: avgRating,
+            categories: Array.from(categorySet),
           };
         })
       );
       
-      setSuppliers(suppliersWithCounts);
+      setSuppliers(suppliersWithDetails);
     } catch (error) {
       console.error('Error fetching suppliers:', error);
       toast.error('Помилка завантаження постачальників');
