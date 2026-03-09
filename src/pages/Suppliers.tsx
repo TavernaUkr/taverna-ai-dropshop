@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Store, Star, MapPin, Package, ChevronRight, Verified, Loader2, User, MessageSquare } from "lucide-react";
+import { Store, Star, MapPin, Package, ChevronRight, Verified, Loader2, User, MessageSquare, Tag } from "lucide-react";
 import { Header } from "@/components/Header";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { Badge } from "@/components/ui/badge";
