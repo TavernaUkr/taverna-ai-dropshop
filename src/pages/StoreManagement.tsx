@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft, Store, Star, MessageSquare, Image, FileText, 
-  Truck, RotateCcw, Settings, Loader2, Camera, Plus, X,
+  Truck, RotateCcw, Settings, Loader2, Camera, Plus, X, Trash2,
   Clock, AlertTriangle, ChevronRight, Package, Upload,
   Bot, UserCog, Reply, MapPin, Shield, Info, Edit3
 } from "lucide-react";
