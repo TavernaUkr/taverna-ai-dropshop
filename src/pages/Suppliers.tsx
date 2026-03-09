@@ -41,10 +41,10 @@ const Suppliers = () => {
     try {
       setIsLoading(true);
       
-      // Fetch suppliers from public view
+      // Fetch suppliers with logo and cover
       const { data: suppliersData, error } = await supabase
-        .from('suppliers_public')
-        .select('*')
+        .from('suppliers')
+        .select('id, shop_name, is_active, logo_url, cover_image_url')
         .eq('is_active', true);
       
       if (error) throw error;
