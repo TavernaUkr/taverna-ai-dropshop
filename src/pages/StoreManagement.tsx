@@ -579,54 +579,6 @@ export default function StoreManagement() {
             </CardContent>
           </Card>
 
-          {/* Shop Photos */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Image className="h-4 w-4 text-primary" />
-                Фото магазину
-              </CardTitle>
-              <CardDescription>Фото вашого магазину, складу або продукції</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {shopData.shop_photos.length > 0 && (
-                <div className="grid grid-cols-3 gap-2">
-                  {shopData.shop_photos.map((url, i) => (
-                    <div key={i} className="relative aspect-square rounded-lg overflow-hidden border border-border group">
-                      <img src={url} alt="" className="w-full h-full object-cover" />
-                      <button
-                        onClick={() => removePhoto(i)}
-                        className="absolute top-1 right-1 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <div className="flex gap-2">
-                <Input
-                  value={newPhotoUrl}
-                  onChange={e => setNewPhotoUrl(e.target.value)}
-                  placeholder="URL фото"
-                  className="flex-1"
-                />
-                <Button variant="outline" size="sm" onClick={addPhotoByUrl} disabled={!newPhotoUrl.trim()}>
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => photoInputRef.current?.click()}
-                disabled={isUploadingPhoto}
-                className="w-full gap-2"
-              >
-                {isUploadingPhoto ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                Завантажити фото з галереї
-              </Button>
-            </CardContent>
-          </Card>
 
           {/* Manager & Bot Settings */}
           <Card>
