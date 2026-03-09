@@ -170,75 +170,89 @@ const Suppliers = () => {
             </p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-5">
             {suppliers.map((supplier) => (
-              <div
+              <button
                 key={supplier.id}
+                onClick={() => navigate(`/supplier/${supplier.id}`)}
                 className="w-full bg-card rounded-2xl overflow-hidden border border-border hover:border-primary/50 hover:shadow-lg transition-all duration-300 text-left group"
               >
-                {/* Cover Banner */}
-                <button
-                  onClick={() => navigate(`/supplier/${supplier.id}`)}
-                  className="w-full text-left"
-                >
-                  <div className="h-24 w-full bg-gradient-to-r from-primary/20 via-primary/10 to-accent/20 overflow-hidden relative">
-                    {supplier.cover_image_url ? (
-                      <img src={supplier.cover_image_url} alt="" className="w-full h-full object-cover" />
-                    ) : null}
-                    <div className="absolute inset-0 bg-gradient-to-t from-card/60 to-transparent" />
+                {/* Cover as background with overlay */}
+                <div className="relative h-28 w-full bg-gradient-to-br from-primary/15 via-muted to-accent/15 overflow-hidden">
+                  {supplier.cover_image_url ? (
+                    <img src={supplier.cover_image_url} alt="" className="w-full h-full object-cover" />
+                  ) : null}
+                  <div className="absolute inset-0 bg-gradient-to-t from-card via-card/50 to-transparent" />
+                  
+                  {/* Rating badge on cover */}
+                  {(supplier.avg_rating || 0) > 0 && (
+                    <div className="absolute top-2 right-2 flex items-center gap-1 bg-background/80 backdrop-blur-sm px-2 py-0.5 rounded-full">
+                      <Star className="h-3 w-3 text-warning fill-warning" />
+                      <span className="text-xs font-semibold text-foreground">{supplier.avg_rating!.toFixed(1)}</span>
+                    </div>
+                  )}
+
+                  {/* Avatar overlapping the cover */}
+                  <div className="absolute -bottom-7 left-4">
+                    <div className="w-14 h-14 rounded-xl bg-card border-3 border-card shadow-xl flex items-center justify-center flex-shrink-0 overflow-hidden ring-2 ring-background">
+                      {supplier.logo_url ? (
+                        <img src={supplier.logo_url} alt={supplier.shop_name || ''} className="w-full h-full object-cover" />
+                      ) : (
+                        <Store className="h-7 w-7 text-primary" />
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Info section below cover */}
+                <div className="px-4 pt-9 pb-4">
+                  {/* Name & verified */}
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-bold text-foreground truncate text-base group-hover:text-primary transition-colors">
+                      {supplier.shop_name}
+                    </h3>
+                    <Verified className="h-4 w-4 text-primary flex-shrink-0" />
+                    <ChevronRight className="h-4 w-4 text-muted-foreground ml-auto group-hover:text-primary group-hover:translate-x-1 transition-all flex-shrink-0" />
                   </div>
 
-                  <div className="px-5 pb-3 -mt-8 relative">
-                    <div className="flex items-end gap-3 mb-3">
-                      {/* Avatar */}
-                      <div className="w-14 h-14 rounded-xl bg-card border-2 border-card shadow-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
-                        {supplier.logo_url ? (
-                          <img src={supplier.logo_url} alt={supplier.shop_name || ''} className="w-full h-full object-cover" />
-                        ) : (
-                          <Store className="h-7 w-7 text-primary" />
-                        )}
-                      </div>
+                  {/* Stats row */}
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground mb-2.5">
+                    <span className="flex items-center gap-1">
+                      <Package className="h-3.5 w-3.5" />
+                      {supplier.product_count || 0} товарів
+                    </span>
+                    {(supplier.review_count || 0) > 0 && (
+                      <span className="flex items-center gap-1">
+                        <Star className="h-3.5 w-3.5 text-warning fill-warning" />
+                        {supplier.avg_rating!.toFixed(1)} ({supplier.review_count} відгуків)
+                      </span>
+                    )}
+                    {supplier.review_count === 0 && (
+                      <span className="text-muted-foreground/50">Ще немає відгуків</span>
+                    )}
+                  </div>
 
-                      <div className="flex-1 min-w-0 pb-0.5">
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-semibold text-foreground truncate text-lg group-hover:text-primary transition-colors">
-                            {supplier.shop_name}
-                          </h3>
-                          <Verified className="h-4 w-4 text-primary flex-shrink-0" />
-                        </div>
-                        <p className="text-xs text-muted-foreground">Офіційний партнер Taverna</p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1.5 bg-muted/50 px-2.5 py-1 rounded-full">
-                          <Package className="h-3.5 w-3.5" />
-                          {supplier.product_count || 0} товарів
+                  {/* Categories */}
+                  {supplier.categories && supplier.categories.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {supplier.categories.slice(0, 4).map((cat) => (
+                        <span
+                          key={cat}
+                          className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-primary/8 text-primary/80 border border-primary/10"
+                        >
+                          <Tag className="h-2.5 w-2.5" />
+                          {cat}
                         </span>
-                      </div>
-                      <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                      ))}
+                      {supplier.categories.length > 4 && (
+                        <span className="text-[11px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                          +{supplier.categories.length - 4}
+                        </span>
+                      )}
                     </div>
-                  </div>
-                </button>
-                
-                {/* Contact Seller Button */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const tg = (window as any).Telegram?.WebApp;
-                    if (tg?.openTelegramLink) {
-                      tg.openTelegramLink("https://t.me/taverna_support_bot?start=seller_" + supplier.id);
-                    } else {
-                      window.open("https://t.me/taverna_support_bot?start=seller_" + supplier.id, "_blank");
-                    }
-                  }}
-                  className="mt-3 w-full flex items-center justify-center gap-2 py-2.5 bg-primary/10 text-primary rounded-xl text-sm font-medium hover:bg-primary/20 transition-colors"
-                >
-                  <MessageSquare className="h-4 w-4" />
-                  Звернутись до продавця
-                </button>
-              </div>
+                  )}
+                </div>
+              </button>
             ))}
           </div>
         )}
