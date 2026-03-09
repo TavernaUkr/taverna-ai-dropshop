@@ -837,7 +837,16 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
   // Render Confirm Step
   const renderConfirmStep = () => (
     <div className="space-y-4">
-      <h3 className="font-semibold text-lg text-foreground">Підтвердження замовлення</h3>
+      {/* Header */}
+      <div className="flex items-center gap-3 p-3 bg-primary/5 border border-primary/20 rounded-xl">
+        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+          <Check className="h-5 w-5 text-primary" />
+        </div>
+        <div>
+          <h3 className="font-semibold text-foreground">Перевірте замовлення</h3>
+          <p className="text-xs text-muted-foreground">Переконайтесь, що все вірно</p>
+        </div>
+      </div>
 
       <OrderSummary
         items={items}
@@ -851,6 +860,18 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
         promoCode={promoApplied ? promoCode : undefined}
       />
 
+      {/* Contact Info */}
+      <div className="bg-muted/50 rounded-xl p-4 space-y-2">
+        <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+          <User className="h-4 w-4" />
+          Одержувач
+        </div>
+        <p className="text-sm text-muted-foreground">
+          {contactData.firstName} {contactData.lastName}
+        </p>
+        <p className="text-sm text-muted-foreground">+{contactData.phone}</p>
+      </div>
+
       {/* Delivery Info */}
       <div className="bg-muted/50 rounded-xl p-4 space-y-2">
         <div className="flex items-center gap-2 text-sm font-medium text-foreground">
@@ -863,9 +884,6 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
         <p className="text-sm text-muted-foreground">
           {deliveryData.city}{deliveryData.warehouse ? `, Відділення №${deliveryData.warehouse}` : ''}
         </p>
-        <p className="text-sm text-muted-foreground">
-          {contactData.firstName} {contactData.lastName}, +{contactData.phone}
-        </p>
         {isMultiSupplier && deliveryData.deliveryType === 'fulfillment' && (
           <p className="text-xs text-primary">
             Товари від {uniqueSuppliers.size} постачальників будуть зібрані на складі НП в одну посилку
@@ -875,15 +893,23 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
 
       {/* Payment Info */}
       <div className="bg-muted/50 rounded-xl p-4 space-y-2">
-        <div className="text-sm font-medium text-foreground">Оплата</div>
+        <div className="text-sm font-medium text-foreground flex items-center gap-2">
+          💳 Оплата
+        </div>
         <p className="text-sm text-muted-foreground">
-          {paymentMethod === 'cash' && 'Оплата при отриманні'}
+          {paymentMethod === 'cash' && 'Оплата при отриманні (Накладений платіж)'}
           {paymentMethod === 'card' && 'Картка Visa/Mastercard'}
           {paymentMethod === 'mono' && 'MonoPay'}
           {paymentMethod === 'applepay' && 'Apple Pay'}
           {paymentMethod === 'googlepay' && 'Google Pay'}
           {paymentMethod === 'telegram_wallet' && 'Telegram Wallet'}
         </p>
+      </div>
+
+      {/* Total highlight */}
+      <div className="bg-primary/10 border border-primary/20 rounded-xl p-4 flex items-center justify-between">
+        <span className="font-semibold text-foreground">До сплати:</span>
+        <span className="text-xl font-bold text-primary">{total}₴</span>
       </div>
 
       <div className="flex gap-3">
@@ -897,7 +923,7 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
         </Button>
         <Button
           onClick={handleSubmitOrder}
-          className="flex-1"
+          className="flex-1 h-12 text-base font-semibold"
           disabled={isSubmitting}
         >
           {isSubmitting ? (
@@ -907,7 +933,7 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
             </>
           ) : (
             <>
-              Замовити
+              Підтвердити замовлення
               <Check className="h-4 w-4 ml-2" />
             </>
           )}

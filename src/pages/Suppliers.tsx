@@ -133,40 +133,50 @@ const Suppliers = () => {
             {suppliers.map((supplier) => (
               <div
                 key={supplier.id}
-                className="w-full bg-card rounded-2xl p-5 border border-border hover:border-primary/50 hover:shadow-lg transition-all duration-300 text-left group"
+                className="w-full bg-card rounded-2xl overflow-hidden border border-border hover:border-primary/50 hover:shadow-lg transition-all duration-300 text-left group"
               >
+                {/* Cover Banner */}
                 <button
                   onClick={() => navigate(`/supplier/${supplier.id}`)}
                   className="w-full text-left"
                 >
-                  <div className="flex items-start gap-4">
-                    {/* Avatar */}
-                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center flex-shrink-0 shadow-inner">
-                      <Store className="h-8 w-8 text-primary" />
+                  <div className="h-24 w-full bg-gradient-to-r from-primary/20 via-primary/10 to-accent/20 overflow-hidden relative">
+                    {supplier.cover_image_url ? (
+                      <img src={supplier.cover_image_url} alt="" className="w-full h-full object-cover" />
+                    ) : null}
+                    <div className="absolute inset-0 bg-gradient-to-t from-card/60 to-transparent" />
+                  </div>
+
+                  <div className="px-5 pb-3 -mt-8 relative">
+                    <div className="flex items-end gap-3 mb-3">
+                      {/* Avatar */}
+                      <div className="w-14 h-14 rounded-xl bg-card border-2 border-card shadow-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
+                        {supplier.logo_url ? (
+                          <img src={supplier.logo_url} alt={supplier.shop_name || ''} className="w-full h-full object-cover" />
+                        ) : (
+                          <Store className="h-7 w-7 text-primary" />
+                        )}
+                      </div>
+
+                      <div className="flex-1 min-w-0 pb-0.5">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-semibold text-foreground truncate text-lg group-hover:text-primary transition-colors">
+                            {supplier.shop_name}
+                          </h3>
+                          <Verified className="h-4 w-4 text-primary flex-shrink-0" />
+                        </div>
+                        <p className="text-xs text-muted-foreground">Офіційний партнер Taverna</p>
+                      </div>
                     </div>
 
-                    {/* Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-semibold text-foreground truncate text-lg group-hover:text-primary transition-colors">
-                          {supplier.shop_name}
-                        </h3>
-                        <Verified className="h-4 w-4 text-primary flex-shrink-0" />
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1.5 bg-muted/50 px-2.5 py-1 rounded-full">
+                          <Package className="h-3.5 w-3.5" />
+                          {supplier.product_count || 0} товарів
+                        </span>
                       </div>
-
-                      <p className="text-sm text-muted-foreground mb-3">
-                        Офіційний партнер Taverna
-                      </p>
-
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1.5 bg-muted/50 px-2.5 py-1 rounded-full">
-                            <Package className="h-3.5 w-3.5" />
-                            {supplier.product_count || 0} товарів
-                          </span>
-                        </div>
-                        <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
-                      </div>
+                      <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
                     </div>
                   </div>
                 </button>
