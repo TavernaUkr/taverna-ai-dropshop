@@ -16,6 +16,8 @@ interface Supplier {
   id: string | null;
   shop_name: string | null;
   is_active: boolean | null;
+  logo_url?: string | null;
+  cover_image_url?: string | null;
   product_count?: number;
 }
 
