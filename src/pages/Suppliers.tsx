@@ -18,7 +18,11 @@ interface Supplier {
   is_active: boolean | null;
   logo_url?: string | null;
   cover_image_url?: string | null;
+  description?: string | null;
   product_count?: number;
+  review_count?: number;
+  avg_rating?: number;
+  categories?: string[];
 }
 
 const Suppliers = () => {
