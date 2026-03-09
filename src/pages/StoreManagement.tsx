@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft, Store, Star, MessageSquare, Image, FileText, 
-  Truck, RotateCcw, Settings, Loader2, Camera, Plus, X,
+  Truck, RotateCcw, Settings, Loader2, Camera, Plus, X, Trash2,
   Clock, AlertTriangle, ChevronRight, Package, Upload,
   Bot, UserCog, Reply, MapPin, Shield, Info, Edit3
 } from "lucide-react";
@@ -433,14 +433,25 @@ export default function StoreManagement() {
           <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent pointer-events-none" />
         </button>
 
-        {/* URL input for cover (toggle) */}
-        <button
-          onClick={() => setShowCoverUrlInput(!showCoverUrlInput)}
-          className="absolute top-2 right-2 z-10 bg-black/50 text-white p-1.5 rounded-lg text-xs hover:bg-black/70 transition-colors"
-          title="Вставити URL"
-        >
-          <Edit3 className="h-3.5 w-3.5" />
-        </button>
+        {/* Cover action buttons */}
+        <div className="absolute top-2 right-2 z-10 flex gap-1.5">
+          {shopData.cover_image_url && (
+            <button
+              onClick={(e) => { e.stopPropagation(); handleChange("cover_image_url", ""); }}
+              className="bg-black/50 text-white p-1.5 rounded-lg text-xs hover:bg-destructive/80 transition-colors"
+              title="Видалити обкладинку"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          )}
+          <button
+            onClick={() => setShowCoverUrlInput(!showCoverUrlInput)}
+            className="bg-black/50 text-white p-1.5 rounded-lg text-xs hover:bg-black/70 transition-colors"
+            title="Вставити URL"
+          >
+            <Edit3 className="h-3.5 w-3.5" />
+          </button>
+        </div>
 
         {/* Avatar - Clickable, positioned like Facebook */}
         <div className="absolute -bottom-10 left-4 z-10">
@@ -465,14 +476,25 @@ export default function StoreManagement() {
               </div>
             </div>
           </button>
-          {/* URL toggle for logo */}
-          <button
-            onClick={() => setShowLogoUrlInput(!showLogoUrlInput)}
-            className="absolute -bottom-1 -right-1 bg-muted border border-border p-1 rounded-full hover:bg-accent transition-colors"
-            title="Вставити URL логотипу"
-          >
-            <Edit3 className="h-3 w-3 text-muted-foreground" />
-          </button>
+          {/* Action buttons for logo */}
+          <div className="absolute -bottom-1 -right-1 flex gap-0.5">
+            {shopData.logo_url && (
+              <button
+                onClick={() => handleChange("logo_url", "")}
+                className="bg-destructive/80 border border-background p-1 rounded-full hover:bg-destructive transition-colors"
+                title="Видалити аватар"
+              >
+                <Trash2 className="h-2.5 w-2.5 text-white" />
+              </button>
+            )}
+            <button
+              onClick={() => setShowLogoUrlInput(!showLogoUrlInput)}
+              className="bg-muted border border-border p-1 rounded-full hover:bg-accent transition-colors"
+              title="Вставити URL логотипу"
+            >
+              <Edit3 className="h-3 w-3 text-muted-foreground" />
+            </button>
+          </div>
         </div>
 
         {/* Shop name & rating next to avatar */}
