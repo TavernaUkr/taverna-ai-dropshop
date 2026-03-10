@@ -104,9 +104,22 @@ const Suppliers = () => {
             review_count: reviewCount,
             avg_rating: avgRating,
             categories: Array.from(categorySet),
+            badge: { tier: null } as SupplierBadgeInfo, // will be assigned after sorting
           };
         })
       );
+
+      // Assign badges based on revenue/product ranking (simulate weekly/monthly/yearly)
+      const sorted = [...suppliersWithDetails].sort((a, b) => (b.product_count || 0) - (a.product_count || 0));
+      sorted.forEach((s, idx) => {
+        const rank = idx + 1;
+        // Use rank to determine badge tier
+        s.badge = getSupplierBadge(
+          rank <= 10 ? rank : null, // yearly rank
+          rank <= 10 ? rank : null, // monthly rank  
+          rank <= 10 ? rank : null  // weekly rank
+        );
+      });
       
       setSuppliers(suppliersWithDetails);
     } catch (error) {
