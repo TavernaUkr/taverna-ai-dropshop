@@ -178,7 +178,7 @@ const Suppliers = () => {
                 className="w-full bg-card rounded-2xl overflow-hidden border border-border hover:border-primary/50 hover:shadow-lg transition-all duration-300 text-left group"
               >
                 {/* Cover as background with overlay */}
-                <div className="relative h-28 w-full bg-gradient-to-br from-primary/15 via-muted to-accent/15 overflow-hidden">
+                <div className="relative h-28 w-full bg-gradient-to-br from-primary/15 via-muted to-accent/15">
                   {supplier.cover_image_url ? (
                     <img src={supplier.cover_image_url} alt="" className="w-full h-full object-cover" />
                   ) : null}
