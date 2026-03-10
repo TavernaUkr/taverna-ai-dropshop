@@ -4,6 +4,7 @@ import { Store, Star, MapPin, Package, ChevronRight, Loader2, User, MessageSquar
 import { Header } from "@/components/Header";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { Badge } from "@/components/ui/badge";
+import { SupplierBadge, getSupplierBadge, type SupplierBadgeInfo } from "@/components/ui/supplier-badge";
 import { useCartContext } from "@/contexts/CartContext";
 import { useFavoritesContext } from "@/components/FavoritesContext";
 import { SearchModal } from "@/components/SearchModal";
