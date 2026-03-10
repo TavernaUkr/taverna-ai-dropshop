@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Store, Star, MapPin, Package, ChevronRight, Verified, Loader2, User, MessageSquare, Tag } from "lucide-react";
+import { Store, Star, MapPin, Package, ChevronRight, Loader2, User, MessageSquare, Tag } from "lucide-react";
 import { Header } from "@/components/Header";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { Badge } from "@/components/ui/badge";
+import { SupplierBadge, getSupplierBadge, type SupplierBadgeInfo } from "@/components/ui/supplier-badge";
 import { useCartContext } from "@/contexts/CartContext";
 import { useFavoritesContext } from "@/components/FavoritesContext";
 import { SearchModal } from "@/components/SearchModal";
@@ -23,6 +24,7 @@ interface Supplier {
   review_count?: number;
   avg_rating?: number;
   categories?: string[];
+  badge?: SupplierBadgeInfo;
 }
 
 const Suppliers = () => {
@@ -102,9 +104,22 @@ const Suppliers = () => {
             review_count: reviewCount,
             avg_rating: avgRating,
             categories: Array.from(categorySet),
+            badge: { tier: null } as SupplierBadgeInfo, // will be assigned after sorting
           };
         })
       );
+
+      // Assign badges based on revenue/product ranking (simulate weekly/monthly/yearly)
+      const sorted = [...suppliersWithDetails].sort((a, b) => (b.product_count || 0) - (a.product_count || 0));
+      sorted.forEach((s, idx) => {
+        const rank = idx + 1;
+        // Use rank to determine badge tier
+        s.badge = getSupplierBadge(
+          rank <= 10 ? rank : null, // yearly rank
+          rank <= 10 ? rank : null, // monthly rank  
+          rank <= 10 ? rank : null  // weekly rank
+        );
+      });
       
       setSuppliers(suppliersWithDetails);
     } catch (error) {
@@ -213,7 +228,9 @@ const Suppliers = () => {
                     <h3 className="font-bold text-foreground truncate text-base group-hover:text-primary transition-colors">
                       {supplier.shop_name}
                     </h3>
-                    <Verified className="h-4 w-4 text-primary flex-shrink-0" />
+                    {supplier.badge && supplier.badge.tier && (
+                      <SupplierBadge badge={supplier.badge} size="sm" />
+                    )}
                     <ChevronRight className="h-4 w-4 text-muted-foreground ml-auto group-hover:text-primary group-hover:translate-x-1 transition-all flex-shrink-0" />
                   </div>
 

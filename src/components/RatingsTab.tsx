@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Star, Trophy, TrendingUp, Users, ShoppingBag, Package, BarChart3, Gift, Crown, Zap, Award, Wallet, MessageSquare } from "lucide-react";
+import { Star, Trophy, TrendingUp, Users, ShoppingBag, Package, BarChart3, Gift, Crown, Zap, Award, Wallet, MessageSquare, BadgeCheck, Info, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useTelegramAuthContext } from "@/components/TelegramAuthProvider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 type Period = "day" | "week" | "month" | "year";
 
@@ -410,6 +411,86 @@ const ProductReviews = () => {
   );
 };
 
+const BadgeRules = () => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const tiers = [
+    {
+      emoji: "🥇",
+      name: "Золота галочка",
+      checkColor: "text-yellow-500",
+      bgColor: "bg-yellow-500/10",
+      rule: "Топ 1-3 місце у річному рейтингу",
+      detail: "Найвища нагорода. Магазин потрапив до трійки лідерів за підсумками року.",
+    },
+    {
+      emoji: "🥈",
+      name: "Срібна галочка",
+      checkColor: "text-slate-400",
+      bgColor: "bg-slate-400/10",
+      rule: "Топ 1-3 місце у місячному рейтингу",
+      detail: "Магазин показав найкращі результати за попередній місяць.",
+    },
+    {
+      emoji: "🥉",
+      name: "Бронзова галочка",
+      checkColor: "text-amber-600",
+      bgColor: "bg-amber-600/10",
+      rule: "Топ 1-3 місце у тижневому рейтингу",
+      detail: "Магазин увійшов до трійки лідерів за попередній тиждень.",
+    },
+    {
+      emoji: "✅",
+      name: "Верифікований",
+      checkColor: "text-emerald-500",
+      bgColor: "bg-emerald-500/10",
+      rule: "Топ 4-10 місце у будь-якому рейтингу",
+      detail: "Магазин входить до десятки найкращих за тиждень, місяць або рік.",
+    },
+  ];
+
+  return (
+    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <CollapsibleTrigger className="w-full flex items-center gap-2 p-3 rounded-xl bg-muted/50 border border-border hover:bg-muted transition-colors">
+        <Info className="h-4 w-4 text-primary shrink-0" />
+        <span className="text-sm font-medium text-foreground flex-1 text-left">
+          Як отримати галочку магазину?
+        </span>
+        {isOpen ? (
+          <ChevronUp className="h-4 w-4 text-muted-foreground" />
+        ) : (
+          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+        )}
+      </CollapsibleTrigger>
+      <CollapsibleContent className="mt-2 space-y-2 animate-fade-in">
+        {tiers.map((tier) => (
+          <div key={tier.name} className={cn("p-3 rounded-xl border border-transparent", tier.bgColor)}>
+            <div className="flex items-center gap-2 mb-1">
+              <div className={cn("rounded-full p-0.5", tier.bgColor)}>
+                <BadgeCheck className={cn("h-4 w-4", tier.checkColor)} />
+              </div>
+              <span className="text-sm font-semibold text-foreground">{tier.name}</span>
+              {tier.emoji.includes("🥇") || tier.emoji.includes("🥈") || tier.emoji.includes("🥉") ? (
+                <div className="flex items-center gap-0.5 ml-auto">
+                  <Trophy className={cn("h-3.5 w-3.5", tier.checkColor)} />
+                  <span className={cn("text-[10px] font-bold", tier.checkColor)}>1-3</span>
+                </div>
+              ) : null}
+            </div>
+            <p className="text-xs font-medium text-foreground/80">{tier.rule}</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">{tier.detail}</p>
+          </div>
+        ))}
+        <div className="p-2.5 rounded-lg bg-primary/5 border border-primary/10">
+          <p className="text-[11px] text-muted-foreground">
+            💡 Поряд із галочкою відображається <Trophy className="h-3 w-3 inline text-yellow-500" /> кубок з номером місця (1, 2 або 3) у відповідному кольорі. Магазини без рейтингу в Топ-10 не отримують галочку.
+          </p>
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+};
+
 export const RatingsTab = () => {
   const navigate = useNavigate();
   const { effectiveRole } = useTelegramAuthContext();
@@ -434,6 +515,9 @@ export const RatingsTab = () => {
           Бонуси
         </button>
       </div>
+
+      {/* Badge rules */}
+      <BadgeRules />
 
       <Tabs defaultValue="customers" className="w-full">
         <TabsList className="grid grid-cols-4 w-full">
