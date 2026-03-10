@@ -215,7 +215,9 @@ const Suppliers = () => {
                     <h3 className="font-bold text-foreground truncate text-base group-hover:text-primary transition-colors">
                       {supplier.shop_name}
                     </h3>
-                    <Verified className="h-4 w-4 text-primary flex-shrink-0" />
+                    {supplier.badge && supplier.badge.tier && (
+                      <SupplierBadge badge={supplier.badge} size="sm" />
+                    )}
                     <ChevronRight className="h-4 w-4 text-muted-foreground ml-auto group-hover:text-primary group-hover:translate-x-1 transition-all flex-shrink-0" />
                   </div>
 
