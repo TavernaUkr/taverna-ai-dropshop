@@ -178,23 +178,25 @@ const Suppliers = () => {
                 className="w-full bg-card rounded-2xl overflow-hidden border border-border hover:border-primary/50 hover:shadow-lg transition-all duration-300 text-left group"
               >
                 {/* Cover as background with overlay */}
-                <div className="relative h-28 w-full bg-gradient-to-br from-primary/15 via-muted to-accent/15">
-                  {supplier.cover_image_url ? (
-                    <img src={supplier.cover_image_url} alt="" className="w-full h-full object-cover" />
-                  ) : null}
-                  <div className="absolute inset-0 bg-gradient-to-t from-card via-card/50 to-transparent" />
+                <div className="relative h-28 w-full">
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/15 via-muted to-accent/15 overflow-hidden rounded-t-2xl">
+                    {supplier.cover_image_url ? (
+                      <img src={supplier.cover_image_url} alt="" className="w-full h-full object-cover" />
+                    ) : null}
+                    <div className="absolute inset-0 bg-gradient-to-t from-card via-card/50 to-transparent" />
+                  </div>
                   
                   {/* Rating badge on cover */}
                   {(supplier.avg_rating || 0) > 0 && (
-                    <div className="absolute top-2 right-2 flex items-center gap-1 bg-background/80 backdrop-blur-sm px-2 py-0.5 rounded-full">
+                    <div className="absolute top-2 right-2 z-10 flex items-center gap-1 bg-background/80 backdrop-blur-sm px-2 py-0.5 rounded-full">
                       <Star className="h-3 w-3 text-warning fill-warning" />
                       <span className="text-xs font-semibold text-foreground">{supplier.avg_rating!.toFixed(1)}</span>
                     </div>
                   )}
 
-                  {/* Avatar overlapping the cover */}
-                  <div className="absolute -bottom-7 left-4">
-                    <div className="w-14 h-14 rounded-xl bg-card border-3 border-card shadow-xl flex items-center justify-center flex-shrink-0 overflow-hidden ring-2 ring-background">
+                  {/* Avatar overlapping the cover — outside overflow-hidden */}
+                  <div className="absolute -bottom-7 left-4 z-10">
+                    <div className="w-14 h-14 rounded-xl bg-card border-2 border-card shadow-xl flex items-center justify-center flex-shrink-0 overflow-hidden ring-2 ring-background">
                       {supplier.logo_url ? (
                         <img src={supplier.logo_url} alt={supplier.shop_name || ''} className="w-full h-full object-cover" />
                       ) : (
