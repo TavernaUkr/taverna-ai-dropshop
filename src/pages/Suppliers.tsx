@@ -24,6 +24,7 @@ interface Supplier {
   review_count?: number;
   avg_rating?: number;
   categories?: string[];
+  badge?: SupplierBadgeInfo;
 }
 
 const Suppliers = () => {
