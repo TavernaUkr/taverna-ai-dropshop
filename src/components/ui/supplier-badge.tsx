@@ -7,38 +7,44 @@ import {
 } from "@/components/ui/tooltip";
 
 export type BadgeTier = "gold" | "silver" | "bronze" | "verified" | null;
+export type BadgeOwnerType = "supplier" | "customer";
 
 export interface SupplierBadgeInfo {
   tier: BadgeTier;
   place?: number; // 1, 2, or 3
   period?: "week" | "month" | "year";
+  ownerType?: BadgeOwnerType;
 }
 
 const tierConfig = {
   gold: {
     label: "Золота галочка",
-    description: "Топ 1-3 за рік",
+    supplierDesc: "Топ 1-3 за рік",
+    customerDesc: "Топ 1-3 покупців за рік",
     checkColor: "text-yellow-500",
     checkBg: "bg-yellow-500/15",
     trophyColor: "text-yellow-500",
   },
   silver: {
     label: "Срібна галочка",
-    description: "Топ 1-3 за місяць",
+    supplierDesc: "Топ 1-3 за місяць",
+    customerDesc: "Топ 1-3 покупців за місяць",
     checkColor: "text-slate-400",
     checkBg: "bg-slate-400/15",
     trophyColor: "text-slate-400",
   },
   bronze: {
     label: "Бронзова галочка",
-    description: "Топ 1-3 за тиждень",
+    supplierDesc: "Топ 1-3 за тиждень",
+    customerDesc: "Топ 1-3 покупців за тиждень",
     checkColor: "text-amber-600",
     checkBg: "bg-amber-600/15",
     trophyColor: "text-amber-600",
   },
   verified: {
     label: "Верифікований",
-    description: "Топ 4-10 у рейтингу",
+    supplierDesc: "Топ 4-10 у рейтингу",
+    customerDesc: "Топ 4-10 покупців",
     checkColor: "text-emerald-500",
     checkBg: "bg-emerald-500/15",
     trophyColor: "",
@@ -83,6 +89,9 @@ export function getSupplierBadge(
   return { tier: null };
 }
 
+// Alias for customer badges — same logic
+export const getCustomerBadge = getSupplierBadge;
+
 interface SupplierBadgeProps {
   badge: SupplierBadgeInfo;
   size?: "sm" | "md";
@@ -102,6 +111,8 @@ export function SupplierBadge({
   const iconSize = size === "sm" ? "h-4 w-4" : "h-5 w-5";
   const trophySize = size === "sm" ? "h-3 w-3" : "h-3.5 w-3.5";
   const textSize = size === "sm" ? "text-[9px]" : "text-[10px]";
+  const isCustomer = badge.ownerType === "customer";
+  const description = isCustomer ? config.customerDesc : config.supplierDesc;
 
   const content = (
     <div className={cn("inline-flex items-center gap-0.5", className)}>
@@ -135,10 +146,13 @@ export function SupplierBadge({
           <p className="text-xs text-muted-foreground">
             {badge.place
               ? `${badge.place}-е місце у рейтингу за ${periodLabels[badge.period || ""]}`
-              : config.description}
+              : description}
           </p>
         </div>
       </TooltipContent>
     </Tooltip>
   );
 }
+
+// Re-export as RatingBadge for universal usage
+export const RatingBadge = SupplierBadge;

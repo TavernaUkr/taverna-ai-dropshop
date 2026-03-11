@@ -1,100 +1,42 @@
 
 
-## Аналіз та план реструктуризації системи рейтингів, галочок та бонусів
+## Plan: Language Selector & Region/Country Selector in Header
 
-### Поточний стан — що є зараз
+### What to build
 
-**Вкладки рейтингу (4 шт.):**
-- **Клієнти** — рейтинг за сумою/замовленнями/товарами з періодами день/тиждень/місяць/рік
-- **Продавці** — рейтинг постачальників (видимий лише їм), виручка/продажі
-- **Магазини** — публічний рейтинг магазинів за відгуками (app_ratings)
-- **Товари** — рейтинг товарів за відгуками (reviews)
+Two new icon buttons in the Header, positioned **between the logo/brand text and the existing right action icons** (before Wallet). They follow the same visual style as existing header icons.
 
-**Проблеми, які я бачу:**
+1. **Language selector** (`Globe` icon from lucide-react) — opens a small modal/popover to pick UI language. Currently only Ukrainian (UA) is active. Future languages: English, Polish, German, Italian, etc.
 
-1. **"Продавці" vs "Магазини" — дубляж.** Продавець = магазин в цій системі. Вкладка "Продавці" показує фінансову статистику, "Магазини" — відгуки. Це заплутує. Один постачальник може мати кілька магазинів, але зараз це не розрізняється.
+2. **Region/Country selector** (`Flag` icon from lucide-react) — opens a modal showing available regions. Ukraine is active (default). Other countries (Poland, Germany, Italy, USA, etc.) show a "Скоро" badge, disabled.
 
-2. **Період "День" — надлишковий.** За день неможливо набрати статистичну вагу. Бонуси за день мізерні (+2 бонуси). Він не впливає на галочки. Його можна прибрати.
-
-3. **Галочки присвоюються фейково.** В `Suppliers.tsx` рейтинг симулюється через `product_count` — це не реальні дані продажів. Немає таблиці для зберігання результатів рейтингів за періоди.
-
-4. **Клієнти не мають галочок/кубків** — хоча логіка їх рейтингування вже є.
-
-5. **Немає системи штрафів** за скарги/повернення/обмани.
-
-6. **Дані mock-based** — `generateCustomerRatings` та `generateSupplierRatings` генерують фейкові дані, а не беруть з БД.
-
----
-
-### Пропозиція реструктуризації
-
-#### 1. Спрощення вкладок рейтингу: 3 замість 4
+### Layout in Header
 
 ```text
-Було:  [Клієнти] [Продавці] [Магазини] [Товари]
-Стане: [Клієнти] [Продавці] [Всі відгуки]
+[Logo + Taverna Group] [🌐 Lang] [🚩 Region] ... [Wallet] [Trophy] [Gift] [Search] [Heart] [Cart]
 ```
 
-- **Клієнти** — рейтинг клієнтів за замовленнями + їх галочки/кубки
-- **Продавці** — рейтинг магазинів за продажами (публічний) + галочки/кубки
-- **Всі відгуки** — об'єднані відгуки магазинів і товарів (два під-табу або секції)
+The two new buttons sit right after the brand text, visually grouped with the left side but using the same `w-8 h-8` icon button style as the right-side actions.
 
-#### 2. Прибрати період "День"
+### Implementation Details
 
-Залишити три періоди: **Тиждень / Місяць / Рік**. Причини:
-- День не впливає на галочки
-- Бонуси за день мізерні і не мотивують
-- Спрощує UX для всіх учасників
+**New files:**
+- `src/components/LanguageSelectorModal.tsx` — Bottom sheet / dialog with language list. UA selected by default, others available but functional (stored in localStorage for now, no i18n library yet — just saves preference).
+- `src/components/RegionSelectorModal.tsx` — Bottom sheet / dialog with country list. Ukraine active, others show "Скоро" / "В проєкті" badge and are disabled.
 
-#### 3. Галочки для клієнтів (нова функція)
+**Modified files:**
+- `src/components/Header.tsx` — Add `Globe` and `Flag` icons between logo and right actions. Each opens its respective modal. Language button shows current language code (e.g., tiny "UA" badge). Region button shows a small flag emoji or country code.
 
-Та сама система що і для магазинів:
-- **Золота** — Топ 1-3 за рік (за сумою замовлень)
-- **Срібна** — Топ 1-3 за місяць
-- **Бронзова** — Топ 1-3 за тиждень
-- **Зелена** — Топ 4-10 у будь-якому періоді
+### Language Modal
+- List of languages: Українська (active), English, Polski, Deutsch, Italiano
+- Radio-style selection, saves to `localStorage('app-language')`
+- No actual i18n translation yet — just the preference storage and UI. Shows toast "Мову змінено" on selection.
 
-Галочка клієнта відображатиметься біля його імені у відгуках та в профілі.
+### Region Modal  
+- Ukraine 🇺🇦 — active, selectable
+- Poland 🇵🇱, Germany 🇩🇪, Italy 🇮🇹, USA 🇺🇸 — each with a "Скоро" / "В проєкті" badge, grayed out, not selectable
+- Clean card-based list with flag emojis
 
-#### 4. Відгуки магазинів ДО клієнтів
-
-Магазини зможуть оцінювати клієнтів (це вже частково є через `ChatRatingPrompt` з `rating_type: "customer"`). Ці оцінки впливатимуть на репутацію клієнта та його множник бонусів.
-
-#### 5. Система штрафів та захисту
-
-```text
-                    КЛІЄНТ                         МАГАЗИН
-┌──────────────────────────────────┬──────────────────────────────────┐
-│ Скарга підтверджена модератором  │ Скарга підтверджена модератором  │
-│ → Магазин: -0.2 до рейтингу     │ → Клієнт: попередження          │
-│ → 3+ скарги/міс → втрата галочки│ → 3+ фейкових скарги → бан      │
-├──────────────────────────────────┼──────────────────────────────────┤
-│ Повернення (вина магазину)       │ Повернення (вина клієнта)        │
-│ → Рейтинг магазину -0.1         │ → Не впливає на рейтинг          │
-│ → Безкоштовна логістика (>1500₴) │ → Клієнт оплачує доставку       │
-├──────────────────────────────────┼──────────────────────────────────┤
-│ Навмисне псування рейтингу       │ Навмисне повернення (>3/міс)     │
-│ → Модератор видаляє відгук      │ → Клієнт втрачає галочку         │
-│ → Магазин отримує компенсацію   │ → Зниження ліміту бонусів на 50% │
-└──────────────────────────────────┴──────────────────────────────────┘
-```
-
-**Принцип:** клієнт завжди правий, АЛЕ при зловживанні (>3 повернення/місяць без причини, фейкові скарги) — штрафні санкції.
-
-**Для магазинів:** 5+ підтверджених скарг за місяць → автоматична втрата галочки + зниження в рейтингу. 10+ → тимчасове призупинення.
-
-#### 6. Правила галочок — доповнення в BadgeRules
-
-Додати секцію для клієнтських галочок та секцію про штрафи/захист. Все в одному розкривному блоці.
-
----
-
-### Технічні зміни
-
-**Файли що будуть змінені:**
-- `src/components/RatingsTab.tsx` — реструктуризація вкладок (3 замість 4), прибрати "День", додати клієнтські галочки, об'єднати Магазини+Товари у "Всі відгуки", розширити BadgeRules
-- `src/components/ui/supplier-badge.tsx` — зробити універсальним (підтримка і клієнтів, і магазинів), перейменувати на `RatingBadge`
-- `src/pages/Suppliers.tsx` — використовувати оновлений компонент бейджів
-
-**Нових таблиць НЕ потрібно** — вся інформація для рейтингів вже є в `orders`, `reviews`, `app_ratings`. Галочки обчислюються динамічно на основі рейтингових позицій.
+### Visual style
+Both buttons use the same pattern as existing header icons: `w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground active:scale-95 transition-all`. The Globe icon gets a subtle blue tint (`text-blue-500`), the Flag icon gets a yellow-blue tint for Ukraine (`text-yellow-500`).
 
