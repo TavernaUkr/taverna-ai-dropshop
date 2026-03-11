@@ -1,14 +1,15 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Star, Trophy, TrendingUp, Users, ShoppingBag, Package, BarChart3, Gift, Crown, Zap, Award, Wallet, MessageSquare, BadgeCheck, Info, ChevronDown, ChevronUp } from "lucide-react";
+import { Star, Trophy, TrendingUp, Users, ShoppingBag, Package, BarChart3, Gift, Crown, Zap, Award, Wallet, MessageSquare, BadgeCheck, Info, ChevronDown, ChevronUp, Shield, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useTelegramAuthContext } from "@/components/TelegramAuthProvider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { SupplierBadge, getSupplierBadge, getCustomerBadge, type SupplierBadgeInfo } from "@/components/ui/supplier-badge";
 
-type Period = "day" | "week" | "month" | "year";
+type Period = "week" | "month" | "year";
 
 interface CustomerRatingItem {
   rank: number;
@@ -16,6 +17,7 @@ interface CustomerRatingItem {
   ordersCount: number;
   totalSpent: number;
   productsCount: number;
+  badge?: SupplierBadgeInfo;
 }
 
 interface SupplierRatingItem {
@@ -26,6 +28,7 @@ interface SupplierRatingItem {
   customersCount: number;
   avgRating: number;
   reviewsCount: number;
+  badge?: SupplierBadgeInfo;
 }
 
 interface ShopReview {
@@ -43,7 +46,7 @@ interface ProductReview {
 }
 
 const generateCustomerRatings = (period: Period): CustomerRatingItem[] => {
-  const multiplier = period === "day" ? 1 : period === "week" ? 7 : period === "month" ? 30 : 365;
+  const multiplier = period === "week" ? 7 : period === "month" ? 30 : 365;
   return [
     { rank: 1, name: "Олекс***", ordersCount: 12 * multiplier / 30, totalSpent: 24500 * multiplier / 30, productsCount: 35 * multiplier / 30 },
     { rank: 2, name: "Мар***", ordersCount: 9 * multiplier / 30, totalSpent: 18200 * multiplier / 30, productsCount: 27 * multiplier / 30 },
@@ -53,28 +56,38 @@ const generateCustomerRatings = (period: Period): CustomerRatingItem[] => {
     { rank: 6, name: "Анн***", ordersCount: 4 * multiplier / 30, totalSpent: 8200 * multiplier / 30, productsCount: 12 * multiplier / 30 },
     { rank: 7, name: "Вол***", ordersCount: 4 * multiplier / 30, totalSpent: 7500 * multiplier / 30, productsCount: 11 * multiplier / 30 },
     { rank: 8, name: "Нат***", ordersCount: 3 * multiplier / 30, totalSpent: 6100 * multiplier / 30, productsCount: 9 * multiplier / 30 },
-  ].map(item => ({
+  ].map((item, idx) => ({
     ...item,
     ordersCount: Math.max(1, Math.round(item.ordersCount)),
     totalSpent: Math.round(item.totalSpent),
     productsCount: Math.max(1, Math.round(item.productsCount)),
+    badge: getCustomerBadge(
+      period === "year" ? idx + 1 : null,
+      period === "month" ? idx + 1 : null,
+      period === "week" ? idx + 1 : null,
+    ),
   }));
 };
 
 const generateSupplierRatings = (period: Period): SupplierRatingItem[] => {
-  const multiplier = period === "day" ? 1 : period === "week" ? 7 : period === "month" ? 30 : 365;
+  const multiplier = period === "week" ? 7 : period === "month" ? 30 : 365;
   return [
     { rank: 1, shopName: "Tactical Pro", soldCount: 145 * multiplier / 30, revenue: 289000 * multiplier / 30, customersCount: 89 * multiplier / 30, avgRating: 4.8, reviewsCount: Math.round(34 * multiplier / 30) },
     { rank: 2, shopName: "Military Store", soldCount: 112 * multiplier / 30, revenue: 224000 * multiplier / 30, customersCount: 71 * multiplier / 30, avgRating: 4.7, reviewsCount: Math.round(28 * multiplier / 30) },
     { rank: 3, shopName: "Urban Gear", soldCount: 98 * multiplier / 30, revenue: 196000 * multiplier / 30, customersCount: 64 * multiplier / 30, avgRating: 4.6, reviewsCount: Math.round(22 * multiplier / 30) },
     { rank: 4, shopName: "Alpha Gear", soldCount: 76 * multiplier / 30, revenue: 152000 * multiplier / 30, customersCount: 49 * multiplier / 30, avgRating: 4.5, reviewsCount: Math.round(16 * multiplier / 30) },
     { rank: 5, shopName: "Ranger Shop", soldCount: 61 * multiplier / 30, revenue: 122000 * multiplier / 30, customersCount: 41 * multiplier / 30, avgRating: 4.4, reviewsCount: Math.round(11 * multiplier / 30) },
-  ].map(item => ({
+  ].map((item, idx) => ({
     ...item,
     soldCount: Math.max(1, Math.round(item.soldCount)),
     revenue: Math.round(item.revenue),
     customersCount: Math.max(1, Math.round(item.customersCount)),
     reviewsCount: Math.max(0, item.reviewsCount),
+    badge: getSupplierBadge(
+      period === "year" ? idx + 1 : null,
+      period === "month" ? idx + 1 : null,
+      period === "week" ? idx + 1 : null,
+    ),
   }));
 };
 
@@ -86,13 +99,12 @@ const shopReviewsMock: ShopReview[] = [
   { shopName: "Ranger Shop", avgRating: 4.4, reviewsCount: 89 },
 ];
 
-const periodLabels: Record<Period, string> = { day: "День", week: "Тиждень", month: "Місяць", year: "Рік" };
+const periodLabels: Record<Period, string> = { week: "Тиждень", month: "Місяць", year: "Рік" };
 const rankColors = ["text-yellow-500", "text-slate-400", "text-amber-600"];
 const rankBgs = ["bg-yellow-500/10", "bg-slate-400/10", "bg-amber-600/10"];
 
 // Customer bonus amounts per period
 const customerBonuses: Record<Period, { first: string; second: string; third: string }> = {
-  day: { first: "+2 бонуси", second: "+1 бонус", third: "—" },
   week: { first: "+75₴", second: "+40₴", third: "+15₴" },
   month: { first: "+500₴", second: "+200₴", third: "+100₴" },
   year: { first: "🎁 1500₴", second: "+1000₴", third: "+500₴" },
@@ -100,8 +112,7 @@ const customerBonuses: Record<Period, { first: string; second: string; third: st
 
 // Supplier perks per period
 const supplierPerks: Record<Period, { first: string; second: string; third: string }> = {
-  day: { first: "Буст товару", second: "Пріоритет", third: "—" },
-  week: { first: "Безк. пост", second: "Буст 7дн", third: "—" },
+  week: { first: "Безк. пост", second: "Буст 7дн", third: "Пріоритет" },
   month: { first: "28% націнка", second: "Безк. пост", third: "Пріоритет" },
   year: { first: "25% на 3міс", second: "28% на 1міс", third: "Безк. реклама" },
 };
@@ -117,7 +128,7 @@ const StarRating = ({ rating, size = "sm" }: { rating: number; size?: "sm" | "md
 
 const PeriodSelector = ({ period, onChange }: { period: Period; onChange: (p: Period) => void }) => (
   <div className="flex gap-0.5 bg-muted rounded-lg p-0.5">
-    {(["day", "week", "month", "year"] as Period[]).map((p) => (
+    {(["week", "month", "year"] as Period[]).map((p) => (
       <button key={p} onClick={() => onChange(p)} className={cn("flex-1 text-xs font-medium py-1.5 px-2 rounded-md transition-all", period === p ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
         {periodLabels[p]}
       </button>
@@ -150,7 +161,7 @@ const CustomerRankings = () => {
         <div className="flex-1 flex items-center gap-3 text-[10px]">
           <span className="font-medium text-foreground">🥇 {bonuses.first}</span>
           <span className="text-muted-foreground">🥈 {bonuses.second}</span>
-          {bonuses.third !== "—" && <span className="text-muted-foreground">🥉 {bonuses.third}</span>}
+          <span className="text-muted-foreground">🥉 {bonuses.third}</span>
         </div>
       </div>
 
@@ -161,7 +172,10 @@ const CustomerRankings = () => {
               {customer.rank <= 3 ? <Trophy className="h-4 w-4" /> : customer.rank}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-medium text-sm text-foreground">{customer.name}</p>
+              <div className="flex items-center gap-1.5">
+                <p className="font-medium text-sm text-foreground">{customer.name}</p>
+                {customer.badge && <SupplierBadge badge={{ ...customer.badge, ownerType: "customer" }} size="sm" />}
+              </div>
               <div className="flex items-center gap-2 mt-0.5">
                 <span className="text-[10px] text-muted-foreground flex items-center gap-0.5"><ShoppingBag className="h-2.5 w-2.5" /> {customer.ordersCount}</span>
                 <span className="text-[10px] text-muted-foreground flex items-center gap-0.5"><Package className="h-2.5 w-2.5" /> {customer.productsCount}</span>
@@ -171,7 +185,7 @@ const CustomerRankings = () => {
               <p className="text-sm font-bold text-primary">{customer.totalSpent.toLocaleString()}₴</p>
               {customer.rank <= 3 && (
                 <Badge variant="outline" className="text-[8px] mt-0.5 border-primary/30 text-primary px-1.5">
-                  {customer.rank === 1 ? bonuses.first : customer.rank <= 3 ? bonuses.second : bonuses.third}
+                  {customer.rank === 1 ? bonuses.first : customer.rank === 2 ? bonuses.second : bonuses.third}
                 </Badge>
               )}
             </div>
@@ -182,21 +196,9 @@ const CustomerRankings = () => {
   );
 };
 
-// Supplier Rankings
-const SupplierRankings = ({ canView }: { canView: boolean }) => {
+// Supplier Rankings (public)
+const SupplierRankings = () => {
   const [period, setPeriod] = useState<Period>("month");
-
-  if (!canView) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12 text-center gap-3">
-        <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center">
-          <Users className="h-8 w-8 text-muted-foreground" />
-        </div>
-        <p className="font-semibold text-foreground">Доступно для продавців</p>
-        <p className="text-sm text-muted-foreground max-w-48">Рейтинг продавців видимий лише для верифікованих партнерів</p>
-      </div>
-    );
-  }
 
   const suppliers = generateSupplierRatings(period);
   const perks = supplierPerks[period];
@@ -211,7 +213,7 @@ const SupplierRankings = ({ canView }: { canView: boolean }) => {
         <div className="flex-1 flex items-center gap-3 text-[10px]">
           <span className="font-medium text-foreground">🥇 {perks.first}</span>
           <span className="text-muted-foreground">🥈 {perks.second}</span>
-          {perks.third !== "—" && <span className="text-muted-foreground">🥉 {perks.third}</span>}
+          <span className="text-muted-foreground">🥉 {perks.third}</span>
         </div>
       </div>
 
@@ -223,7 +225,10 @@ const SupplierRankings = ({ canView }: { canView: boolean }) => {
                 {supplier.rank <= 3 ? <Trophy className="h-4 w-4" /> : supplier.rank}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-sm text-foreground">{supplier.shopName}</p>
+                <div className="flex items-center gap-1.5">
+                  <p className="font-semibold text-sm text-foreground">{supplier.shopName}</p>
+                  {supplier.badge && <SupplierBadge badge={supplier.badge} size="sm" />}
+                </div>
                 <div className="flex items-center gap-2 mt-0.5">
                   <StarRating rating={supplier.avgRating} />
                   <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
@@ -235,7 +240,7 @@ const SupplierRankings = ({ canView }: { canView: boolean }) => {
                 <p className="text-sm font-bold text-primary">{supplier.revenue.toLocaleString()}₴</p>
                 {supplier.rank <= 3 && (
                   <Badge variant="outline" className="text-[8px] mt-0.5 border-primary/30 text-primary px-1.5">
-                    {supplier.rank === 1 ? perks.first : supplier.rank <= 3 ? perks.second : perks.third}
+                    {supplier.rank === 1 ? perks.first : supplier.rank === 2 ? perks.second : perks.third}
                   </Badge>
                 )}
               </div>
@@ -257,6 +262,25 @@ const SupplierRankings = ({ canView }: { canView: boolean }) => {
           </div>
         ))}
       </div>
+    </div>
+  );
+};
+
+// All Reviews — Shop reviews + Product reviews combined
+const AllReviews = () => {
+  const [subTab, setSubTab] = useState<"shops" | "products">("shops");
+
+  return (
+    <div className="space-y-3">
+      <div className="flex gap-0.5 bg-muted rounded-lg p-0.5">
+        <button onClick={() => setSubTab("shops")} className={cn("flex-1 text-xs font-medium py-1.5 px-2 rounded-md transition-all", subTab === "shops" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
+          🏪 Магазини
+        </button>
+        <button onClick={() => setSubTab("products")} className={cn("flex-1 text-xs font-medium py-1.5 px-2 rounded-md transition-all", subTab === "products" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
+          📦 Товари
+        </button>
+      </div>
+      {subTab === "shops" ? <ShopReviews /> : <ProductReviews />}
     </div>
   );
 };
@@ -414,7 +438,7 @@ const ProductReviews = () => {
 const BadgeRules = () => {
   const [isOpen, setIsOpen] = useState(false);
 
-  const tiers = [
+  const supplierTiers = [
     {
       emoji: "🥇",
       name: "Золота галочка",
@@ -454,7 +478,7 @@ const BadgeRules = () => {
       <CollapsibleTrigger className="w-full flex items-center gap-2 p-3 rounded-xl bg-muted/50 border border-border hover:bg-muted transition-colors">
         <Info className="h-4 w-4 text-primary shrink-0" />
         <span className="text-sm font-medium text-foreground flex-1 text-left">
-          Як отримати галочку магазину?
+          Правила галочок та штрафів
         </span>
         {isOpen ? (
           <ChevronUp className="h-4 w-4 text-muted-foreground" />
@@ -462,28 +486,102 @@ const BadgeRules = () => {
           <ChevronDown className="h-4 w-4 text-muted-foreground" />
         )}
       </CollapsibleTrigger>
-      <CollapsibleContent className="mt-2 space-y-2 animate-fade-in">
-        {tiers.map((tier) => (
-          <div key={tier.name} className={cn("p-3 rounded-xl border border-transparent", tier.bgColor)}>
-            <div className="flex items-center gap-2 mb-1">
-              <div className={cn("rounded-full p-0.5", tier.bgColor)}>
-                <BadgeCheck className={cn("h-4 w-4", tier.checkColor)} />
-              </div>
-              <span className="text-sm font-semibold text-foreground">{tier.name}</span>
-              {tier.emoji.includes("🥇") || tier.emoji.includes("🥈") || tier.emoji.includes("🥉") ? (
-                <div className="flex items-center gap-0.5 ml-auto">
-                  <Trophy className={cn("h-3.5 w-3.5", tier.checkColor)} />
-                  <span className={cn("text-[10px] font-bold", tier.checkColor)}>1-3</span>
+      <CollapsibleContent className="mt-2 space-y-3 animate-fade-in">
+        {/* Supplier badges */}
+        <div>
+          <p className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
+            <TrendingUp className="h-3.5 w-3.5 text-primary" /> Галочки магазинів
+          </p>
+          <div className="space-y-2">
+            {supplierTiers.map((tier) => (
+              <div key={tier.name} className={cn("p-3 rounded-xl border border-transparent", tier.bgColor)}>
+                <div className="flex items-center gap-2 mb-1">
+                  <div className={cn("rounded-full p-0.5", tier.bgColor)}>
+                    <BadgeCheck className={cn("h-4 w-4", tier.checkColor)} />
+                  </div>
+                  <span className="text-sm font-semibold text-foreground">{tier.name}</span>
+                  {tier.emoji !== "✅" && (
+                    <div className="flex items-center gap-0.5 ml-auto">
+                      <Trophy className={cn("h-3.5 w-3.5", tier.checkColor)} />
+                      <span className={cn("text-[10px] font-bold", tier.checkColor)}>1-3</span>
+                    </div>
+                  )}
                 </div>
-              ) : null}
-            </div>
-            <p className="text-xs font-medium text-foreground/80">{tier.rule}</p>
-            <p className="text-[11px] text-muted-foreground mt-0.5">{tier.detail}</p>
+                <p className="text-xs font-medium text-foreground/80">{tier.rule}</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">{tier.detail}</p>
+              </div>
+            ))}
           </div>
-        ))}
+        </div>
+
+        {/* Customer badges */}
+        <div>
+          <p className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
+            <Users className="h-3.5 w-3.5 text-primary" /> Галочки клієнтів
+          </p>
+          <div className="p-3 rounded-xl bg-primary/5 border border-primary/10 space-y-1.5">
+            <p className="text-xs text-foreground">Клієнти отримують галочки за ту саму систему, що й магазини — за місцем у рейтингу покупців (за сумою замовлень):</p>
+            <div className="grid grid-cols-2 gap-1.5 text-[11px]">
+              <div className="flex items-center gap-1.5 bg-yellow-500/10 rounded-lg px-2 py-1.5">
+                <BadgeCheck className="h-3.5 w-3.5 text-yellow-500" />
+                <span className="text-foreground font-medium">Золота — Топ 1-3/рік</span>
+              </div>
+              <div className="flex items-center gap-1.5 bg-slate-400/10 rounded-lg px-2 py-1.5">
+                <BadgeCheck className="h-3.5 w-3.5 text-slate-400" />
+                <span className="text-foreground font-medium">Срібна — Топ 1-3/міс</span>
+              </div>
+              <div className="flex items-center gap-1.5 bg-amber-600/10 rounded-lg px-2 py-1.5">
+                <BadgeCheck className="h-3.5 w-3.5 text-amber-600" />
+                <span className="text-foreground font-medium">Бронзова — Топ 1-3/тижд</span>
+              </div>
+              <div className="flex items-center gap-1.5 bg-emerald-500/10 rounded-lg px-2 py-1.5">
+                <BadgeCheck className="h-3.5 w-3.5 text-emerald-500" />
+                <span className="text-foreground font-medium">Зелена — Топ 4-10</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Penalty/protection system */}
+        <div>
+          <p className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
+            <Shield className="h-3.5 w-3.5 text-primary" /> Штрафи та захист
+          </p>
+          <div className="space-y-2">
+            <div className="p-3 rounded-xl bg-destructive/5 border border-destructive/10">
+              <p className="text-xs font-semibold text-foreground mb-1.5 flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3 text-destructive" /> Штрафи для магазинів
+              </p>
+              <ul className="text-[11px] text-muted-foreground space-y-1">
+                <li>• Підтверджена скарга → -0.2 до рейтингу</li>
+                <li>• 3+ скарги/місяць → втрата галочки</li>
+                <li>• 5+ скарг/місяць → зниження в рейтингу</li>
+                <li>• 10+ скарг → тимчасове призупинення</li>
+                <li>• Повернення з вини магазину → безкоштовна логістика (від 1500₴)</li>
+              </ul>
+            </div>
+            <div className="p-3 rounded-xl bg-warning/5 border border-warning/10">
+              <p className="text-xs font-semibold text-foreground mb-1.5 flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3 text-warning" /> Штрафи для клієнтів
+              </p>
+              <ul className="text-[11px] text-muted-foreground space-y-1">
+                <li>• 3+ необґрунтованих повернення/місяць → втрата галочки</li>
+                <li>• Фейкові скарги → попередження, потім бан</li>
+                <li>• Навмисне псування рейтингу → видалення відгуку модератором</li>
+                <li>• Зловживання → зниження ліміту бонусів на 50%</li>
+              </ul>
+            </div>
+            <div className="p-2.5 rounded-lg bg-emerald-500/5 border border-emerald-500/10">
+              <p className="text-[11px] text-muted-foreground">
+                ✅ <span className="font-medium text-foreground">Принцип:</span> клієнт завжди правий, але при зловживаннях — штрафні санкції для обох сторін.
+              </p>
+            </div>
+          </div>
+        </div>
+
         <div className="p-2.5 rounded-lg bg-primary/5 border border-primary/10">
           <p className="text-[11px] text-muted-foreground">
-            💡 Поряд із галочкою відображається <Trophy className="h-3 w-3 inline text-yellow-500" /> кубок з номером місця (1, 2 або 3) у відповідному кольорі. Магазини без рейтингу в Топ-10 не отримують галочку.
+            💡 Поряд із галочкою відображається <Trophy className="h-3 w-3 inline text-yellow-500" /> кубок з номером місця (1, 2 або 3) у відповідному кольорі. Учасники без рейтингу в Топ-10 не отримують галочку.
           </p>
         </div>
       </CollapsibleContent>
@@ -493,8 +591,6 @@ const BadgeRules = () => {
 
 export const RatingsTab = () => {
   const navigate = useNavigate();
-  const { effectiveRole } = useTelegramAuthContext();
-  const canViewSupplierStats = effectiveRole === "supplier" || effectiveRole === "admin" || effectiveRole === "moderator";
 
   return (
     <div className="space-y-4 pb-28 animate-fade-in">
@@ -520,7 +616,7 @@ export const RatingsTab = () => {
       <BadgeRules />
 
       <Tabs defaultValue="customers" className="w-full">
-        <TabsList className="grid grid-cols-4 w-full">
+        <TabsList className="grid grid-cols-3 w-full">
           <TabsTrigger value="customers" className="text-[10px] px-1">
             <Users className="h-3 w-3 mr-0.5" />
             Клієнти
@@ -529,13 +625,9 @@ export const RatingsTab = () => {
             <TrendingUp className="h-3 w-3 mr-0.5" />
             Продавці
           </TabsTrigger>
-          <TabsTrigger value="shops" className="text-[10px] px-1">
+          <TabsTrigger value="reviews" className="text-[10px] px-1">
             <Star className="h-3 w-3 mr-0.5" />
-            Магазини
-          </TabsTrigger>
-          <TabsTrigger value="products" className="text-[10px] px-1">
-            <Package className="h-3 w-3 mr-0.5" />
-            Товари
+            Всі відгуки
           </TabsTrigger>
         </TabsList>
 
@@ -543,13 +635,10 @@ export const RatingsTab = () => {
           <CustomerRankings />
         </TabsContent>
         <TabsContent value="suppliers" className="mt-3">
-          <SupplierRankings canView={canViewSupplierStats} />
+          <SupplierRankings />
         </TabsContent>
-        <TabsContent value="shops" className="mt-3">
-          <ShopReviews />
-        </TabsContent>
-        <TabsContent value="products" className="mt-3">
-          <ProductReviews />
+        <TabsContent value="reviews" className="mt-3">
+          <AllReviews />
         </TabsContent>
       </Tabs>
     </div>
