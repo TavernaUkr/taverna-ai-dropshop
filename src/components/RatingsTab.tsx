@@ -49,20 +49,22 @@ interface ProductReview {
 
 const generateCustomerRatings = (period: Period): CustomerRatingItem[] => {
   const multiplier = period === "week" ? 7 : period === "month" ? 30 : 365;
+  const baseRatings = [4.9, 4.8, 4.7, 4.6, 4.5, 4.4, 4.3, 4.2];
   return [
-    { rank: 1, name: "Олекс***", ordersCount: 12 * multiplier / 30, totalSpent: 24500 * multiplier / 30, productsCount: 35 * multiplier / 30 },
-    { rank: 2, name: "Мар***", ordersCount: 9 * multiplier / 30, totalSpent: 18200 * multiplier / 30, productsCount: 27 * multiplier / 30 },
-    { rank: 3, name: "Дмит***", ordersCount: 7 * multiplier / 30, totalSpent: 14800 * multiplier / 30, productsCount: 21 * multiplier / 30 },
-    { rank: 4, name: "Ірин***", ordersCount: 6 * multiplier / 30, totalSpent: 12100 * multiplier / 30, productsCount: 18 * multiplier / 30 },
-    { rank: 5, name: "Серг***", ordersCount: 5 * multiplier / 30, totalSpent: 9800 * multiplier / 30, productsCount: 15 * multiplier / 30 },
-    { rank: 6, name: "Анн***", ordersCount: 4 * multiplier / 30, totalSpent: 8200 * multiplier / 30, productsCount: 12 * multiplier / 30 },
-    { rank: 7, name: "Вол***", ordersCount: 4 * multiplier / 30, totalSpent: 7500 * multiplier / 30, productsCount: 11 * multiplier / 30 },
-    { rank: 8, name: "Нат***", ordersCount: 3 * multiplier / 30, totalSpent: 6100 * multiplier / 30, productsCount: 9 * multiplier / 30 },
+    { rank: 1, name: "Олекс***", ordersCount: 12 * multiplier / 30, totalSpent: 24500 * multiplier / 30, productsCount: 35 * multiplier / 30, avgRating: baseRatings[0], ratingsCount: Math.round(8 * multiplier / 30) },
+    { rank: 2, name: "Мар***", ordersCount: 9 * multiplier / 30, totalSpent: 18200 * multiplier / 30, productsCount: 27 * multiplier / 30, avgRating: baseRatings[1], ratingsCount: Math.round(6 * multiplier / 30) },
+    { rank: 3, name: "Дмит***", ordersCount: 7 * multiplier / 30, totalSpent: 14800 * multiplier / 30, productsCount: 21 * multiplier / 30, avgRating: baseRatings[2], ratingsCount: Math.round(5 * multiplier / 30) },
+    { rank: 4, name: "Ірин***", ordersCount: 6 * multiplier / 30, totalSpent: 12100 * multiplier / 30, productsCount: 18 * multiplier / 30, avgRating: baseRatings[3], ratingsCount: Math.round(4 * multiplier / 30) },
+    { rank: 5, name: "Серг***", ordersCount: 5 * multiplier / 30, totalSpent: 9800 * multiplier / 30, productsCount: 15 * multiplier / 30, avgRating: baseRatings[4], ratingsCount: Math.round(3 * multiplier / 30) },
+    { rank: 6, name: "Анн***", ordersCount: 4 * multiplier / 30, totalSpent: 8200 * multiplier / 30, productsCount: 12 * multiplier / 30, avgRating: baseRatings[5], ratingsCount: Math.round(3 * multiplier / 30) },
+    { rank: 7, name: "Вол***", ordersCount: 4 * multiplier / 30, totalSpent: 7500 * multiplier / 30, productsCount: 11 * multiplier / 30, avgRating: baseRatings[6], ratingsCount: Math.round(2 * multiplier / 30) },
+    { rank: 8, name: "Нат***", ordersCount: 3 * multiplier / 30, totalSpent: 6100 * multiplier / 30, productsCount: 9 * multiplier / 30, avgRating: baseRatings[7], ratingsCount: Math.round(2 * multiplier / 30) },
   ].map((item, idx) => ({
     ...item,
     ordersCount: Math.max(1, Math.round(item.ordersCount)),
     totalSpent: Math.round(item.totalSpent),
     productsCount: Math.max(1, Math.round(item.productsCount)),
+    ratingsCount: Math.max(0, item.ratingsCount),
     badge: getCustomerBadge(
       period === "year" ? idx + 1 : null,
       period === "month" ? idx + 1 : null,
