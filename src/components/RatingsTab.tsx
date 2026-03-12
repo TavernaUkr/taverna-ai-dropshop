@@ -17,6 +17,8 @@ interface CustomerRatingItem {
   ordersCount: number;
   totalSpent: number;
   productsCount: number;
+  avgRating: number;
+  ratingsCount: number;
   badge?: SupplierBadgeInfo;
 }
 
