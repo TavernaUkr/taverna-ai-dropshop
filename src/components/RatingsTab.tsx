@@ -17,6 +17,8 @@ interface CustomerRatingItem {
   ordersCount: number;
   totalSpent: number;
   productsCount: number;
+  avgRating: number;
+  ratingsCount: number;
   badge?: SupplierBadgeInfo;
 }
 
@@ -47,20 +49,22 @@ interface ProductReview {
 
 const generateCustomerRatings = (period: Period): CustomerRatingItem[] => {
   const multiplier = period === "week" ? 7 : period === "month" ? 30 : 365;
+  const baseRatings = [4.9, 4.8, 4.7, 4.6, 4.5, 4.4, 4.3, 4.2];
   return [
-    { rank: 1, name: "Олекс***", ordersCount: 12 * multiplier / 30, totalSpent: 24500 * multiplier / 30, productsCount: 35 * multiplier / 30 },
-    { rank: 2, name: "Мар***", ordersCount: 9 * multiplier / 30, totalSpent: 18200 * multiplier / 30, productsCount: 27 * multiplier / 30 },
-    { rank: 3, name: "Дмит***", ordersCount: 7 * multiplier / 30, totalSpent: 14800 * multiplier / 30, productsCount: 21 * multiplier / 30 },
-    { rank: 4, name: "Ірин***", ordersCount: 6 * multiplier / 30, totalSpent: 12100 * multiplier / 30, productsCount: 18 * multiplier / 30 },
-    { rank: 5, name: "Серг***", ordersCount: 5 * multiplier / 30, totalSpent: 9800 * multiplier / 30, productsCount: 15 * multiplier / 30 },
-    { rank: 6, name: "Анн***", ordersCount: 4 * multiplier / 30, totalSpent: 8200 * multiplier / 30, productsCount: 12 * multiplier / 30 },
-    { rank: 7, name: "Вол***", ordersCount: 4 * multiplier / 30, totalSpent: 7500 * multiplier / 30, productsCount: 11 * multiplier / 30 },
-    { rank: 8, name: "Нат***", ordersCount: 3 * multiplier / 30, totalSpent: 6100 * multiplier / 30, productsCount: 9 * multiplier / 30 },
+    { rank: 1, name: "Олекс***", ordersCount: 12 * multiplier / 30, totalSpent: 24500 * multiplier / 30, productsCount: 35 * multiplier / 30, avgRating: baseRatings[0], ratingsCount: Math.round(8 * multiplier / 30) },
+    { rank: 2, name: "Мар***", ordersCount: 9 * multiplier / 30, totalSpent: 18200 * multiplier / 30, productsCount: 27 * multiplier / 30, avgRating: baseRatings[1], ratingsCount: Math.round(6 * multiplier / 30) },
+    { rank: 3, name: "Дмит***", ordersCount: 7 * multiplier / 30, totalSpent: 14800 * multiplier / 30, productsCount: 21 * multiplier / 30, avgRating: baseRatings[2], ratingsCount: Math.round(5 * multiplier / 30) },
+    { rank: 4, name: "Ірин***", ordersCount: 6 * multiplier / 30, totalSpent: 12100 * multiplier / 30, productsCount: 18 * multiplier / 30, avgRating: baseRatings[3], ratingsCount: Math.round(4 * multiplier / 30) },
+    { rank: 5, name: "Серг***", ordersCount: 5 * multiplier / 30, totalSpent: 9800 * multiplier / 30, productsCount: 15 * multiplier / 30, avgRating: baseRatings[4], ratingsCount: Math.round(3 * multiplier / 30) },
+    { rank: 6, name: "Анн***", ordersCount: 4 * multiplier / 30, totalSpent: 8200 * multiplier / 30, productsCount: 12 * multiplier / 30, avgRating: baseRatings[5], ratingsCount: Math.round(3 * multiplier / 30) },
+    { rank: 7, name: "Вол***", ordersCount: 4 * multiplier / 30, totalSpent: 7500 * multiplier / 30, productsCount: 11 * multiplier / 30, avgRating: baseRatings[6], ratingsCount: Math.round(2 * multiplier / 30) },
+    { rank: 8, name: "Нат***", ordersCount: 3 * multiplier / 30, totalSpent: 6100 * multiplier / 30, productsCount: 9 * multiplier / 30, avgRating: baseRatings[7], ratingsCount: Math.round(2 * multiplier / 30) },
   ].map((item, idx) => ({
     ...item,
     ordersCount: Math.max(1, Math.round(item.ordersCount)),
     totalSpent: Math.round(item.totalSpent),
     productsCount: Math.max(1, Math.round(item.productsCount)),
+    ratingsCount: Math.max(0, item.ratingsCount),
     badge: getCustomerBadge(
       period === "year" ? idx + 1 : null,
       period === "month" ? idx + 1 : null,
@@ -136,24 +140,15 @@ const PeriodSelector = ({ period, onChange }: { period: Period; onChange: (p: Pe
   </div>
 );
 
-// Customer Rankings
+// Customer Rankings — unified single ranking
 const CustomerRankings = () => {
   const [period, setPeriod] = useState<Period>("month");
-  const [sortBy, setSortBy] = useState<"spent" | "orders" | "products">("spent");
   const customers = generateCustomerRatings(period);
-  const sorted = [...customers].sort((a, b) => sortBy === "spent" ? b.totalSpent - a.totalSpent : sortBy === "orders" ? b.ordersCount - a.ordersCount : b.productsCount - a.productsCount).map((c, i) => ({ ...c, rank: i + 1 }));
   const bonuses = customerBonuses[period];
 
   return (
     <div className="space-y-3">
       <PeriodSelector period={period} onChange={setPeriod} />
-      <div className="flex gap-0.5 bg-muted rounded-lg p-0.5">
-        {(["spent", "orders", "products"] as const).map((s) => (
-          <button key={s} onClick={() => setSortBy(s)} className={cn("flex-1 text-[10px] font-medium py-1.5 px-1 rounded-md transition-all", sortBy === s ? "bg-card text-foreground shadow-sm" : "text-muted-foreground")}>
-            {s === "spent" ? "💰 Сума" : s === "orders" ? "📦 Замовлення" : "🛍 Товари"}
-          </button>
-        ))}
-      </div>
 
       {/* Prize pool banner */}
       <div className="flex items-center gap-2 p-2.5 rounded-xl bg-primary/5 border border-primary/20">
@@ -166,28 +161,46 @@ const CustomerRankings = () => {
       </div>
 
       <div className="space-y-2">
-        {sorted.map((customer) => (
-          <div key={customer.rank} className={cn("flex items-center gap-3 p-2.5 rounded-xl border transition-all", customer.rank <= 3 ? `${rankBgs[customer.rank - 1]} border-transparent` : "border-border bg-card")}>
-            <div className={cn("w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0", customer.rank <= 3 ? rankBgs[customer.rank - 1] : "bg-muted", customer.rank <= 3 ? rankColors[customer.rank - 1] : "text-muted-foreground")}>
-              {customer.rank <= 3 ? <Trophy className="h-4 w-4" /> : customer.rank}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5">
-                <p className="font-medium text-sm text-foreground">{customer.name}</p>
-                {customer.badge && <SupplierBadge badge={{ ...customer.badge, ownerType: "customer" }} size="sm" />}
+        {customers.map((customer) => (
+          <div key={customer.rank} className={cn("p-3 rounded-xl border transition-all", customer.rank <= 3 ? `${rankBgs[customer.rank - 1]} border-transparent` : "border-border bg-card")}>
+            <div className="flex items-center gap-3 mb-2">
+              <div className={cn("w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0", customer.rank <= 3 ? rankBgs[customer.rank - 1] : "bg-muted", customer.rank <= 3 ? rankColors[customer.rank - 1] : "text-muted-foreground")}>
+                {customer.rank <= 3 ? <Trophy className="h-4 w-4" /> : customer.rank}
               </div>
-              <div className="flex items-center gap-2 mt-0.5">
-                <span className="text-[10px] text-muted-foreground flex items-center gap-0.5"><ShoppingBag className="h-2.5 w-2.5" /> {customer.ordersCount}</span>
-                <span className="text-[10px] text-muted-foreground flex items-center gap-0.5"><Package className="h-2.5 w-2.5" /> {customer.productsCount}</span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <p className="font-semibold text-sm text-foreground">{customer.name}</p>
+                  {customer.badge && <SupplierBadge badge={{ ...customer.badge, ownerType: "customer" }} size="sm" />}
+                </div>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <StarRating rating={customer.avgRating} />
+                  <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                    <MessageSquare className="h-2.5 w-2.5" /> {customer.ratingsCount}
+                  </span>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-sm font-bold text-primary">{customer.totalSpent.toLocaleString()}₴</p>
+                {customer.rank <= 3 && (
+                  <Badge variant="outline" className="text-[8px] mt-0.5 border-primary/30 text-primary px-1.5">
+                    {customer.rank === 1 ? bonuses.first : customer.rank === 2 ? bonuses.second : bonuses.third}
+                  </Badge>
+                )}
               </div>
             </div>
-            <div className="text-right">
-              <p className="text-sm font-bold text-primary">{customer.totalSpent.toLocaleString()}₴</p>
-              {customer.rank <= 3 && (
-                <Badge variant="outline" className="text-[8px] mt-0.5 border-primary/30 text-primary px-1.5">
-                  {customer.rank === 1 ? bonuses.first : customer.rank === 2 ? bonuses.second : bonuses.third}
-                </Badge>
-              )}
+            <div className="grid grid-cols-3 gap-1.5">
+              <div className="bg-background/60 rounded-lg p-1.5 text-center">
+                <p className="text-[9px] text-muted-foreground">Замовлень</p>
+                <p className="text-xs font-bold text-foreground">{customer.ordersCount}</p>
+              </div>
+              <div className="bg-background/60 rounded-lg p-1.5 text-center">
+                <p className="text-[9px] text-muted-foreground">Товарів</p>
+                <p className="text-xs font-bold text-foreground">{customer.productsCount}</p>
+              </div>
+              <div className="bg-background/60 rounded-lg p-1.5 text-center">
+                <p className="text-[9px] text-muted-foreground">Рейтинг</p>
+                <p className="text-xs font-bold text-foreground">{customer.avgRating.toFixed(1)}</p>
+              </div>
             </div>
           </div>
         ))}
@@ -520,7 +533,7 @@ const BadgeRules = () => {
             <Users className="h-3.5 w-3.5 text-primary" /> Галочки клієнтів
           </p>
           <div className="p-3 rounded-xl bg-primary/5 border border-primary/10 space-y-1.5">
-            <p className="text-xs text-foreground">Клієнти отримують галочки за ту саму систему, що й магазини — за місцем у рейтингу покупців (за сумою замовлень):</p>
+            <p className="text-xs text-foreground">Клієнти отримують галочки за єдиним рейтингом (сума + замовлення + товари + оцінки від магазинів):</p>
             <div className="grid grid-cols-2 gap-1.5 text-[11px]">
               <div className="flex items-center gap-1.5 bg-yellow-500/10 rounded-lg px-2 py-1.5">
                 <BadgeCheck className="h-3.5 w-3.5 text-yellow-500" />
