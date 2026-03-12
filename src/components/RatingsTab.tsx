@@ -533,7 +533,7 @@ const BadgeRules = () => {
             <Users className="h-3.5 w-3.5 text-primary" /> Галочки клієнтів
           </p>
           <div className="p-3 rounded-xl bg-primary/5 border border-primary/10 space-y-1.5">
-            <p className="text-xs text-foreground">Клієнти отримують галочки за ту саму систему, що й магазини — за місцем у рейтингу покупців (за сумою замовлень):</p>
+            <p className="text-xs text-foreground">Клієнти отримують галочки за єдиним рейтингом (сума + замовлення + товари + оцінки від магазинів):</p>
             <div className="grid grid-cols-2 gap-1.5 text-[11px]">
               <div className="flex items-center gap-1.5 bg-yellow-500/10 rounded-lg px-2 py-1.5">
                 <BadgeCheck className="h-3.5 w-3.5 text-yellow-500" />
