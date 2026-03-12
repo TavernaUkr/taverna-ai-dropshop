@@ -136,24 +136,15 @@ const PeriodSelector = ({ period, onChange }: { period: Period; onChange: (p: Pe
   </div>
 );
 
-// Customer Rankings
+// Customer Rankings — unified single ranking
 const CustomerRankings = () => {
   const [period, setPeriod] = useState<Period>("month");
-  const [sortBy, setSortBy] = useState<"spent" | "orders" | "products">("spent");
   const customers = generateCustomerRatings(period);
-  const sorted = [...customers].sort((a, b) => sortBy === "spent" ? b.totalSpent - a.totalSpent : sortBy === "orders" ? b.ordersCount - a.ordersCount : b.productsCount - a.productsCount).map((c, i) => ({ ...c, rank: i + 1 }));
   const bonuses = customerBonuses[period];
 
   return (
     <div className="space-y-3">
       <PeriodSelector period={period} onChange={setPeriod} />
-      <div className="flex gap-0.5 bg-muted rounded-lg p-0.5">
-        {(["spent", "orders", "products"] as const).map((s) => (
-          <button key={s} onClick={() => setSortBy(s)} className={cn("flex-1 text-[10px] font-medium py-1.5 px-1 rounded-md transition-all", sortBy === s ? "bg-card text-foreground shadow-sm" : "text-muted-foreground")}>
-            {s === "spent" ? "💰 Сума" : s === "orders" ? "📦 Замовлення" : "🛍 Товари"}
-          </button>
-        ))}
-      </div>
 
       {/* Prize pool banner */}
       <div className="flex items-center gap-2 p-2.5 rounded-xl bg-primary/5 border border-primary/20">
@@ -166,28 +157,46 @@ const CustomerRankings = () => {
       </div>
 
       <div className="space-y-2">
-        {sorted.map((customer) => (
-          <div key={customer.rank} className={cn("flex items-center gap-3 p-2.5 rounded-xl border transition-all", customer.rank <= 3 ? `${rankBgs[customer.rank - 1]} border-transparent` : "border-border bg-card")}>
-            <div className={cn("w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0", customer.rank <= 3 ? rankBgs[customer.rank - 1] : "bg-muted", customer.rank <= 3 ? rankColors[customer.rank - 1] : "text-muted-foreground")}>
-              {customer.rank <= 3 ? <Trophy className="h-4 w-4" /> : customer.rank}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5">
-                <p className="font-medium text-sm text-foreground">{customer.name}</p>
-                {customer.badge && <SupplierBadge badge={{ ...customer.badge, ownerType: "customer" }} size="sm" />}
+        {customers.map((customer) => (
+          <div key={customer.rank} className={cn("p-3 rounded-xl border transition-all", customer.rank <= 3 ? `${rankBgs[customer.rank - 1]} border-transparent` : "border-border bg-card")}>
+            <div className="flex items-center gap-3 mb-2">
+              <div className={cn("w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0", customer.rank <= 3 ? rankBgs[customer.rank - 1] : "bg-muted", customer.rank <= 3 ? rankColors[customer.rank - 1] : "text-muted-foreground")}>
+                {customer.rank <= 3 ? <Trophy className="h-4 w-4" /> : customer.rank}
               </div>
-              <div className="flex items-center gap-2 mt-0.5">
-                <span className="text-[10px] text-muted-foreground flex items-center gap-0.5"><ShoppingBag className="h-2.5 w-2.5" /> {customer.ordersCount}</span>
-                <span className="text-[10px] text-muted-foreground flex items-center gap-0.5"><Package className="h-2.5 w-2.5" /> {customer.productsCount}</span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <p className="font-semibold text-sm text-foreground">{customer.name}</p>
+                  {customer.badge && <SupplierBadge badge={{ ...customer.badge, ownerType: "customer" }} size="sm" />}
+                </div>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <StarRating rating={customer.avgRating} />
+                  <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                    <MessageSquare className="h-2.5 w-2.5" /> {customer.ratingsCount}
+                  </span>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-sm font-bold text-primary">{customer.totalSpent.toLocaleString()}₴</p>
+                {customer.rank <= 3 && (
+                  <Badge variant="outline" className="text-[8px] mt-0.5 border-primary/30 text-primary px-1.5">
+                    {customer.rank === 1 ? bonuses.first : customer.rank === 2 ? bonuses.second : bonuses.third}
+                  </Badge>
+                )}
               </div>
             </div>
-            <div className="text-right">
-              <p className="text-sm font-bold text-primary">{customer.totalSpent.toLocaleString()}₴</p>
-              {customer.rank <= 3 && (
-                <Badge variant="outline" className="text-[8px] mt-0.5 border-primary/30 text-primary px-1.5">
-                  {customer.rank === 1 ? bonuses.first : customer.rank === 2 ? bonuses.second : bonuses.third}
-                </Badge>
-              )}
+            <div className="grid grid-cols-3 gap-1.5">
+              <div className="bg-background/60 rounded-lg p-1.5 text-center">
+                <p className="text-[9px] text-muted-foreground">Замовлень</p>
+                <p className="text-xs font-bold text-foreground">{customer.ordersCount}</p>
+              </div>
+              <div className="bg-background/60 rounded-lg p-1.5 text-center">
+                <p className="text-[9px] text-muted-foreground">Товарів</p>
+                <p className="text-xs font-bold text-foreground">{customer.productsCount}</p>
+              </div>
+              <div className="bg-background/60 rounded-lg p-1.5 text-center">
+                <p className="text-[9px] text-muted-foreground">Рейтинг</p>
+                <p className="text-xs font-bold text-foreground">{customer.avgRating.toFixed(1)}</p>
+              </div>
             </div>
           </div>
         ))}
