@@ -1,39 +1,42 @@
 
 
-## Plan: Cumulative Rating Score + Day Period with Blue Badge
+## Plan: Language Selector & Region/Country Selector in Header
 
-### What changes
+### What to build
 
-**1. Add "Day" period with Blue Badge (Синя галочка)**
-- New tier `"daily"` between Bronze and Verified (Green)
-- Color: blue (`text-blue-500`, `bg-blue-500/15`)
-- Top 1-3 daily = Blue checkmark + trophy with place
-- Update `getSupplierBadge` / `getCustomerBadge` to accept `dailyRank` parameter
-- Tier priority: Gold > Silver > Bronze > Blue > Green
+Two new icon buttons in the Header, positioned **between the logo/brand text and the existing right action icons** (before Wallet). They follow the same visual style as existing header icons.
 
-**2. Update Green badge to include Day**
-- Green (verified) = Top 4-10 in ANY period (day, week, month, year)
+1. **Language selector** (`Globe` icon from lucide-react) — opens a small modal/popover to pick UI language. Currently only Ukrainian (UA) is active. Future languages: English, Polish, German, Italian, etc.
 
-**3. Add "Загальний рейтинг" formula explanation in BadgeRules**
-A cumulative numeric score that only goes up or down:
-- **Positive factors**: orders count, products count, total spent/revenue, positive reviews, bonuses used/earned
-- **Negative factors**: confirmed complaints (-points), returns (shop's fault for sellers, client abuse for buyers), penalties from moderator
+2. **Region/Country selector** (`Flag` icon from lucide-react) — opens a modal showing available regions. Ukraine is active (default). Other countries (Poland, Germany, Italy, USA, etc.) show a "Скоро" badge, disabled.
 
-This score determines position in rankings. The "Рейтинг" number shown next to each participant IS this cumulative score.
+### Layout in Header
 
-**4. Add Day to PeriodSelector and data generators**
-- `Period` type becomes `"day" | "week" | "month" | "year"`
-- Add day multiplier and bonuses/perks for day period
-- Customer daily bonuses: smaller amounts (+20₴, +10₴, +5₴)
-- Supplier daily perks: minor boosts
+```text
+[Logo + Taverna Group] [🌐 Lang] [🚩 Region] ... [Wallet] [Trophy] [Gift] [Search] [Heart] [Cart]
+```
 
-**5. Update BadgeRules with full rating calculation breakdown**
-- Section explaining how the score accumulates
-- Section for each badge tier (now 5 tiers including Blue)
-- Updated penalty section referencing score deductions
+The two new buttons sit right after the brand text, visually grouped with the left side but using the same `w-8 h-8` icon button style as the right-side actions.
 
-### Files to change
+### Implementation Details
 
-- `src/components/ui/supplier-badge.tsx` — add `"daily"` tier (blue), update `getSupplierBadge` to accept `dailyRank`, update priority chain, add day to `periodLabels`
-- `src/components/RatingsTab.tsx` — add "День" to `Period` type and `PeriodSelector`, add daily bonuses/perks, update `BadgeRules` with full rating formula explanation and blue badge, update mock data generators for day period
+**New files:**
+- `src/components/LanguageSelectorModal.tsx` — Bottom sheet / dialog with language list. UA selected by default, others available but functional (stored in localStorage for now, no i18n library yet — just saves preference).
+- `src/components/RegionSelectorModal.tsx` — Bottom sheet / dialog with country list. Ukraine active, others show "Скоро" / "В проєкті" badge and are disabled.
+
+**Modified files:**
+- `src/components/Header.tsx` — Add `Globe` and `Flag` icons between logo and right actions. Each opens its respective modal. Language button shows current language code (e.g., tiny "UA" badge). Region button shows a small flag emoji or country code.
+
+### Language Modal
+- List of languages: Українська (active), English, Polski, Deutsch, Italiano
+- Radio-style selection, saves to `localStorage('app-language')`
+- No actual i18n translation yet — just the preference storage and UI. Shows toast "Мову змінено" on selection.
+
+### Region Modal  
+- Ukraine 🇺🇦 — active, selectable
+- Poland 🇵🇱, Germany 🇩🇪, Italy 🇮🇹, USA 🇺🇸 — each with a "Скоро" / "В проєкті" badge, grayed out, not selectable
+- Clean card-based list with flag emojis
+
+### Visual style
+Both buttons use the same pattern as existing header icons: `w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground active:scale-95 transition-all`. The Globe icon gets a subtle blue tint (`text-blue-500`), the Flag icon gets a yellow-blue tint for Ukraine (`text-yellow-500`).
 

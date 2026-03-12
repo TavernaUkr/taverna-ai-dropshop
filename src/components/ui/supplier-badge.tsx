@@ -6,13 +6,13 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-export type BadgeTier = "gold" | "silver" | "bronze" | "verified" | null;
+export type BadgeTier = "gold" | "silver" | "bronze" | "daily" | "verified" | null;
 export type BadgeOwnerType = "supplier" | "customer";
 
 export interface SupplierBadgeInfo {
   tier: BadgeTier;
   place?: number; // 1, 2, or 3
-  period?: "week" | "month" | "year";
+  period?: "day" | "week" | "month" | "year";
   ownerType?: BadgeOwnerType;
 }
 
@@ -41,6 +41,14 @@ const tierConfig = {
     checkBg: "bg-amber-600/15",
     trophyColor: "text-amber-600",
   },
+  daily: {
+    label: "Синя галочка",
+    supplierDesc: "Топ 1-3 за день",
+    customerDesc: "Топ 1-3 покупців за день",
+    checkColor: "text-blue-500",
+    checkBg: "bg-blue-500/15",
+    trophyColor: "text-blue-500",
+  },
   verified: {
     label: "Верифікований",
     supplierDesc: "Топ 4-10 у рейтингу",
@@ -58,6 +66,7 @@ const placeColors: Record<number, string> = {
 };
 
 const periodLabels: Record<string, string> = {
+  day: "день",
   week: "тиждень",
   month: "місяць",
   year: "рік",
@@ -66,9 +75,10 @@ const periodLabels: Record<string, string> = {
 export function getSupplierBadge(
   yearlyRank?: number | null,
   monthlyRank?: number | null,
-  weeklyRank?: number | null
+  weeklyRank?: number | null,
+  dailyRank?: number | null,
 ): SupplierBadgeInfo {
-  // Highest tier wins
+  // Highest tier wins: Gold > Silver > Bronze > Daily (Blue) > Verified (Green)
   if (yearlyRank && yearlyRank >= 1 && yearlyRank <= 3) {
     return { tier: "gold", place: yearlyRank, period: "year" };
   }
@@ -78,11 +88,15 @@ export function getSupplierBadge(
   if (weeklyRank && weeklyRank >= 1 && weeklyRank <= 3) {
     return { tier: "bronze", place: weeklyRank, period: "week" };
   }
-  // Regular verified if 4-10 in any period
+  if (dailyRank && dailyRank >= 1 && dailyRank <= 3) {
+    return { tier: "daily", place: dailyRank, period: "day" };
+  }
+  // Regular verified if 4-10 in any period (including day)
   if (
     (yearlyRank && yearlyRank >= 4 && yearlyRank <= 10) ||
     (monthlyRank && monthlyRank >= 4 && monthlyRank <= 10) ||
-    (weeklyRank && weeklyRank >= 4 && weeklyRank <= 10)
+    (weeklyRank && weeklyRank >= 4 && weeklyRank <= 10) ||
+    (dailyRank && dailyRank >= 4 && dailyRank <= 10)
   ) {
     return { tier: "verified" };
   }
@@ -114,6 +128,11 @@ export function SupplierBadge({
   const isCustomer = badge.ownerType === "customer";
   const description = isCustomer ? config.customerDesc : config.supplierDesc;
 
+  // For daily tier, trophy colors are always blue
+  const trophyColor = badge.tier === "daily"
+    ? "text-blue-500"
+    : (badge.place ? placeColors[badge.place] : config.trophyColor) || config.trophyColor;
+
   const content = (
     <div className={cn("inline-flex items-center gap-0.5", className)}>
       {/* Check badge */}
@@ -123,8 +142,8 @@ export function SupplierBadge({
       {/* Trophy + place for top-3 tiers */}
       {badge.place && badge.tier !== "verified" && (
         <div className={cn("inline-flex items-center gap-px rounded-full px-1 py-0.5", config.checkBg)}>
-          <Trophy className={cn(trophySize, placeColors[badge.place] || config.trophyColor)} />
-          <span className={cn(textSize, "font-bold", placeColors[badge.place] || config.trophyColor)}>
+          <Trophy className={cn(trophySize, trophyColor)} />
+          <span className={cn(textSize, "font-bold", trophyColor)}>
             {badge.place}
           </span>
         </div>
