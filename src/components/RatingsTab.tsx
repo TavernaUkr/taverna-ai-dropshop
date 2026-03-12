@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Star, Trophy, TrendingUp, Users, ShoppingBag, Package, BarChart3, Gift, Crown, Zap, Award, Wallet, MessageSquare, BadgeCheck, Info, ChevronDown, ChevronUp, Shield, AlertTriangle } from "lucide-react";
+import { Star, Trophy, TrendingUp, Users, ShoppingBag, Package, BarChart3, Gift, Crown, Zap, Award, Wallet, MessageSquare, BadgeCheck, Info, ChevronDown, ChevronUp, Shield, AlertTriangle, Calculator } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useTelegramAuthContext } from "@/components/TelegramAuthProvider";
@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { SupplierBadge, getSupplierBadge, getCustomerBadge, type SupplierBadgeInfo } from "@/components/ui/supplier-badge";
 
-type Period = "week" | "month" | "year";
+type Period = "day" | "week" | "month" | "year";
 
 interface CustomerRatingItem {
   rank: number;
@@ -48,7 +48,7 @@ interface ProductReview {
 }
 
 const generateCustomerRatings = (period: Period): CustomerRatingItem[] => {
-  const multiplier = period === "week" ? 7 : period === "month" ? 30 : 365;
+  const multiplier = period === "day" ? 1 : period === "week" ? 7 : period === "month" ? 30 : 365;
   const baseRatings = [4.9, 4.8, 4.7, 4.6, 4.5, 4.4, 4.3, 4.2];
   return [
     { rank: 1, name: "Олекс***", ordersCount: 12 * multiplier / 30, totalSpent: 24500 * multiplier / 30, productsCount: 35 * multiplier / 30, avgRating: baseRatings[0], ratingsCount: Math.round(8 * multiplier / 30) },
@@ -69,12 +69,13 @@ const generateCustomerRatings = (period: Period): CustomerRatingItem[] => {
       period === "year" ? idx + 1 : null,
       period === "month" ? idx + 1 : null,
       period === "week" ? idx + 1 : null,
+      period === "day" ? idx + 1 : null,
     ),
   }));
 };
 
 const generateSupplierRatings = (period: Period): SupplierRatingItem[] => {
-  const multiplier = period === "week" ? 7 : period === "month" ? 30 : 365;
+  const multiplier = period === "day" ? 1 : period === "week" ? 7 : period === "month" ? 30 : 365;
   return [
     { rank: 1, shopName: "Tactical Pro", soldCount: 145 * multiplier / 30, revenue: 289000 * multiplier / 30, customersCount: 89 * multiplier / 30, avgRating: 4.8, reviewsCount: Math.round(34 * multiplier / 30) },
     { rank: 2, shopName: "Military Store", soldCount: 112 * multiplier / 30, revenue: 224000 * multiplier / 30, customersCount: 71 * multiplier / 30, avgRating: 4.7, reviewsCount: Math.round(28 * multiplier / 30) },
@@ -91,6 +92,7 @@ const generateSupplierRatings = (period: Period): SupplierRatingItem[] => {
       period === "year" ? idx + 1 : null,
       period === "month" ? idx + 1 : null,
       period === "week" ? idx + 1 : null,
+      period === "day" ? idx + 1 : null,
     ),
   }));
 };
@@ -103,12 +105,13 @@ const shopReviewsMock: ShopReview[] = [
   { shopName: "Ranger Shop", avgRating: 4.4, reviewsCount: 89 },
 ];
 
-const periodLabels: Record<Period, string> = { week: "Тиждень", month: "Місяць", year: "Рік" };
+const periodLabels: Record<Period, string> = { day: "День", week: "Тиждень", month: "Місяць", year: "Рік" };
 const rankColors = ["text-yellow-500", "text-slate-400", "text-amber-600"];
 const rankBgs = ["bg-yellow-500/10", "bg-slate-400/10", "bg-amber-600/10"];
 
 // Customer bonus amounts per period
 const customerBonuses: Record<Period, { first: string; second: string; third: string }> = {
+  day: { first: "+20₴", second: "+10₴", third: "+5₴" },
   week: { first: "+75₴", second: "+40₴", third: "+15₴" },
   month: { first: "+500₴", second: "+200₴", third: "+100₴" },
   year: { first: "🎁 1500₴", second: "+1000₴", third: "+500₴" },
@@ -116,6 +119,7 @@ const customerBonuses: Record<Period, { first: string; second: string; third: st
 
 // Supplier perks per period
 const supplierPerks: Record<Period, { first: string; second: string; third: string }> = {
+  day: { first: "Буст 24год", second: "Пріоритет", third: "+50 бонусів" },
   week: { first: "Безк. пост", second: "Буст 7дн", third: "Пріоритет" },
   month: { first: "28% націнка", second: "Безк. пост", third: "Пріоритет" },
   year: { first: "25% на 3міс", second: "28% на 1міс", third: "Безк. реклама" },
@@ -132,7 +136,7 @@ const StarRating = ({ rating, size = "sm" }: { rating: number; size?: "sm" | "md
 
 const PeriodSelector = ({ period, onChange }: { period: Period; onChange: (p: Period) => void }) => (
   <div className="flex gap-0.5 bg-muted rounded-lg p-0.5">
-    {(["week", "month", "year"] as Period[]).map((p) => (
+    {(["day", "week", "month", "year"] as Period[]).map((p) => (
       <button key={p} onClick={() => onChange(p)} className={cn("flex-1 text-xs font-medium py-1.5 px-2 rounded-md transition-all", period === p ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
         {periodLabels[p]}
       </button>
@@ -451,14 +455,14 @@ const ProductReviews = () => {
 const BadgeRules = () => {
   const [isOpen, setIsOpen] = useState(false);
 
-  const supplierTiers = [
+  const badgeTiers = [
     {
       emoji: "🥇",
       name: "Золота галочка",
       checkColor: "text-yellow-500",
       bgColor: "bg-yellow-500/10",
       rule: "Топ 1-3 місце у річному рейтингу",
-      detail: "Найвища нагорода. Магазин потрапив до трійки лідерів за підсумками року.",
+      detail: "Найвища нагорода. Учасник потрапив до трійки лідерів за підсумками року.",
     },
     {
       emoji: "🥈",
@@ -466,7 +470,7 @@ const BadgeRules = () => {
       checkColor: "text-slate-400",
       bgColor: "bg-slate-400/10",
       rule: "Топ 1-3 місце у місячному рейтингу",
-      detail: "Магазин показав найкращі результати за попередній місяць.",
+      detail: "Учасник показав найкращі результати за попередній місяць.",
     },
     {
       emoji: "🥉",
@@ -474,15 +478,23 @@ const BadgeRules = () => {
       checkColor: "text-amber-600",
       bgColor: "bg-amber-600/10",
       rule: "Топ 1-3 місце у тижневому рейтингу",
-      detail: "Магазин увійшов до трійки лідерів за попередній тиждень.",
+      detail: "Учасник увійшов до трійки лідерів за попередній тиждень.",
+    },
+    {
+      emoji: "💎",
+      name: "Синя галочка",
+      checkColor: "text-blue-500",
+      bgColor: "bg-blue-500/10",
+      rule: "Топ 1-3 місце у денному рейтингу",
+      detail: "Учасник став лідером за попередній день. Швидкий темп активності!",
     },
     {
       emoji: "✅",
-      name: "Верифікований",
+      name: "Верифікований (зелена)",
       checkColor: "text-emerald-500",
       bgColor: "bg-emerald-500/10",
-      rule: "Топ 4-10 місце у будь-якому рейтингу",
-      detail: "Магазин входить до десятки найкращих за тиждень, місяць або рік.",
+      rule: "Топ 4-10 місце у будь-якому рейтингу (день/тиждень/місяць/рік)",
+      detail: "Учасник стабільно входить до десятки найкращих.",
     },
   ];
 
@@ -491,7 +503,7 @@ const BadgeRules = () => {
       <CollapsibleTrigger className="w-full flex items-center gap-2 p-3 rounded-xl bg-muted/50 border border-border hover:bg-muted transition-colors">
         <Info className="h-4 w-4 text-primary shrink-0" />
         <span className="text-sm font-medium text-foreground flex-1 text-left">
-          Правила галочок та штрафів
+          Як формується рейтинг, галочки та штрафи
         </span>
         {isOpen ? (
           <ChevronUp className="h-4 w-4 text-muted-foreground" />
@@ -500,13 +512,57 @@ const BadgeRules = () => {
         )}
       </CollapsibleTrigger>
       <CollapsibleContent className="mt-2 space-y-3 animate-fade-in">
-        {/* Supplier badges */}
+
+        {/* Rating formula explanation */}
         <div>
           <p className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
-            <TrendingUp className="h-3.5 w-3.5 text-primary" /> Галочки магазинів
+            <Calculator className="h-3.5 w-3.5 text-primary" /> Як формується Загальний Рейтинг
+          </p>
+          <div className="p-3 rounded-xl bg-primary/5 border border-primary/10 space-y-2">
+            <p className="text-xs text-foreground leading-relaxed">
+              <span className="font-semibold">Загальний Рейтинг</span> — це єдине числове значення, яке накопичується на основі всіх дій учасника. Воно може зростати або знижуватись.
+            </p>
+            <div className="space-y-1.5">
+              <p className="text-[11px] font-semibold text-emerald-600 flex items-center gap-1">
+                <TrendingUp className="h-3 w-3" /> Що підвищує рейтинг:
+              </p>
+              <ul className="text-[11px] text-muted-foreground space-y-0.5 ml-4">
+                <li>• Кожне оформлене замовлення / продаж</li>
+                <li>• Кількість проданих / куплених товарів</li>
+                <li>• Загальна сума замовлень / виручки</li>
+                <li>• Позитивні відгуки та високі оцінки (⭐ 4-5)</li>
+                <li>• Використані / зароблені бонуси та плюшки</li>
+                <li>• Кількість унікальних клієнтів (для продавців)</li>
+              </ul>
+            </div>
+            <div className="space-y-1.5">
+              <p className="text-[11px] font-semibold text-destructive flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" /> Що знижує рейтинг:
+              </p>
+              <ul className="text-[11px] text-muted-foreground space-y-0.5 ml-4">
+                <li>• Підтверджені скарги від іншої сторони</li>
+                <li>• Повернення товарів (з вини магазину / зловживання клієнтом)</li>
+                <li>• Обміни з причини дефектів чи невідповідності</li>
+                <li>• Штрафні санкції від модератора</li>
+                <li>• Негативні відгуки (⭐ 1-2)</li>
+                <li>• Скасовані замовлення з вини учасника</li>
+              </ul>
+            </div>
+            <div className="p-2 rounded-lg bg-muted/50 border border-border">
+              <p className="text-[10px] text-muted-foreground">
+                📊 Позиція у рейтингу (День / Тиждень / Місяць / Рік) визначається саме цим числом. Чим вищий Загальний Рейтинг — тим вища позиція та краща галочка.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Unified badge tiers for both sellers and customers */}
+        <div>
+          <p className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
+            <BadgeCheck className="h-3.5 w-3.5 text-primary" /> Галочки та кубки (для магазинів і клієнтів)
           </p>
           <div className="space-y-2">
-            {supplierTiers.map((tier) => (
+            {badgeTiers.map((tier) => (
               <div key={tier.name} className={cn("p-3 rounded-xl border border-transparent", tier.bgColor)}>
                 <div className="flex items-center gap-2 mb-1">
                   <div className={cn("rounded-full p-0.5", tier.bgColor)}>
@@ -527,29 +583,31 @@ const BadgeRules = () => {
           </div>
         </div>
 
-        {/* Customer badges */}
+        {/* Bonuses tied to rating */}
         <div>
           <p className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
-            <Users className="h-3.5 w-3.5 text-primary" /> Галочки клієнтів
+            <Gift className="h-3.5 w-3.5 text-primary" /> Бонуси за позицію у рейтингу
           </p>
-          <div className="p-3 rounded-xl bg-primary/5 border border-primary/10 space-y-1.5">
-            <p className="text-xs text-foreground">Клієнти отримують галочки за єдиним рейтингом (сума + замовлення + товари + оцінки від магазинів):</p>
-            <div className="grid grid-cols-2 gap-1.5 text-[11px]">
-              <div className="flex items-center gap-1.5 bg-yellow-500/10 rounded-lg px-2 py-1.5">
-                <BadgeCheck className="h-3.5 w-3.5 text-yellow-500" />
-                <span className="text-foreground font-medium">Золота — Топ 1-3/рік</span>
+          <div className="p-3 rounded-xl bg-primary/5 border border-primary/10 space-y-2">
+            <p className="text-xs text-foreground">Бонуси нараховуються автоматично за позицію у єдиному рейтингу за кожен період:</p>
+            <div className="grid grid-cols-2 gap-2 text-[11px]">
+              <div className="space-y-1">
+                <p className="font-semibold text-foreground">👤 Клієнти:</p>
+                <ul className="text-muted-foreground space-y-0.5">
+                  <li>• День: 🥇+20₴ 🥈+10₴ 🥉+5₴</li>
+                  <li>• Тиждень: 🥇+75₴ 🥈+40₴ 🥉+15₴</li>
+                  <li>• Місяць: 🥇+500₴ 🥈+200₴ 🥉+100₴</li>
+                  <li>• Рік: 🥇1500₴ 🥈+1000₴ 🥉+500₴</li>
+                </ul>
               </div>
-              <div className="flex items-center gap-1.5 bg-slate-400/10 rounded-lg px-2 py-1.5">
-                <BadgeCheck className="h-3.5 w-3.5 text-slate-400" />
-                <span className="text-foreground font-medium">Срібна — Топ 1-3/міс</span>
-              </div>
-              <div className="flex items-center gap-1.5 bg-amber-600/10 rounded-lg px-2 py-1.5">
-                <BadgeCheck className="h-3.5 w-3.5 text-amber-600" />
-                <span className="text-foreground font-medium">Бронзова — Топ 1-3/тижд</span>
-              </div>
-              <div className="flex items-center gap-1.5 bg-emerald-500/10 rounded-lg px-2 py-1.5">
-                <BadgeCheck className="h-3.5 w-3.5 text-emerald-500" />
-                <span className="text-foreground font-medium">Зелена — Топ 4-10</span>
+              <div className="space-y-1">
+                <p className="font-semibold text-foreground">🏪 Продавці:</p>
+                <ul className="text-muted-foreground space-y-0.5">
+                  <li>• День: Буст / Пріоритет / Бонуси</li>
+                  <li>• Тиждень: Пост / Буст / Пріоритет</li>
+                  <li>• Місяць: 28% націнка / Пост</li>
+                  <li>• Рік: 25% на 3міс / 28% на 1міс</li>
+                </ul>
               </div>
             </div>
           </div>
@@ -566,11 +624,11 @@ const BadgeRules = () => {
                 <AlertTriangle className="h-3 w-3 text-destructive" /> Штрафи для магазинів
               </p>
               <ul className="text-[11px] text-muted-foreground space-y-1">
-                <li>• Підтверджена скарга → -0.2 до рейтингу</li>
+                <li>• Підтверджена скарга → зниження Загального Рейтингу</li>
                 <li>• 3+ скарги/місяць → втрата галочки</li>
-                <li>• 5+ скарг/місяць → зниження в рейтингу</li>
+                <li>• 5+ скарг/місяць → значне зниження рейтингу</li>
                 <li>• 10+ скарг → тимчасове призупинення</li>
-                <li>• Повернення з вини магазину → безкоштовна логістика (від 1500₴)</li>
+                <li>• Повернення з вини магазину → штраф до рейтингу + безкоштовна логістика</li>
               </ul>
             </div>
             <div className="p-3 rounded-xl bg-warning/5 border border-warning/10">
@@ -578,15 +636,15 @@ const BadgeRules = () => {
                 <AlertTriangle className="h-3 w-3 text-warning" /> Штрафи для клієнтів
               </p>
               <ul className="text-[11px] text-muted-foreground space-y-1">
-                <li>• 3+ необґрунтованих повернення/місяць → втрата галочки</li>
+                <li>• 3+ необґрунтованих повернення/місяць → зниження рейтингу + втрата галочки</li>
                 <li>• Фейкові скарги → попередження, потім бан</li>
                 <li>• Навмисне псування рейтингу → видалення відгуку модератором</li>
-                <li>• Зловживання → зниження ліміту бонусів на 50%</li>
+                <li>• Зловживання → зниження ліміту бонусів на 50% + штраф рейтингу</li>
               </ul>
             </div>
             <div className="p-2.5 rounded-lg bg-emerald-500/5 border border-emerald-500/10">
               <p className="text-[11px] text-muted-foreground">
-                ✅ <span className="font-medium text-foreground">Принцип:</span> клієнт завжди правий, але при зловживаннях — штрафні санкції для обох сторін.
+                ✅ <span className="font-medium text-foreground">Принцип:</span> клієнт завжди правий, але при зловживаннях — штрафні санкції для обох сторін. Рейтинг відображає реальну репутацію.
               </p>
             </div>
           </div>
@@ -594,7 +652,7 @@ const BadgeRules = () => {
 
         <div className="p-2.5 rounded-lg bg-primary/5 border border-primary/10">
           <p className="text-[11px] text-muted-foreground">
-            💡 Поряд із галочкою відображається <Trophy className="h-3 w-3 inline text-yellow-500" /> кубок з номером місця (1, 2 або 3) у відповідному кольорі. Учасники без рейтингу в Топ-10 не отримують галочку.
+            💡 Поряд із галочкою відображається <Trophy className="h-3 w-3 inline text-yellow-500" /> кубок з номером місця (1, 2 або 3) у відповідному кольорі. Пріоритет: 🥇Золота → 🥈Срібна → 🥉Бронзова → 💎Синя → ✅Зелена. Учасники за межами Топ-10 не отримують галочку.
           </p>
         </div>
       </CollapsibleContent>
