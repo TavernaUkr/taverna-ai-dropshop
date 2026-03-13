@@ -281,13 +281,17 @@ const CustomerRankings = () => {
 // Supplier Rankings (public)
 const SupplierRankings = () => {
   const [period, setPeriod] = useState<Period>("month");
+  const [rankFilter, setRankFilter] = useState<RankFilter>("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
 
-  const suppliers = generateSupplierRatings(period);
+  const allSuppliers = generateSupplierRatings(period);
+  const suppliers = useMemo(() => filterByRank(allSuppliers, rankFilter), [allSuppliers, rankFilter]);
   const perks = supplierPerks[period];
 
   return (
     <div className="space-y-3">
       <PeriodSelector period={period} onChange={setPeriod} />
+      <RankingFilters rankFilter={rankFilter} setRankFilter={setRankFilter} categoryFilter={categoryFilter} setCategoryFilter={setCategoryFilter} />
 
       {/* Prize pool banner */}
       <div className="flex items-center gap-2 p-2.5 rounded-xl bg-accent/5 border border-accent/20">
@@ -304,7 +308,7 @@ const SupplierRankings = () => {
           <div key={supplier.rank} className={cn("p-3 rounded-xl border transition-all", supplier.rank <= 3 ? `${rankBgs[supplier.rank - 1]} border-transparent` : "border-border bg-card")}>
             <div className="flex items-center gap-3 mb-2">
               <div className={cn("w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0", supplier.rank <= 3 ? rankBgs[supplier.rank - 1] : "bg-muted", supplier.rank <= 3 ? rankColors[supplier.rank - 1] : "text-muted-foreground")}>
-                {supplier.rank <= 3 ? <Trophy className="h-4 w-4" /> : supplier.rank}
+                {supplier.rank <= 3 ? <Trophy className={cn("h-4 w-4", supplier.rank === 1 && "animate-heartbeat")} /> : supplier.rank}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
@@ -343,6 +347,9 @@ const SupplierRankings = () => {
             </div>
           </div>
         ))}
+        {suppliers.length === 0 && (
+          <p className="text-center text-sm text-muted-foreground py-6">Немає результатів для обраного фільтру</p>
+        )}
       </div>
     </div>
   );
