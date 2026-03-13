@@ -111,6 +111,14 @@ const periodLabels: Record<Period, string> = { day: "День", week: "Тижд�
 const rankColors = ["text-yellow-500", "text-slate-400", "text-amber-600"];
 const rankBgs = ["bg-yellow-500/10", "bg-slate-400/10", "bg-amber-600/10"];
 
+// Badge colors based on period tier (not place)
+const periodBadgeColors: Record<Period, { text: string; bg: string; glow: string }> = {
+  year: { text: "text-yellow-500", bg: "bg-yellow-500/15", glow: "animate-badge-glow-gold" },
+  month: { text: "text-slate-400", bg: "bg-slate-400/15", glow: "animate-badge-glow-silver" },
+  week: { text: "text-amber-600", bg: "bg-amber-600/15", glow: "animate-badge-glow-bronze" },
+  day: { text: "text-blue-500", bg: "bg-blue-500/15", glow: "animate-badge-glow-blue" },
+};
+
 // Customer bonus amounts per period
 const customerBonuses: Record<Period, { first: string; second: string; third: string }> = {
   day: { first: "+20₴", second: "+10₴", third: "+5₴" },
@@ -230,9 +238,19 @@ const CustomerRankings = () => {
         {customers.map((customer) => (
           <div key={customer.rank} className={cn("p-3 rounded-xl border transition-all", customer.rank <= 3 ? `${rankBgs[customer.rank - 1]} border-transparent` : "border-border bg-card")}>
             <div className="flex items-center gap-3 mb-2">
-              <div className={cn("w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0", customer.rank <= 3 ? rankBgs[customer.rank - 1] : "bg-muted", customer.rank <= 3 ? rankColors[customer.rank - 1] : "text-muted-foreground")}>
-                {customer.rank <= 3 ? <Trophy className={cn("h-4 w-4", customer.rank === 1 && "animate-heartbeat")} /> : customer.rank}
-              </div>
+              {customer.rank <= 3 ? (
+                <div className={cn("w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0", periodBadgeColors[period].bg, customer.rank === 1 && periodBadgeColors[period].glow)}>
+                  <BadgeCheck className={cn("h-5 w-5", periodBadgeColors[period].text)} />
+                </div>
+              ) : customer.rank <= 10 ? (
+                <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 bg-emerald-500/15">
+                  <BadgeCheck className="h-5 w-5 text-emerald-500" />
+                </div>
+              ) : (
+                <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 bg-muted text-muted-foreground">
+                  {customer.rank}
+                </div>
+              )}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
                   <p className="font-semibold text-sm text-foreground">{customer.name}</p>
@@ -307,9 +325,19 @@ const SupplierRankings = () => {
         {suppliers.map((supplier) => (
           <div key={supplier.rank} className={cn("p-3 rounded-xl border transition-all", supplier.rank <= 3 ? `${rankBgs[supplier.rank - 1]} border-transparent` : "border-border bg-card")}>
             <div className="flex items-center gap-3 mb-2">
-              <div className={cn("w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0", supplier.rank <= 3 ? rankBgs[supplier.rank - 1] : "bg-muted", supplier.rank <= 3 ? rankColors[supplier.rank - 1] : "text-muted-foreground")}>
-                {supplier.rank <= 3 ? <Trophy className={cn("h-4 w-4", supplier.rank === 1 && "animate-heartbeat")} /> : supplier.rank}
-              </div>
+              {supplier.rank <= 3 ? (
+                <div className={cn("w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0", periodBadgeColors[period].bg, supplier.rank === 1 && periodBadgeColors[period].glow)}>
+                  <BadgeCheck className={cn("h-5 w-5", periodBadgeColors[period].text)} />
+                </div>
+              ) : supplier.rank <= 10 ? (
+                <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 bg-emerald-500/15">
+                  <BadgeCheck className="h-5 w-5 text-emerald-500" />
+                </div>
+              ) : (
+                <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 bg-muted text-muted-foreground">
+                  {supplier.rank}
+                </div>
+              )}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
                   <p className="font-semibold text-sm text-foreground">{supplier.shopName}</p>
