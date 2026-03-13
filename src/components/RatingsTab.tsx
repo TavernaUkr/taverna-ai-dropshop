@@ -146,15 +146,75 @@ const PeriodSelector = ({ period, onChange }: { period: Period; onChange: (p: Pe
   </div>
 );
 
+const mockCategories = [
+  { id: "all", name: "Всі категорії" },
+  { id: "tactical", name: "Тактичне спорядження" },
+  { id: "clothing", name: "Одяг" },
+  { id: "footwear", name: "Взуття" },
+  { id: "accessories", name: "Аксесуари" },
+  { id: "camping", name: "Кемпінг" },
+];
+
+const RankingFilters = ({
+  rankFilter,
+  setRankFilter,
+  categoryFilter,
+  setCategoryFilter,
+}: {
+  rankFilter: RankFilter;
+  setRankFilter: (v: RankFilter) => void;
+  categoryFilter: string;
+  setCategoryFilter: (v: string) => void;
+}) => (
+  <div className="flex gap-2">
+    <Select value={rankFilter} onValueChange={(v) => setRankFilter(v as RankFilter)}>
+      <SelectTrigger className="h-8 text-xs flex-1">
+        <Filter className="h-3 w-3 mr-1 shrink-0" />
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="all">Всі місця</SelectItem>
+        <SelectItem value="top3">Топ 3</SelectItem>
+        <SelectItem value="4-10">4-10 місце</SelectItem>
+        <SelectItem value="top10">Топ 10</SelectItem>
+      </SelectContent>
+    </Select>
+    <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+      <SelectTrigger className="h-8 text-xs flex-1">
+        <SlidersHorizontal className="h-3 w-3 mr-1 shrink-0" />
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {mockCategories.map((c) => (
+          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  </div>
+);
+
+const filterByRank = <T extends { rank: number }>(items: T[], filter: RankFilter): T[] => {
+  switch (filter) {
+    case "top3": return items.filter((i) => i.rank <= 3);
+    case "top10": return items.filter((i) => i.rank <= 10);
+    case "4-10": return items.filter((i) => i.rank >= 4 && i.rank <= 10);
+    default: return items;
+  }
+};
+
 // Customer Rankings — unified single ranking
 const CustomerRankings = () => {
   const [period, setPeriod] = useState<Period>("month");
-  const customers = generateCustomerRatings(period);
+  const [rankFilter, setRankFilter] = useState<RankFilter>("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const allCustomers = generateCustomerRatings(period);
+  const customers = useMemo(() => filterByRank(allCustomers, rankFilter), [allCustomers, rankFilter]);
   const bonuses = customerBonuses[period];
 
   return (
     <div className="space-y-3">
       <PeriodSelector period={period} onChange={setPeriod} />
+      <RankingFilters rankFilter={rankFilter} setRankFilter={setRankFilter} categoryFilter={categoryFilter} setCategoryFilter={setCategoryFilter} />
 
       {/* Prize pool banner */}
       <div className="flex items-center gap-2 p-2.5 rounded-xl bg-primary/5 border border-primary/20">
@@ -171,7 +231,7 @@ const CustomerRankings = () => {
           <div key={customer.rank} className={cn("p-3 rounded-xl border transition-all", customer.rank <= 3 ? `${rankBgs[customer.rank - 1]} border-transparent` : "border-border bg-card")}>
             <div className="flex items-center gap-3 mb-2">
               <div className={cn("w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0", customer.rank <= 3 ? rankBgs[customer.rank - 1] : "bg-muted", customer.rank <= 3 ? rankColors[customer.rank - 1] : "text-muted-foreground")}>
-                {customer.rank <= 3 ? <Trophy className="h-4 w-4" /> : customer.rank}
+                {customer.rank <= 3 ? <Trophy className={cn("h-4 w-4", customer.rank === 1 && "animate-heartbeat")} /> : customer.rank}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
@@ -210,6 +270,9 @@ const CustomerRankings = () => {
             </div>
           </div>
         ))}
+        {customers.length === 0 && (
+          <p className="text-center text-sm text-muted-foreground py-6">Немає результатів для обраного фільтру</p>
+        )}
       </div>
     </div>
   );
