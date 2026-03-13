@@ -113,6 +113,13 @@ interface SupplierBadgeProps {
   className?: string;
 }
 
+const glowClasses: Record<string, string> = {
+  gold: "animate-badge-glow-gold",
+  silver: "animate-badge-glow-silver",
+  bronze: "animate-badge-glow-bronze",
+  daily: "animate-badge-glow-blue",
+};
+
 export function SupplierBadge({
   badge,
   size = "sm",
@@ -127,22 +134,25 @@ export function SupplierBadge({
   const textSize = size === "sm" ? "text-[9px]" : "text-[10px]";
   const isCustomer = badge.ownerType === "customer";
   const description = isCustomer ? config.customerDesc : config.supplierDesc;
+  const isFirstPlace = badge.place === 1;
 
   // For daily tier, trophy colors are always blue
   const trophyColor = badge.tier === "daily"
     ? "text-blue-500"
     : (badge.place ? placeColors[badge.place] : config.trophyColor) || config.trophyColor;
 
+  const glowClass = isFirstPlace && badge.tier !== "verified" ? glowClasses[badge.tier] || "" : "";
+
   const content = (
     <div className={cn("inline-flex items-center gap-0.5", className)}>
       {/* Check badge */}
-      <div className={cn("rounded-full p-0.5", config.checkBg)}>
+      <div className={cn("rounded-full p-0.5", config.checkBg, glowClass)}>
         <BadgeCheck className={cn(iconSize, config.checkColor)} />
       </div>
       {/* Trophy + place for top-3 tiers */}
       {badge.place && badge.tier !== "verified" && (
         <div className={cn("inline-flex items-center gap-px rounded-full px-1 py-0.5", config.checkBg)}>
-          <Trophy className={cn(trophySize, trophyColor)} />
+          <Trophy className={cn(trophySize, trophyColor, isFirstPlace && "animate-heartbeat")} />
           <span className={cn(textSize, "font-bold", trophyColor)}>
             {badge.place}
           </span>
