@@ -111,6 +111,14 @@ const periodLabels: Record<Period, string> = { day: "День", week: "Тижд�
 const rankColors = ["text-yellow-500", "text-slate-400", "text-amber-600"];
 const rankBgs = ["bg-yellow-500/10", "bg-slate-400/10", "bg-amber-600/10"];
 
+// Badge colors based on period tier (not place)
+const periodBadgeColors: Record<Period, { text: string; bg: string; glow: string }> = {
+  year: { text: "text-yellow-500", bg: "bg-yellow-500/15", glow: "animate-badge-glow-gold" },
+  month: { text: "text-slate-400", bg: "bg-slate-400/15", glow: "animate-badge-glow-silver" },
+  week: { text: "text-amber-600", bg: "bg-amber-600/15", glow: "animate-badge-glow-bronze" },
+  day: { text: "text-blue-500", bg: "bg-blue-500/15", glow: "animate-badge-glow-blue" },
+};
+
 // Customer bonus amounts per period
 const customerBonuses: Record<Period, { first: string; second: string; third: string }> = {
   day: { first: "+20₴", second: "+10₴", third: "+5₴" },
