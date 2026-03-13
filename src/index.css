@@ -287,6 +287,42 @@ All colors MUST be HSL.
   animation: scale-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* Badge glow animation for 1st place */
+@keyframes badge-glow-gold {
+  0%, 100% { filter: drop-shadow(0 0 4px hsl(45 93% 47% / 0.4)); }
+  50% { filter: drop-shadow(0 0 10px hsl(45 93% 47% / 0.7)); }
+}
+@keyframes badge-glow-silver {
+  0%, 100% { filter: drop-shadow(0 0 4px hsl(215 15% 60% / 0.4)); }
+  50% { filter: drop-shadow(0 0 10px hsl(215 15% 60% / 0.7)); }
+}
+@keyframes badge-glow-bronze {
+  0%, 100% { filter: drop-shadow(0 0 4px hsl(25 75% 47% / 0.4)); }
+  50% { filter: drop-shadow(0 0 10px hsl(25 75% 47% / 0.7)); }
+}
+@keyframes badge-glow-blue {
+  0%, 100% { filter: drop-shadow(0 0 4px hsl(217 91% 60% / 0.4)); }
+  50% { filter: drop-shadow(0 0 10px hsl(217 91% 60% / 0.7)); }
+}
+
+.animate-badge-glow-gold { animation: badge-glow-gold 2s ease-in-out infinite; }
+.animate-badge-glow-silver { animation: badge-glow-silver 2s ease-in-out infinite; }
+.animate-badge-glow-bronze { animation: badge-glow-bronze 2s ease-in-out infinite; }
+.animate-badge-glow-blue { animation: badge-glow-blue 2s ease-in-out infinite; }
+
+/* Trophy heartbeat for 1st place */
+@keyframes heartbeat {
+  0%, 100% { transform: scale(1); }
+  15% { transform: scale(1.25); }
+  30% { transform: scale(1); }
+  45% { transform: scale(1.15); }
+  60% { transform: scale(1); }
+}
+
+.animate-heartbeat {
+  animation: heartbeat 1.5s ease-in-out infinite;
+}
+
 /* Glass morphism utilities */
 .glass {
   background: hsl(var(--background) / 0.8);

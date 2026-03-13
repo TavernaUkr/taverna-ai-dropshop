@@ -1,26 +1,42 @@
 
 
-## План: 3 зміни у вкладці Рейтинг
+## Plan: Language Selector & Region/Country Selector in Header
 
-### 1. Кнопка "Бонуси" → "Рейтингові бонуси"
-Замість переходу на `/bonus-account`, кнопка `navigate("/bonus-account")` стане `navigate("/bonus-account?section=rating")` або просто з `showRatingBonuses=true` state. Текст змінити на "Рейтингові бонуси", іконку залишити `Wallet` або замінити на `Trophy`.
+### What to build
 
-### 2. Анімація свечіння для 1-го місця
-В `supplier-badge.tsx`:
-- Якщо `badge.place === 1` — додати CSS-анімацію glow/pulse до галочки (`BadgeCheck`) та heartbeat до кубка (`Trophy`).
-- Використати `animate-pulse` для кубка + кастомну CSS-анімацію `glow` з `box-shadow` відповідного кольору для галочки.
-- Додати CSS keyframes в `src/index.css` для `@keyframes badge-glow` (свечіння) та `@keyframes heartbeat` (збільшення/зменшення кубка).
-- У `RatingsTab.tsx` — для рядків рейтингу де `rank === 1`, також застосувати glow-ефект на галочку та пульсацію кубка у відповідному кольорі періоду.
-- Кольори свечіння визначатимуться за tier: gold=yellow, silver=slate, bronze=amber, daily=blue.
+Two new icon buttons in the Header, positioned **between the logo/brand text and the existing right action icons** (before Wallet). They follow the same visual style as existing header icons.
 
-### 3. Фільтр по категоріям та місцях
-В `RatingsTab.tsx` додати над списком рейтингу (під `PeriodSelector`):
-- **Фільтр по категоріях** — Select з категоріями товарів (з `useProducts().categories`). Фільтрує магазини/клієнтів за категорією товарів.
-- **Фільтр по місцях** — Select з опціями: "Всі", "Топ 3", "Топ 10", "4-10 місце". Фільтрує список за позицією.
-- Обидва фільтри відображатимуться в компактному рядку під PeriodSelector.
+1. **Language selector** (`Globe` icon from lucide-react) — opens a small modal/popover to pick UI language. Currently only Ukrainian (UA) is active. Future languages: English, Polish, German, Italian, etc.
 
-### Файли що змінюються
-- `src/components/RatingsTab.tsx` — кнопка "Рейтингові бонуси", фільтри категорій та місць
-- `src/components/ui/supplier-badge.tsx` — glow + heartbeat анімації для 1-го місця
-- `src/index.css` — CSS keyframes для `badge-glow` та `heartbeat`
+2. **Region/Country selector** (`Flag` icon from lucide-react) — opens a modal showing available regions. Ukraine is active (default). Other countries (Poland, Germany, Italy, USA, etc.) show a "Скоро" badge, disabled.
+
+### Layout in Header
+
+```text
+[Logo + Taverna Group] [🌐 Lang] [🚩 Region] ... [Wallet] [Trophy] [Gift] [Search] [Heart] [Cart]
+```
+
+The two new buttons sit right after the brand text, visually grouped with the left side but using the same `w-8 h-8` icon button style as the right-side actions.
+
+### Implementation Details
+
+**New files:**
+- `src/components/LanguageSelectorModal.tsx` — Bottom sheet / dialog with language list. UA selected by default, others available but functional (stored in localStorage for now, no i18n library yet — just saves preference).
+- `src/components/RegionSelectorModal.tsx` — Bottom sheet / dialog with country list. Ukraine active, others show "Скоро" / "В проєкті" badge and are disabled.
+
+**Modified files:**
+- `src/components/Header.tsx` — Add `Globe` and `Flag` icons between logo and right actions. Each opens its respective modal. Language button shows current language code (e.g., tiny "UA" badge). Region button shows a small flag emoji or country code.
+
+### Language Modal
+- List of languages: Українська (active), English, Polski, Deutsch, Italiano
+- Radio-style selection, saves to `localStorage('app-language')`
+- No actual i18n translation yet — just the preference storage and UI. Shows toast "Мову змінено" on selection.
+
+### Region Modal  
+- Ukraine 🇺🇦 — active, selectable
+- Poland 🇵🇱, Germany 🇩🇪, Italy 🇮🇹, USA 🇺🇸 — each with a "Скоро" / "В проєкті" badge, grayed out, not selectable
+- Clean card-based list with flag emojis
+
+### Visual style
+Both buttons use the same pattern as existing header icons: `w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground active:scale-95 transition-all`. The Globe icon gets a subtle blue tint (`text-blue-500`), the Flag icon gets a yellow-blue tint for Ukraine (`text-yellow-500`).
 
