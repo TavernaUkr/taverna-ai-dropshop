@@ -676,11 +676,11 @@ export function AdvertisingTab({
                 const platform = AD_PLATFORMS.find((p) => p.id === platformId);
                 if (!platform) return null;
                 const platformCost = Math.max(budget, platform.minBudget);
-                const withMarkup = Math.round(platformCost * (1 + platform.markup / 100));
+                const withMarkup = Math.round(platformCost * (1 + currentMarkup / 100));
                 return (
                   <div key={platformId} className="flex justify-between">
                     <span>{platform.icon} {platform.name}</span>
-                    <span>{withMarkup} ₴ (+{platform.markup}%)</span>
+                    <span>{withMarkup} ₴ (+{currentMarkup}%)</span>
                   </div>
                 );
               })}
