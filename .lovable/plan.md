@@ -1,42 +1,164 @@
 
 
-## Plan: Language Selector & Region/Country Selector in Header
+## План: Загальний рейтинг "Весь час" + Діамантовий бейдж + Математичний баланс економіки
 
-### What to build
-
-Two new icon buttons in the Header, positioned **between the logo/brand text and the existing right action icons** (before Wallet). They follow the same visual style as existing header icons.
-
-1. **Language selector** (`Globe` icon from lucide-react) — opens a small modal/popover to pick UI language. Currently only Ukrainian (UA) is active. Future languages: English, Polish, German, Italian, etc.
-
-2. **Region/Country selector** (`Flag` icon from lucide-react) — opens a modal showing available regions. Ukraine is active (default). Other countries (Poland, Germany, Italy, USA, etc.) show a "Скоро" badge, disabled.
-
-### Layout in Header
+### Аналіз поточної економіки платформи
 
 ```text
-[Logo + Taverna Group] [🌐 Lang] [🚩 Region] ... [Wallet] [Trophy] [Gift] [Search] [Heart] [Cart]
+┌─────────────────────────────────────────────────────────────┐
+│  БАЗОВА МОДЕЛЬ ДОХОДУ (націнка на товари)                   │
+│                                                              │
+│  Оборот магазину    │  Націнка  │  Приклад (товар 1000₴)    │
+│  ─────────────────────────────────────────────────────────── │
+│  До 10 000₴         │  33%      │  330₴ → платформі         │
+│  10 000 – 100 000₴  │  28%      │  280₴ → платформі         │
+│  100 000₴+          │  23%      │  230₴ → платформі         │
+│                                                              │
+│  Середня націнка (зважена): ~28-30%                         │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│  ВИТРАТИ ПЛАТФОРМИ (% від валового доходу)                   │
+│                                                              │
+│  Податки ФОП 2/3:     5% ЄП + 22% ЄСВ(мін) ≈ 7-8%         │
+│  Авто-реклама:        ~1 товар/день ≈ 50-150₴/день          │
+│  Бонуси (поточні):    до 2% обороту (память проекту)        │
+│  Сервери/інфра:       ~2-3% від доходу                      │
+│                                                              │
+│  РАЗОМ витрат:        ~12-14% від валового доходу            │
+│  ЧИСТИЙ прибуток:     ~14-18% від обороту платформи          │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-The two new buttons sit right after the brand text, visually grouped with the left side but using the same `w-8 h-8` icon button style as the right-side actions.
+### Проблеми поточних бонусів (що потрібно виправити)
 
-### Implementation Details
+1. **Рейтингові бонуси для клієнтів завищені**: Рік 🥇1500₴ — це занадто при малому обороті. Потрібна прив'язка до % обороту.
+2. **Плюшки для продавців (25% на 3 міс)** — занадто агресивне зниження маржі. Перший у річному рейтингу вже приносить найбільше доходу, не треба різати маржу на 8%.
+3. **Кешбек до 5%** — при базовій націнці 28% і кешбеку 5% = лише 23% маржі мінус витрати.
+4. **Бонус cap 10-20%** від суми замовлення — може з'їсти до 6% маржі на великих замовленнях.
 
-**New files:**
-- `src/components/LanguageSelectorModal.tsx` — Bottom sheet / dialog with language list. UA selected by default, others available but functional (stored in localStorage for now, no i18n library yet — just saves preference).
-- `src/components/RegionSelectorModal.tsx` — Bottom sheet / dialog with country list. Ukraine active, others show "Скоро" / "В проєкті" badge and are disabled.
+### Збалансована економічна модель
 
-**Modified files:**
-- `src/components/Header.tsx` — Add `Globe` and `Flag` icons between logo and right actions. Each opens its respective modal. Language button shows current language code (e.g., tiny "UA" badge). Region button shows a small flag emoji or country code.
+```text
+┌─────────────────────────────────────────────────────────────┐
+│  НОВІ ЛІМІТИ БОНУСІВ (макс 1.5% від обороту)               │
+│                                                              │
+│  Рейтингові бонуси (клієнти):                                │
+│    День:    🥇+10₴  🥈+5₴   🥉+3₴                           │
+│    Тиждень: 🥇+30₴  🥈+15₴  🥉+8₴                           │
+│    Місяць:  🥇+150₴ 🥈+75₴  🥉+30₴                          │
+│    Рік:     🥇+500₴ 🥈+250₴ 🥉+100₴                         │
+│    Весь час: 🥇 безк.доставка назавжди (≤150₴/замовл)       │
+│                                                              │
+│  Рейтингові плюшки (продавці):                               │
+│    День:    Буст 12год / Пріоритет / +20 бонусів             │
+│    Тиждень: 1 безк.пост / Буст 3дні / Пріоритет             │
+│    Місяць:  30% націнка (замість 33) / 1 безк.пост           │
+│    Рік:     28% на 1міс / 30% на 2міс / 1 безк.реклама      │
+│    Весь час: 🥇 25% назавжди (поки утримує 1 місце)          │
+│                                                              │
+│  Кешбек: 2% базовий, макс 3% (від 10+ замовлень)            │
+│  Бонус cap: макс 7% від суми замовлення                      │
+│  Ревʼю-бонуси: 10₴ текст, 15₴ фото (без змін)              │
+└─────────────────────────────────────────────────────────────┘
 
-### Language Modal
-- List of languages: Українська (active), English, Polski, Deutsch, Italiano
-- Radio-style selection, saves to `localStorage('app-language')`
-- No actual i18n translation yet — just the preference storage and UI. Shows toast "Мову змінено" on selection.
+┌─────────────────────────────────────────────────────────────┐
+│  РЕКЛАМНІ НАЦІНКИ (AdvertisingTab)                           │
+│                                                              │
+│  Бюджет реклами       │ Націнка │ Знижка за к-сть платформ   │
+│  ──────────────────────────────────────────────────────────  │
+│  До 500₴              │  40%    │  -0% (1), -5% (2), -8%(3+)│
+│  500₴ – 2000₴         │  33%    │  -3% (2), -6% (3), -8%(4+)│
+│  2000₴ – 10 000₴      │  28%    │  -3% (2), -5% (3+)        │
+│  10 000₴+             │  23%    │  -3% (2+)                  │
+│                                                              │
+│  Приклад: бюджет 3000₴ на 3 платформи                        │
+│  = 3000 × (1 + 0.28 − 0.05) = 3000 × 1.23 = 3690₴          │
+│  Платформа заробляє: 690₴                                    │
+│                                                              │
+│  Мін.бюджет кампанії: 100₴. Мін. 1 день.                     │
+│  Тривалість: 1-30 днів. Чим більше днів → ніжча CPM.         │
+└─────────────────────────────────────────────────────────────┘
 
-### Region Modal  
-- Ukraine 🇺🇦 — active, selectable
-- Poland 🇵🇱, Germany 🇩🇪, Italy 🇮🇹, USA 🇺🇸 — each with a "Скоро" / "В проєкті" badge, grayed out, not selectable
-- Clean card-based list with flag emojis
+┌─────────────────────────────────────────────────────────────┐
+│  ПІДСУМОК ПРИБУТКОВОСТІ                                      │
+│                                                              │
+│  Приклад: місячний оборот 500 000₴                           │
+│  Валовий дохід (30% серед.): 150 000₴                        │
+│  - Бонуси (1.5%):            −7 500₴                         │
+│  - Авто-реклама (~100₴/день): −3 000₴                        │
+│  - ФОП 2 (5% ЄП):           −7 500₴                         │
+│  - ЄСВ (мін ~1760₴/міс):    −1 760₴                         │
+│  - Інфра/сервери:            −3 000₴                         │
+│  ═══════════════════════════════════════                      │
+│  ЧИСТИЙ ПРИБУТОК:            127 240₴ (25.4% від обороту)    │
+│                                                              │
+│  При ФОП 3 (3% замість 5%):  137 240₴ (27.4%)               │
+└─────────────────────────────────────────────────────────────┘
+```
 
-### Visual style
-Both buttons use the same pattern as existing header icons: `w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground active:scale-95 transition-all`. The Globe icon gets a subtle blue tint (`text-blue-500`), the Flag icon gets a yellow-blue tint for Ukraine (`text-yellow-500`).
+### Технічні зміни
+
+**1. Період "Весь час" + Діамантовий бейдж**
+
+В `supplier-badge.tsx`:
+- Новий `BadgeTier: "diamond"` — найвищий пріоритет
+- Колір: `text-violet-400` з градієнтним свечінням (`animate-badge-glow-diamond`)
+- Heartbeat-анімація на кубку + гасло "⬩ Легенда платформи"
+- `getSupplierBadge` отримує новий параметр `allTimeRank`
+
+В `RatingsTab.tsx`:
+- `Period` type додає `"alltime"`
+- `PeriodSelector` отримує 5 кнопок: День / Тиждень / Місяць / Рік / **Весь час**
+- Для "Весь час" 1-е місце = діамантовий бейдж з анімацією назви (glow-shimmer ефект на тексті)
+- Плюшка для 1-го клієнта: безкоштовна доставка (до 150₴/замовл)
+- Плюшка для 1-го продавця: 25% націнка поки тримає 1 місце
+
+В `index.css`:
+- `@keyframes badge-glow-diamond` — фіолетово-блакитне мерехтіння
+- `@keyframes name-shimmer` — градієнтний блиск по тексту імені для 1-го місця "Весь час"
+
+**2. Перебалансування бонусів**
+
+В `RatingsTab.tsx`:
+- Оновити `customerBonuses` та `supplierPerks` на нові збалансовані суми (див. таблицю вище)
+- Додати period `alltime` з відповідними плюшками
+- Оновити `BadgeRules` — додати діамантовий бейдж, нові суми, формулу прибутковості
+
+В `CheckoutDiscounts.tsx`:
+- `bonusCapPercent`: макс 7% (замість поточних 10-20%)
+- Кешбек: 2% базовий, 3% при 10+ замовленнях (замість 3-5%)
+
+В `PersonalBonuses.tsx`:
+- Оновити `cashbackRate` формулу: `Math.min(2 + Math.floor(totalOrders / 10), 3)`
+
+**3. Рекламні націнки з тарифною сіткою**
+
+В `AdvertisingTab.tsx`:
+- Замінити фіксований `markup` per platform на функцію `calculateAdMarkup(budget, platformCount)`
+- Тарифна сітка: 40% (до 500₴) → 33% (до 2000₴) → 28% (до 10000₴) → 23% (10000₴+)
+- Знижка за к-сть платформ: -3% за 2, -5..8% за 3+
+- Оновити `calculateTotalCost()` з новою логікою
+- Додати візуальний калькулятор що показує знижку при додаванні платформ
+- Оновити інструкцію з новими тарифами
+
+В `PostingTab.tsx`:
+- Оновити ціни постинга з тарифною сіткою (аналогічно)
+
+**4. Оновлення BadgeRules з економічним поясненням**
+
+Додати розділ "💰 Економіка платформи" в BadgeRules з коротким поясненням:
+- Як рейтинг впливає на бонуси
+- Що діамантовий бейдж = найкраща плюшка
+- Що бонуси обмежені 7% від суми замовлення для фін.стійкості
+
+### Файли що змінюються
+
+- `src/components/ui/supplier-badge.tsx` — diamond tier
+- `src/components/RatingsTab.tsx` — "Весь час" період, перебалансовані бонуси, BadgeRules оновлення
+- `src/index.css` — diamond glow + name-shimmer keyframes
+- `src/components/manager/AdvertisingTab.tsx` — тарифна сітка рекламних націнок
+- `src/components/manager/PostingTab.tsx` — оновлення цін постинга
+- `src/components/checkout/CheckoutDiscounts.tsx` — зменшений bonus cap до 7%
+- `src/pages/PersonalBonuses.tsx` — зменшений кешбек формула
 
