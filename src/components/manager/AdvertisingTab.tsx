@@ -238,17 +238,19 @@ export function AdvertisingTab({
   };
 
   const calculateTotalCost = () => {
+    const effectiveMarkup = calculateAdMarkup(budget, selectedPlatforms.length);
     let total = 0;
     selectedPlatforms.forEach((platformId) => {
       const platform = AD_PLATFORMS.find((p) => p.id === platformId);
       if (platform) {
         const platformCost = Math.max(budget, platform.minBudget);
-        const markup = platform.markup / 100;
-        total += platformCost * (1 + markup);
+        total += platformCost * (1 + effectiveMarkup / 100);
       }
     });
     return Math.round(total);
   };
+
+  const currentMarkup = calculateAdMarkup(budget, selectedPlatforms.length);
 
   const handleSubmitAd = async () => {
     if (!selectedProduct) {
