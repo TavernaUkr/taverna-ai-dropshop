@@ -323,12 +323,14 @@ export function AdvertisingTab({
                 <strong className="text-foreground">Реклама</strong> — платне просування ваших товарів на різних платформах з розширеним охопленням.
               </p>
               <div className="space-y-2">
-                <p className="font-medium text-foreground">💰 Як працює ціноутворення:</p>
+                <p className="font-medium text-foreground">💰 Тарифна сітка націнок:</p>
                 <ul className="list-disc pl-4 space-y-1">
-                  <li>Кожна платформа має <strong>мінімальний бюджет</strong></li>
-                  <li>Taverna Group додає сервісну націнку: <strong>33% / 28% / 23%</strong> залежно від платформи</li>
-                  <li>Ви отримуєте <strong>повну звітність</strong> та статистику</li>
-                  <li>Можна обрати <strong>комбіновану рекламу</strong> на кількох платформах</li>
+                  <li>До 500₴ — <strong>40%</strong> націнка</li>
+                  <li>500₴ – 2000₴ — <strong>33%</strong></li>
+                  <li>2000₴ – 10 000₴ — <strong>28%</strong></li>
+                  <li>10 000₴+ — <strong>23%</strong></li>
+                  <li>Знижка <strong>-3..8%</strong> за кілька платформ одразу</li>
+                  <li>Мінімальний бюджет: <strong>100₴</strong></li>
                 </ul>
               </div>
               <div className="p-3 bg-primary/10 rounded-lg">

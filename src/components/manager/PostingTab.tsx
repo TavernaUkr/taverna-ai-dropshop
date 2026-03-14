@@ -65,11 +65,11 @@ const POSTING_INTERVALS = {
 };
 
 const POSTING_PLATFORMS = [
-  { id: "telegram", name: "Telegram", icon: "📱", price: 50 },
-  { id: "instagram", name: "Instagram", icon: "📸", price: 100 },
-  { id: "facebook", name: "Facebook", icon: "👥", price: 100 },
-  { id: "olx", name: "OLX", icon: "🛒", price: 30 },
-  { id: "prom", name: "Prom.ua", icon: "🏪", price: 40 },
+  { id: "telegram", name: "Telegram", icon: "📱", price: 40 },
+  { id: "instagram", name: "Instagram", icon: "📸", price: 80 },
+  { id: "facebook", name: "Facebook", icon: "👥", price: 80 },
+  { id: "olx", name: "OLX", icon: "🛒", price: 25 },
+  { id: "prom", name: "Prom.ua", icon: "🏪", price: 35 },
 ];
 
 type PostStatus = "draft" | "pending" | "approved" | "published" | "rejected";
