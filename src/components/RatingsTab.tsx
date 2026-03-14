@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Star, Trophy, TrendingUp, Users, ShoppingBag, Package, BarChart3, Gift, Crown, Zap, Award, Wallet, MessageSquare, BadgeCheck, Info, ChevronDown, ChevronUp, Shield, AlertTriangle, Calculator, Filter, SlidersHorizontal } from "lucide-react";
+import { Star, Trophy, TrendingUp, Users, ShoppingBag, Package, BarChart3, Gift, Crown, Zap, Award, Wallet, MessageSquare, BadgeCheck, Info, ChevronDown, ChevronUp, Shield, AlertTriangle, Calculator, Filter, SlidersHorizontal, Diamond } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useTelegramAuthContext } from "@/components/TelegramAuthProvider";
@@ -10,7 +10,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { SupplierBadge, getSupplierBadge, getCustomerBadge, type SupplierBadgeInfo } from "@/components/ui/supplier-badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-type Period = "day" | "week" | "month" | "year";
+type Period = "day" | "week" | "month" | "year" | "alltime";
 type RankFilter = "all" | "top3" | "top10" | "4-10";
 
 interface CustomerRatingItem {
@@ -50,7 +50,7 @@ interface ProductReview {
 }
 
 const generateCustomerRatings = (period: Period): CustomerRatingItem[] => {
-  const multiplier = period === "day" ? 1 : period === "week" ? 7 : period === "month" ? 30 : 365;
+  const multiplier = period === "day" ? 1 : period === "week" ? 7 : period === "month" ? 30 : period === "year" ? 365 : 1825;
   const baseRatings = [4.9, 4.8, 4.7, 4.6, 4.5, 4.4, 4.3, 4.2];
   return [
     { rank: 1, name: "Олекс***", ordersCount: 12 * multiplier / 30, totalSpent: 24500 * multiplier / 30, productsCount: 35 * multiplier / 30, avgRating: baseRatings[0], ratingsCount: Math.round(8 * multiplier / 30) },
@@ -72,12 +72,13 @@ const generateCustomerRatings = (period: Period): CustomerRatingItem[] => {
       period === "month" ? idx + 1 : null,
       period === "week" ? idx + 1 : null,
       period === "day" ? idx + 1 : null,
+      period === "alltime" ? idx + 1 : null,
     ),
   }));
 };
 
 const generateSupplierRatings = (period: Period): SupplierRatingItem[] => {
-  const multiplier = period === "day" ? 1 : period === "week" ? 7 : period === "month" ? 30 : 365;
+  const multiplier = period === "day" ? 1 : period === "week" ? 7 : period === "month" ? 30 : period === "year" ? 365 : 1825;
   return [
     { rank: 1, shopName: "Tactical Pro", soldCount: 145 * multiplier / 30, revenue: 289000 * multiplier / 30, customersCount: 89 * multiplier / 30, avgRating: 4.8, reviewsCount: Math.round(34 * multiplier / 30) },
     { rank: 2, shopName: "Military Store", soldCount: 112 * multiplier / 30, revenue: 224000 * multiplier / 30, customersCount: 71 * multiplier / 30, avgRating: 4.7, reviewsCount: Math.round(28 * multiplier / 30) },
@@ -95,6 +96,7 @@ const generateSupplierRatings = (period: Period): SupplierRatingItem[] => {
       period === "month" ? idx + 1 : null,
       period === "week" ? idx + 1 : null,
       period === "day" ? idx + 1 : null,
+      period === "alltime" ? idx + 1 : null,
     ),
   }));
 };
@@ -107,32 +109,35 @@ const shopReviewsMock: ShopReview[] = [
   { shopName: "Ranger Shop", avgRating: 4.4, reviewsCount: 89 },
 ];
 
-const periodLabels: Record<Period, string> = { day: "День", week: "Тиждень", month: "Місяць", year: "Рік" };
+const periodLabels: Record<Period, string> = { day: "День", week: "Тиждень", month: "Місяць", year: "Рік", alltime: "Весь час" };
 const rankColors = ["text-yellow-500", "text-slate-400", "text-amber-600"];
 const rankBgs = ["bg-yellow-500/10", "bg-slate-400/10", "bg-amber-600/10"];
 
 // Badge colors based on period tier (not place)
 const periodBadgeColors: Record<Period, { text: string; bg: string; glow: string }> = {
+  alltime: { text: "text-violet-400", bg: "bg-violet-400/15", glow: "animate-badge-glow-diamond" },
   year: { text: "text-yellow-500", bg: "bg-yellow-500/15", glow: "animate-badge-glow-gold" },
   month: { text: "text-slate-400", bg: "bg-slate-400/15", glow: "animate-badge-glow-silver" },
   week: { text: "text-amber-600", bg: "bg-amber-600/15", glow: "animate-badge-glow-bronze" },
   day: { text: "text-blue-500", bg: "bg-blue-500/15", glow: "animate-badge-glow-blue" },
 };
 
-// Customer bonus amounts per period
+// Rebalanced customer bonus amounts per period (max 1.5% of turnover)
 const customerBonuses: Record<Period, { first: string; second: string; third: string }> = {
-  day: { first: "+20₴", second: "+10₴", third: "+5₴" },
-  week: { first: "+75₴", second: "+40₴", third: "+15₴" },
-  month: { first: "+500₴", second: "+200₴", third: "+100₴" },
-  year: { first: "🎁 1500₴", second: "+1000₴", third: "+500₴" },
+  day: { first: "+10₴", second: "+5₴", third: "+3₴" },
+  week: { first: "+30₴", second: "+15₴", third: "+8₴" },
+  month: { first: "+150₴", second: "+75₴", third: "+30₴" },
+  year: { first: "+500₴", second: "+250₴", third: "+100₴" },
+  alltime: { first: "🚚 Безк. доставка", second: "+500₴", third: "+200₴" },
 };
 
-// Supplier perks per period
+// Rebalanced supplier perks per period
 const supplierPerks: Record<Period, { first: string; second: string; third: string }> = {
-  day: { first: "Буст 24год", second: "Пріоритет", third: "+50 бонусів" },
-  week: { first: "Безк. пост", second: "Буст 7дн", third: "Пріоритет" },
-  month: { first: "28% націнка", second: "Безк. пост", third: "Пріоритет" },
-  year: { first: "25% на 3міс", second: "28% на 1міс", third: "Безк. реклама" },
+  day: { first: "Буст 12год", second: "Пріоритет", third: "+20 бонусів" },
+  week: { first: "1 безк. пост", second: "Буст 3дн", third: "Пріоритет" },
+  month: { first: "30% націнка", second: "1 безк. пост", third: "Пріоритет" },
+  year: { first: "28% на 1міс", second: "30% на 2міс", third: "1 безк. реклама" },
+  alltime: { first: "💎 25% назавжди", second: "28% на 3міс", third: "30% на 2міс" },
 };
 
 const StarRating = ({ rating, size = "sm" }: { rating: number; size?: "sm" | "md" }) => (
@@ -146,8 +151,8 @@ const StarRating = ({ rating, size = "sm" }: { rating: number; size?: "sm" | "md
 
 const PeriodSelector = ({ period, onChange }: { period: Period; onChange: (p: Period) => void }) => (
   <div className="flex gap-0.5 bg-muted rounded-lg p-0.5">
-    {(["day", "week", "month", "year"] as Period[]).map((p) => (
-      <button key={p} onClick={() => onChange(p)} className={cn("flex-1 text-xs font-medium py-1.5 px-2 rounded-md transition-all", period === p ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
+    {(["day", "week", "month", "year", "alltime"] as Period[]).map((p) => (
+      <button key={p} onClick={() => onChange(p)} className={cn("flex-1 text-xs font-medium py-1.5 px-1.5 rounded-md transition-all", period === p ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground", p === "alltime" && period === p && "bg-violet-500/10 text-violet-500")}>
         {periodLabels[p]}
       </button>
     ))}
@@ -218,6 +223,7 @@ const CustomerRankings = () => {
   const allCustomers = generateCustomerRatings(period);
   const customers = useMemo(() => filterByRank(allCustomers, rankFilter), [allCustomers, rankFilter]);
   const bonuses = customerBonuses[period];
+  const isAlltime = period === "alltime";
 
   return (
     <div className="space-y-3">
@@ -225,18 +231,31 @@ const CustomerRankings = () => {
       <RankingFilters rankFilter={rankFilter} setRankFilter={setRankFilter} categoryFilter={categoryFilter} setCategoryFilter={setCategoryFilter} />
 
       {/* Prize pool banner */}
-      <div className="flex items-center gap-2 p-2.5 rounded-xl bg-primary/5 border border-primary/20">
-        <Gift className="h-4 w-4 text-primary shrink-0" />
+      <div className={cn("flex items-center gap-2 p-2.5 rounded-xl border", isAlltime ? "bg-violet-500/5 border-violet-500/20" : "bg-primary/5 border-primary/20")}>
+        {isAlltime ? <Diamond className="h-4 w-4 text-violet-400 shrink-0" /> : <Gift className="h-4 w-4 text-primary shrink-0" />}
         <div className="flex-1 flex items-center gap-3 text-[10px]">
-          <span className="font-medium text-foreground">🥇 {bonuses.first}</span>
+          <span className={cn("font-medium", isAlltime ? "text-violet-400" : "text-foreground")}>🥇 {bonuses.first}</span>
           <span className="text-muted-foreground">🥈 {bonuses.second}</span>
           <span className="text-muted-foreground">🥉 {bonuses.third}</span>
         </div>
       </div>
 
+      {/* Alltime legend info */}
+      {isAlltime && (
+        <div className="p-2.5 rounded-xl bg-violet-500/5 border border-violet-500/10">
+          <p className="text-[10px] text-muted-foreground">
+            💎 <span className="font-medium text-violet-400">Легенда платформи</span> — №1 за весь час отримує безкоштовну доставку (до 150₴/замовлення) поки утримує 1 місце
+          </p>
+        </div>
+      )}
+
       <div className="space-y-2">
         {customers.map((customer) => (
-          <div key={customer.rank} className={cn("p-3 rounded-xl border transition-all", customer.rank <= 3 ? `${rankBgs[customer.rank - 1]} border-transparent` : "border-border bg-card")}>
+          <div key={customer.rank} className={cn(
+            "p-3 rounded-xl border transition-all",
+            isAlltime && customer.rank === 1 ? "bg-violet-500/10 border-violet-500/20" :
+            customer.rank <= 3 ? `${rankBgs[customer.rank - 1]} border-transparent` : "border-border bg-card"
+          )}>
             <div className="flex items-center gap-3 mb-2">
               {customer.rank <= 3 ? (
                 <div className={cn("w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0", periodBadgeColors[period].bg, customer.rank === 1 && periodBadgeColors[period].glow)}>
@@ -253,7 +272,7 @@ const CustomerRankings = () => {
               )}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <p className="font-semibold text-sm text-foreground">{customer.name}</p>
+                  <p className={cn("font-semibold text-sm", isAlltime && customer.rank === 1 ? "text-diamond-shimmer" : "text-foreground")}>{customer.name}</p>
                   {customer.badge && <SupplierBadge badge={{ ...customer.badge, ownerType: "customer" }} size="sm" />}
                 </div>
                 <div className="flex items-center gap-2 mt-0.5">
@@ -266,7 +285,7 @@ const CustomerRankings = () => {
               <div className="text-right">
                 <p className="text-sm font-bold text-primary">{customer.totalSpent.toLocaleString()}₴</p>
                 {customer.rank <= 3 && (
-                  <Badge variant="outline" className="text-[8px] mt-0.5 border-primary/30 text-primary px-1.5">
+                  <Badge variant="outline" className={cn("text-[8px] mt-0.5 px-1.5", isAlltime && customer.rank === 1 ? "border-violet-400/30 text-violet-400" : "border-primary/30 text-primary")}>
                     {customer.rank === 1 ? bonuses.first : customer.rank === 2 ? bonuses.second : bonuses.third}
                   </Badge>
                 )}
@@ -305,6 +324,7 @@ const SupplierRankings = () => {
   const allSuppliers = generateSupplierRatings(period);
   const suppliers = useMemo(() => filterByRank(allSuppliers, rankFilter), [allSuppliers, rankFilter]);
   const perks = supplierPerks[period];
+  const isAlltime = period === "alltime";
 
   return (
     <div className="space-y-3">
@@ -312,18 +332,31 @@ const SupplierRankings = () => {
       <RankingFilters rankFilter={rankFilter} setRankFilter={setRankFilter} categoryFilter={categoryFilter} setCategoryFilter={setCategoryFilter} />
 
       {/* Prize pool banner */}
-      <div className="flex items-center gap-2 p-2.5 rounded-xl bg-accent/5 border border-accent/20">
-        <Award className="h-4 w-4 text-accent-foreground shrink-0" />
+      <div className={cn("flex items-center gap-2 p-2.5 rounded-xl border", isAlltime ? "bg-violet-500/5 border-violet-500/20" : "bg-accent/5 border-accent/20")}>
+        {isAlltime ? <Diamond className="h-4 w-4 text-violet-400 shrink-0" /> : <Award className="h-4 w-4 text-accent-foreground shrink-0" />}
         <div className="flex-1 flex items-center gap-3 text-[10px]">
-          <span className="font-medium text-foreground">🥇 {perks.first}</span>
+          <span className={cn("font-medium", isAlltime ? "text-violet-400" : "text-foreground")}>🥇 {perks.first}</span>
           <span className="text-muted-foreground">🥈 {perks.second}</span>
           <span className="text-muted-foreground">🥉 {perks.third}</span>
         </div>
       </div>
 
+      {/* Alltime legend info */}
+      {isAlltime && (
+        <div className="p-2.5 rounded-xl bg-violet-500/5 border border-violet-500/10">
+          <p className="text-[10px] text-muted-foreground">
+            💎 <span className="font-medium text-violet-400">Легенда платформи</span> — №1 продавець за весь час отримує 25% націнку (замість 33%) поки утримує 1 місце
+          </p>
+        </div>
+      )}
+
       <div className="space-y-2">
         {suppliers.map((supplier) => (
-          <div key={supplier.rank} className={cn("p-3 rounded-xl border transition-all", supplier.rank <= 3 ? `${rankBgs[supplier.rank - 1]} border-transparent` : "border-border bg-card")}>
+          <div key={supplier.rank} className={cn(
+            "p-3 rounded-xl border transition-all",
+            isAlltime && supplier.rank === 1 ? "bg-violet-500/10 border-violet-500/20" :
+            supplier.rank <= 3 ? `${rankBgs[supplier.rank - 1]} border-transparent` : "border-border bg-card"
+          )}>
             <div className="flex items-center gap-3 mb-2">
               {supplier.rank <= 3 ? (
                 <div className={cn("w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0", periodBadgeColors[period].bg, supplier.rank === 1 && periodBadgeColors[period].glow)}>
@@ -340,7 +373,7 @@ const SupplierRankings = () => {
               )}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <p className="font-semibold text-sm text-foreground">{supplier.shopName}</p>
+                  <p className={cn("font-semibold text-sm", isAlltime && supplier.rank === 1 ? "text-diamond-shimmer" : "text-foreground")}>{supplier.shopName}</p>
                   {supplier.badge && <SupplierBadge badge={supplier.badge} size="sm" />}
                 </div>
                 <div className="flex items-center gap-2 mt-0.5">
@@ -353,7 +386,7 @@ const SupplierRankings = () => {
               <div className="text-right">
                 <p className="text-sm font-bold text-primary">{supplier.revenue.toLocaleString()}₴</p>
                 {supplier.rank <= 3 && (
-                  <Badge variant="outline" className="text-[8px] mt-0.5 border-primary/30 text-primary px-1.5">
+                  <Badge variant="outline" className={cn("text-[8px] mt-0.5 px-1.5", isAlltime && supplier.rank === 1 ? "border-violet-400/30 text-violet-400" : "border-primary/30 text-primary")}>
                     {supplier.rank === 1 ? perks.first : supplier.rank === 2 ? perks.second : perks.third}
                   </Badge>
                 )}
@@ -557,12 +590,20 @@ const BadgeRules = () => {
 
   const badgeTiers = [
     {
+      emoji: "💎",
+      name: "Діамантова галочка",
+      checkColor: "text-violet-400",
+      bgColor: "bg-violet-400/10",
+      rule: "№1 місце у загальному рейтингу за весь час",
+      detail: "Найвища нагорода — «Легенда платформи». Клієнт: безк. доставка. Продавець: 25% націнка.",
+    },
+    {
       emoji: "🥇",
       name: "Золота галочка",
       checkColor: "text-yellow-500",
       bgColor: "bg-yellow-500/10",
       rule: "Топ 1-3 місце у річному рейтингу",
-      detail: "Найвища нагорода. Учасник потрапив до трійки лідерів за підсумками року.",
+      detail: "Найвища нагорода за рік. Учасник потрапив до трійки лідерів за підсумками року.",
     },
     {
       emoji: "🥈",
@@ -581,7 +622,7 @@ const BadgeRules = () => {
       detail: "Учасник увійшов до трійки лідерів за попередній тиждень.",
     },
     {
-      emoji: "💎",
+      emoji: "🔷",
       name: "Синя галочка",
       checkColor: "text-blue-500",
       bgColor: "bg-blue-500/10",
@@ -593,7 +634,7 @@ const BadgeRules = () => {
       name: "Верифікований (зелена)",
       checkColor: "text-emerald-500",
       bgColor: "bg-emerald-500/10",
-      rule: "Топ 4-10 місце у будь-якому рейтингу (день/тиждень/місяць/рік)",
+      rule: "Топ 4-10 місце у будь-якому рейтингу",
       detail: "Учасник стабільно входить до десятки найкращих.",
     },
   ];
@@ -650,7 +691,7 @@ const BadgeRules = () => {
             </div>
             <div className="p-2 rounded-lg bg-muted/50 border border-border">
               <p className="text-[10px] text-muted-foreground">
-                📊 Позиція у рейтингу (День / Тиждень / Місяць / Рік) визначається саме цим числом. Чим вищий Загальний Рейтинг — тим вища позиція та краща галочка.
+                📊 Позиція у рейтингу (День / Тиждень / Місяць / Рік / Весь час) визначається саме цим числом. Чим вищий Загальний Рейтинг — тим вища позиція та краща галочка.
               </p>
             </div>
           </div>
@@ -672,7 +713,7 @@ const BadgeRules = () => {
                   {tier.emoji !== "✅" && (
                     <div className="flex items-center gap-0.5 ml-auto">
                       <Trophy className={cn("h-3.5 w-3.5", tier.checkColor)} />
-                      <span className={cn("text-[10px] font-bold", tier.checkColor)}>1-3</span>
+                      <span className={cn("text-[10px] font-bold", tier.checkColor)}>{tier.emoji === "💎" ? "1" : "1-3"}</span>
                     </div>
                   )}
                 </div>
@@ -683,7 +724,7 @@ const BadgeRules = () => {
           </div>
         </div>
 
-        {/* Bonuses tied to rating */}
+        {/* Bonuses tied to rating — rebalanced */}
         <div>
           <p className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
             <Gift className="h-3.5 w-3.5 text-primary" /> Бонуси за позицію у рейтингу
@@ -694,10 +735,11 @@ const BadgeRules = () => {
               <div className="space-y-1">
                 <p className="font-semibold text-foreground">👤 Клієнти:</p>
                 <ul className="text-muted-foreground space-y-0.5">
-                  <li>• День: 🥇+20₴ 🥈+10₴ 🥉+5₴</li>
-                  <li>• Тиждень: 🥇+75₴ 🥈+40₴ 🥉+15₴</li>
-                  <li>• Місяць: 🥇+500₴ 🥈+200₴ 🥉+100₴</li>
-                  <li>• Рік: 🥇1500₴ 🥈+1000₴ 🥉+500₴</li>
+                  <li>• День: 🥇+10₴ 🥈+5₴ 🥉+3₴</li>
+                  <li>• Тиждень: 🥇+30₴ 🥈+15₴ 🥉+8₴</li>
+                  <li>• Місяць: 🥇+150₴ 🥈+75₴ 🥉+30₴</li>
+                  <li>• Рік: 🥇+500₴ 🥈+250₴ 🥉+100₴</li>
+                  <li className="text-violet-400">• Весь час: 🥇 безк.доставка</li>
                 </ul>
               </div>
               <div className="space-y-1">
@@ -705,11 +747,30 @@ const BadgeRules = () => {
                 <ul className="text-muted-foreground space-y-0.5">
                   <li>• День: Буст / Пріоритет / Бонуси</li>
                   <li>• Тиждень: Пост / Буст / Пріоритет</li>
-                  <li>• Місяць: 28% націнка / Пост</li>
-                  <li>• Рік: 25% на 3міс / 28% на 1міс</li>
+                  <li>• Місяць: 30% / Пост / Пріоритет</li>
+                  <li>• Рік: 28% / 30% / Реклама</li>
+                  <li className="text-violet-400">• Весь час: 🥇 25% назавжди</li>
                 </ul>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Platform economics */}
+        <div>
+          <p className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
+            <Calculator className="h-3.5 w-3.5 text-primary" /> 💰 Економіка платформи
+          </p>
+          <div className="p-3 rounded-xl bg-muted/50 border border-border space-y-2">
+            <p className="text-[11px] text-muted-foreground">
+              Бонуси обмежені <span className="font-medium text-foreground">макс 7%</span> від суми замовлення для фінансової стійкості платформи.
+            </p>
+            <p className="text-[11px] text-muted-foreground">
+              Кешбек: <span className="font-medium text-foreground">2%</span> базовий, до <span className="font-medium text-foreground">3%</span> при 10+ замовленнях.
+            </p>
+            <p className="text-[11px] text-muted-foreground">
+              Діамантовий бейдж 💎 = найкраща плюшка на платформі, доступна тільки №1 за весь час.
+            </p>
           </div>
         </div>
 
@@ -752,7 +813,7 @@ const BadgeRules = () => {
 
         <div className="p-2.5 rounded-lg bg-primary/5 border border-primary/10">
           <p className="text-[11px] text-muted-foreground">
-            💡 Поряд із галочкою відображається <Trophy className="h-3 w-3 inline text-yellow-500" /> кубок з номером місця (1, 2 або 3) у відповідному кольорі. Пріоритет: 🥇Золота → 🥈Срібна → 🥉Бронзова → 💎Синя → ✅Зелена. Учасники за межами Топ-10 не отримують галочку.
+            💡 Пріоритет: 💎Діамантова → 🥇Золота → 🥈Срібна → 🥉Бронзова → 🔷Синя → ✅Зелена. Учасники за межами Топ-10 не отримують галочку.
           </p>
         </div>
       </CollapsibleContent>
