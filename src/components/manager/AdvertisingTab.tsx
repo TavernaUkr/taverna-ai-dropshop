@@ -66,7 +66,6 @@ const AD_PLATFORMS = [
     reach: "10K-50K",
     cpm: 15,
     features: ["Таргетована аудиторія", "Кнопки дій", "Статистика"],
-    markup: 33,
     apiStatus: "connected" as const,
   },
   {
@@ -77,7 +76,6 @@ const AD_PLATFORMS = [
     reach: "15K-80K",
     cpm: 25,
     features: ["Stories & Reels", "Візуальний контент", "Шопінг теги"],
-    markup: 33,
     apiStatus: "pending" as const,
   },
   {
@@ -88,7 +86,6 @@ const AD_PLATFORMS = [
     reach: "20K-100K",
     cpm: 20,
     features: ["Широка аудиторія", "Ретаргетинг", "Детальний таргетинг"],
-    markup: 33,
     apiStatus: "pending" as const,
   },
   {
@@ -99,7 +96,6 @@ const AD_PLATFORMS = [
     reach: "5K-30K",
     cpm: 10,
     features: ["Топ оголошення", "Підняття в пошуку", "VIP статус"],
-    markup: 28,
     apiStatus: "pending" as const,
   },
   {
@@ -110,7 +106,6 @@ const AD_PLATFORMS = [
     reach: "8K-40K",
     cpm: 18,
     features: ["Топ у категорії", "Рекомендації", "Бейджі"],
-    markup: 28,
     apiStatus: "pending" as const,
   },
   {
@@ -121,7 +116,6 @@ const AD_PLATFORMS = [
     reach: "50K-200K",
     cpm: 12,
     features: ["Вірусний потенціал", "Молода аудиторія", "Тренди"],
-    markup: 33,
     apiStatus: "pending" as const,
   },
   {
@@ -132,7 +126,6 @@ const AD_PLATFORMS = [
     reach: "30K-150K",
     cpm: 35,
     features: ["Відео реклама", "Детальна аналітика", "Скіпабельні оголошення"],
-    markup: 28,
     apiStatus: "pending" as const,
   },
   {
@@ -143,10 +136,39 @@ const AD_PLATFORMS = [
     reach: "Необмежений",
     cpm: 30,
     features: ["Пошукова реклама", "Контекстний таргетинг", "Ремаркетинг"],
-    markup: 23,
     apiStatus: "pending" as const,
   },
 ];
+
+// Tiered ad markup based on budget
+function getAdMarkupPercent(budget: number): number {
+  if (budget >= 10000) return 23;
+  if (budget >= 2000) return 28;
+  if (budget >= 500) return 33;
+  return 40;
+}
+
+// Multi-platform discount on markup
+function getMultiPlatformDiscount(platformCount: number, budget: number): number {
+  if (platformCount <= 1) return 0;
+  if (budget >= 10000) return 3;
+  if (budget >= 2000) return platformCount >= 3 ? 5 : 3;
+  if (budget >= 500) {
+    if (platformCount >= 4) return 8;
+    if (platformCount >= 3) return 6;
+    return 3;
+  }
+  // < 500
+  if (platformCount >= 3) return 8;
+  if (platformCount >= 2) return 5;
+  return 0;
+}
+
+function calculateAdMarkup(budget: number, platformCount: number): number {
+  const baseMarkup = getAdMarkupPercent(budget);
+  const discount = getMultiPlatformDiscount(platformCount, budget);
+  return Math.max(baseMarkup - discount, 15); // floor at 15%
+}
 
 type AdStatus = "draft" | "pending_review" | "approved" | "active" | "rejected" | "completed";
 
@@ -216,17 +238,19 @@ export function AdvertisingTab({
   };
 
   const calculateTotalCost = () => {
+    const effectiveMarkup = calculateAdMarkup(budget, selectedPlatforms.length);
     let total = 0;
     selectedPlatforms.forEach((platformId) => {
       const platform = AD_PLATFORMS.find((p) => p.id === platformId);
       if (platform) {
         const platformCost = Math.max(budget, platform.minBudget);
-        const markup = platform.markup / 100;
-        total += platformCost * (1 + markup);
+        total += platformCost * (1 + effectiveMarkup / 100);
       }
     });
     return Math.round(total);
   };
+
+  const currentMarkup = calculateAdMarkup(budget, selectedPlatforms.length);
 
   const handleSubmitAd = async () => {
     if (!selectedProduct) {
@@ -299,12 +323,14 @@ export function AdvertisingTab({
                 <strong className="text-foreground">Реклама</strong> — платне просування ваших товарів на різних платформах з розширеним охопленням.
               </p>
               <div className="space-y-2">
-                <p className="font-medium text-foreground">💰 Як працює ціноутворення:</p>
+                <p className="font-medium text-foreground">💰 Тарифна сітка націнок:</p>
                 <ul className="list-disc pl-4 space-y-1">
-                  <li>Кожна платформа має <strong>мінімальний бюджет</strong></li>
-                  <li>Taverna Group додає сервісну націнку: <strong>33% / 28% / 23%</strong> залежно від платформи</li>
-                  <li>Ви отримуєте <strong>повну звітність</strong> та статистику</li>
-                  <li>Можна обрати <strong>комбіновану рекламу</strong> на кількох платформах</li>
+                  <li>До 500₴ — <strong>40%</strong> націнка</li>
+                  <li>500₴ – 2000₴ — <strong>33%</strong></li>
+                  <li>2000₴ – 10 000₴ — <strong>28%</strong></li>
+                  <li>10 000₴+ — <strong>23%</strong></li>
+                  <li>Знижка <strong>-3..8%</strong> за кілька платформ одразу</li>
+                  <li>Мінімальний бюджет: <strong>100₴</strong></li>
                 </ul>
               </div>
               <div className="p-3 bg-primary/10 rounded-lg">
@@ -469,7 +495,7 @@ export function AdvertisingTab({
                     від {platform.minBudget} ₴
                   </Badge>
                   <Badge variant="secondary" className="text-xs">
-                    +{platform.markup}%
+                    +{currentMarkup}%
                   </Badge>
                   {platform.apiStatus === "connected" ? (
                     <Badge variant="outline" className="text-xs bg-success/10 text-success border-success/30">
@@ -652,11 +678,11 @@ export function AdvertisingTab({
                 const platform = AD_PLATFORMS.find((p) => p.id === platformId);
                 if (!platform) return null;
                 const platformCost = Math.max(budget, platform.minBudget);
-                const withMarkup = Math.round(platformCost * (1 + platform.markup / 100));
+                const withMarkup = Math.round(platformCost * (1 + currentMarkup / 100));
                 return (
                   <div key={platformId} className="flex justify-between">
                     <span>{platform.icon} {platform.name}</span>
-                    <span>{withMarkup} ₴ (+{platform.markup}%)</span>
+                    <span>{withMarkup} ₴ (+{currentMarkup}%)</span>
                   </div>
                 );
               })}

@@ -310,6 +310,27 @@ All colors MUST be HSL.
 .animate-badge-glow-bronze { animation: badge-glow-bronze 2s ease-in-out infinite; }
 .animate-badge-glow-blue { animation: badge-glow-blue 2s ease-in-out infinite; }
 
+/* Diamond badge glow — violet-blue shimmer for #1 all-time */
+@keyframes badge-glow-diamond {
+  0%, 100% { filter: drop-shadow(0 0 6px hsl(270 70% 60% / 0.5)); }
+  50% { filter: drop-shadow(0 0 14px hsl(260 80% 65% / 0.8)); }
+}
+.animate-badge-glow-diamond { animation: badge-glow-diamond 1.8s ease-in-out infinite; }
+
+/* Name shimmer for #1 all-time legend */
+@keyframes name-shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+.text-diamond-shimmer {
+  background: linear-gradient(90deg, hsl(270 70% 60%) 0%, hsl(200 80% 70%) 50%, hsl(270 70% 60%) 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: name-shimmer 3s linear infinite;
+}
+
 /* Trophy heartbeat for 1st place */
 @keyframes heartbeat {
   0%, 100% { transform: scale(1); }

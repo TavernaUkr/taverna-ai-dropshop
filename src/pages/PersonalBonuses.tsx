@@ -48,7 +48,8 @@ export default function PersonalBonuses() {
         const totalOrders = orders?.length || 0;
         const totalSpending = orders?.reduce((sum, o) => sum + (o.total || 0), 0) || 0;
 
-        const cashbackRate = Math.min(3 + Math.floor(totalOrders / 5), 5);
+        // Balanced cashback: 2% base, max 3% at 10+ orders
+        const cashbackRate = Math.min(2 + Math.floor(totalOrders / 10), 3);
         bonuses.push({
           id: "cashback",
           title: `Кешбек ${cashbackRate}%`,
