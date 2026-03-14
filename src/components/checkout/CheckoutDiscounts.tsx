@@ -60,7 +60,8 @@ export function CheckoutDiscounts({
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
 
   // Progressive bonus cap based on order count
-  const bonusCapPercent = orderCount >= 50 ? 20 : orderCount >= 25 ? 15 : orderCount >= 10 ? 12 : 10;
+  // Balanced bonus cap: max 7% to protect platform margins
+  const bonusCapPercent = orderCount >= 50 ? 7 : orderCount >= 25 ? 6 : orderCount >= 10 ? 5 : 4;
   const maxBonuses = Math.floor(subtotal * bonusCapPercent / 100);
   const effectiveMaxBonuses = Math.min(bonusBalance, maxBonuses);
 

@@ -6,17 +6,25 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-export type BadgeTier = "gold" | "silver" | "bronze" | "daily" | "verified" | null;
+export type BadgeTier = "diamond" | "gold" | "silver" | "bronze" | "daily" | "verified" | null;
 export type BadgeOwnerType = "supplier" | "customer";
 
 export interface SupplierBadgeInfo {
   tier: BadgeTier;
   place?: number; // 1, 2, or 3
-  period?: "day" | "week" | "month" | "year";
+  period?: "day" | "week" | "month" | "year" | "alltime";
   ownerType?: BadgeOwnerType;
 }
 
 const tierConfig = {
+  diamond: {
+    label: "Діамантова галочка",
+    supplierDesc: "№1 у загальному рейтингу за весь час",
+    customerDesc: "№1 покупець за весь час",
+    checkColor: "text-violet-400",
+    checkBg: "bg-violet-400/15",
+    trophyColor: "text-violet-400",
+  },
   gold: {
     label: "Золота галочка",
     supplierDesc: "Топ 1-3 за рік",
@@ -70,6 +78,7 @@ const periodLabels: Record<string, string> = {
   week: "тиждень",
   month: "місяць",
   year: "рік",
+  alltime: "весь час",
 };
 
 export function getSupplierBadge(
@@ -77,8 +86,16 @@ export function getSupplierBadge(
   monthlyRank?: number | null,
   weeklyRank?: number | null,
   dailyRank?: number | null,
+  allTimeRank?: number | null,
 ): SupplierBadgeInfo {
-  // Highest tier wins: Gold > Silver > Bronze > Daily (Blue) > Verified (Green)
+  // Diamond is highest priority — #1 all-time only
+  if (allTimeRank && allTimeRank === 1) {
+    return { tier: "diamond", place: 1, period: "alltime" };
+  }
+  // All-time 2-3 get gold-equivalent
+  if (allTimeRank && allTimeRank >= 2 && allTimeRank <= 3) {
+    return { tier: "gold", place: allTimeRank, period: "alltime" };
+  }
   if (yearlyRank && yearlyRank >= 1 && yearlyRank <= 3) {
     return { tier: "gold", place: yearlyRank, period: "year" };
   }
@@ -91,8 +108,8 @@ export function getSupplierBadge(
   if (dailyRank && dailyRank >= 1 && dailyRank <= 3) {
     return { tier: "daily", place: dailyRank, period: "day" };
   }
-  // Regular verified if 4-10 in any period (including day)
   if (
+    (allTimeRank && allTimeRank >= 4 && allTimeRank <= 10) ||
     (yearlyRank && yearlyRank >= 4 && yearlyRank <= 10) ||
     (monthlyRank && monthlyRank >= 4 && monthlyRank <= 10) ||
     (weeklyRank && weeklyRank >= 4 && weeklyRank <= 10) ||
@@ -114,6 +131,7 @@ interface SupplierBadgeProps {
 }
 
 const glowClasses: Record<string, string> = {
+  diamond: "animate-badge-glow-diamond",
   gold: "animate-badge-glow-gold",
   silver: "animate-badge-glow-silver",
   bronze: "animate-badge-glow-bronze",
@@ -135,9 +153,12 @@ export function SupplierBadge({
   const isCustomer = badge.ownerType === "customer";
   const description = isCustomer ? config.customerDesc : config.supplierDesc;
   const isFirstPlace = badge.place === 1;
+  const isDiamond = badge.tier === "diamond";
 
-  // For daily tier, trophy colors are always blue
-  const trophyColor = badge.tier === "daily"
+  // For daily tier, trophy colors are always blue; for diamond, always violet
+  const trophyColor = isDiamond
+    ? "text-violet-400"
+    : badge.tier === "daily"
     ? "text-blue-500"
     : (badge.place ? placeColors[badge.place] : config.trophyColor) || config.trophyColor;
 
@@ -171,6 +192,7 @@ export function SupplierBadge({
           <p className="font-semibold flex items-center gap-1.5">
             <BadgeCheck className={cn("h-4 w-4", config.checkColor)} />
             {config.label}
+            {isDiamond && <span className="text-[10px]">⬩ Легенда платформи</span>}
           </p>
           <p className="text-xs text-muted-foreground">
             {badge.place
