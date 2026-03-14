@@ -493,7 +493,7 @@ export function AdvertisingTab({
                     від {platform.minBudget} ₴
                   </Badge>
                   <Badge variant="secondary" className="text-xs">
-                    +{platform.markup}%
+                    +{currentMarkup}%
                   </Badge>
                   {platform.apiStatus === "connected" ? (
                     <Badge variant="outline" className="text-xs bg-success/10 text-success border-success/30">
