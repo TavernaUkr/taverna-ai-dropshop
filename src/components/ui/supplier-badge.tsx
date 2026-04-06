@@ -155,12 +155,8 @@ export function SupplierBadge({
   const isFirstPlace = badge.place === 1;
   const isDiamond = badge.tier === "diamond";
 
-  // For daily tier, trophy colors are always blue; for diamond, always violet
-  const trophyColor = isDiamond
-    ? "text-violet-400"
-    : badge.tier === "daily"
-    ? "text-blue-500"
-    : (badge.place ? placeColors[badge.place] : config.trophyColor) || config.trophyColor;
+  // Trophy colors are ALWAYS based on place: gold(1), silver(2), bronze(3) — regardless of badge tier
+  const trophyColor = badge.place ? placeColors[badge.place] : "text-yellow-500";
 
   const glowClass = isFirstPlace && badge.tier !== "verified" ? glowClasses[badge.tier] || "" : "";
 
