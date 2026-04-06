@@ -595,7 +595,7 @@ const BadgeRules = () => {
       checkColor: "text-violet-400",
       bgColor: "bg-violet-400/10",
       rule: "№1 місце у загальному рейтингу за весь час",
-      detail: "Найвища нагорода — «Легенда платформи». Клієнт: безк. доставка. Продавець: 25% націнка.",
+      detail: "Найвища нагорода — «Легенда платформи». Клієнт: безк. доставка. Продавець: 23% націнка.",
     },
     {
       emoji: "🥇",
@@ -635,7 +635,7 @@ const BadgeRules = () => {
       checkColor: "text-emerald-500",
       bgColor: "bg-emerald-500/10",
       rule: "Топ 4-10 місце у будь-якому рейтингу",
-      detail: "Учасник стабільно входить до десятки найкращих.",
+      detail: "Учасник стабільно входить до десятки найкращих. Без кубка.",
     },
   ];
 
@@ -644,7 +644,7 @@ const BadgeRules = () => {
       <CollapsibleTrigger className="w-full flex items-center gap-2 p-3 rounded-xl bg-muted/50 border border-border hover:bg-muted transition-colors">
         <Info className="h-4 w-4 text-primary shrink-0" />
         <span className="text-sm font-medium text-foreground flex-1 text-left">
-          Як формується рейтинг, галочки та штрафи
+          Рейтинг, галочки, кубки та штрафи
         </span>
         {isOpen ? (
           <ChevronUp className="h-4 w-4 text-muted-foreground" />
@@ -700,7 +700,10 @@ const BadgeRules = () => {
         {/* Unified badge tiers for both sellers and customers */}
         <div>
           <p className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
-            <BadgeCheck className="h-3.5 w-3.5 text-primary" /> Галочки та кубки (для магазинів і клієнтів)
+            <BadgeCheck className="h-3.5 w-3.5 text-primary" /> Галочки (для магазинів і клієнтів)
+          </p>
+          <p className="text-[11px] text-muted-foreground mb-2">
+            Галочка відображає <span className="font-medium text-foreground">тип рейтингу</span> (період), у якому учасник досягнув найкращого результату. Кожен період має свій унікальний колір галочки.
           </p>
           <div className="space-y-2">
             {badgeTiers.map((tier) => (
@@ -710,17 +713,51 @@ const BadgeRules = () => {
                     <BadgeCheck className={cn("h-4 w-4", tier.checkColor)} />
                   </div>
                   <span className="text-sm font-semibold text-foreground">{tier.name}</span>
-                  {tier.emoji !== "✅" && (
-                    <div className="flex items-center gap-0.5 ml-auto">
-                      <Trophy className={cn("h-3.5 w-3.5", tier.checkColor)} />
-                      <span className={cn("text-[10px] font-bold", tier.checkColor)}>{tier.emoji === "💎" ? "1" : "1-3"}</span>
-                    </div>
-                  )}
                 </div>
                 <p className="text-xs font-medium text-foreground/80">{tier.rule}</p>
                 <p className="text-[11px] text-muted-foreground mt-0.5">{tier.detail}</p>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* Trophy (Cup) explanation — NEW */}
+        <div>
+          <p className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
+            <Trophy className="h-3.5 w-3.5 text-yellow-500" /> Що таке кубки
+          </p>
+          <div className="p-3 rounded-xl bg-yellow-500/5 border border-yellow-500/10 space-y-2">
+            <p className="text-xs text-foreground leading-relaxed">
+              <span className="font-semibold">Кубок</span> — це значок місця у рейтингу, який відображається поруч із галочкою. Кубок показує конкретну позицію учасника серед Топ-3.
+            </p>
+            <p className="text-[11px] text-muted-foreground">
+              На відміну від галочок, кубки мають <span className="font-medium text-foreground">лише 3 кольори та 3 цифри</span>, незалежно від типу рейтингу:
+            </p>
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2 p-2 rounded-lg bg-yellow-500/10">
+                <Trophy className="h-4 w-4 text-yellow-500" />
+                <span className="text-xs font-bold text-yellow-500">1</span>
+                <span className="text-xs text-foreground font-medium">Золотий кубок</span>
+                <span className="text-[10px] text-muted-foreground ml-auto">1-ше місце</span>
+              </div>
+              <div className="flex items-center gap-2 p-2 rounded-lg bg-slate-400/10">
+                <Trophy className="h-4 w-4 text-slate-400" />
+                <span className="text-xs font-bold text-slate-400">2</span>
+                <span className="text-xs text-foreground font-medium">Срібний кубок</span>
+                <span className="text-[10px] text-muted-foreground ml-auto">2-ге місце</span>
+              </div>
+              <div className="flex items-center gap-2 p-2 rounded-lg bg-amber-600/10">
+                <Trophy className="h-4 w-4 text-amber-600" />
+                <span className="text-xs font-bold text-amber-600">3</span>
+                <span className="text-xs text-foreground font-medium">Бронзовий кубок</span>
+                <span className="text-[10px] text-muted-foreground ml-auto">3-тє місце</span>
+              </div>
+            </div>
+            <div className="p-2 rounded-lg bg-muted/50 border border-border">
+              <p className="text-[10px] text-muted-foreground">
+                🏆 Кубок 1-го місця у будь-якому рейтингу має <span className="font-medium text-foreground">анімацію серцебиття</span> — він пульсує, щоб виділити лідера. Учасники з 4-10 місця отримують лише зелену галочку без кубка.
+              </p>
+            </div>
           </div>
         </div>
 
@@ -735,21 +772,21 @@ const BadgeRules = () => {
               <div className="space-y-1">
                 <p className="font-semibold text-foreground">👤 Клієнти:</p>
                 <ul className="text-muted-foreground space-y-0.5">
-                  <li>• День: 🥇+10₴ 🥈+5₴ 🥉+3₴</li>
-                  <li>• Тиждень: 🥇+30₴ 🥈+15₴ 🥉+8₴</li>
-                  <li>• Місяць: 🥇+150₴ 🥈+75₴ 🥉+30₴</li>
-                  <li>• Рік: 🥇+500₴ 🥈+250₴ 🥉+100₴</li>
-                  <li className="text-violet-400">• Весь час: 🥇 безк.доставка</li>
+                  <li>• День: 🥇+15₴+дост. 🥈+5₴ 🥉+3₴</li>
+                  <li>• Тиждень: 🥇+50₴+-5% 🥈+15₴ 🥉+8₴</li>
+                  <li>• Місяць: 🥇+200₴+дост. 🥈+75₴ 🥉+30₴</li>
+                  <li>• Рік: 🥇+700₴+VIP 🥈+250₴ 🥉+100₴</li>
+                  <li className="text-violet-400">• Весь час: 🥇 безк.доставка назавжди</li>
                 </ul>
               </div>
               <div className="space-y-1">
                 <p className="font-semibold text-foreground">🏪 Продавці:</p>
                 <ul className="text-muted-foreground space-y-0.5">
-                  <li>• День: Буст / Пріоритет / Бонуси</li>
-                  <li>• Тиждень: Пост / Буст / Пріоритет</li>
-                  <li>• Місяць: 30% / Пост / Пріоритет</li>
-                  <li>• Рік: 28% / 30% / Реклама</li>
-                  <li className="text-violet-400">• Весь час: 🥇 25% назавжди</li>
+                  <li>• День: Буст 24год+пост / Пріор. / Бон.</li>
+                  <li>• Тижд.: 2 пости+Буст7дн / Буст3дн</li>
+                  <li>• Міс.: 28%+2 пости / Пост / Пріор.</li>
+                  <li>• Рік: 25%на3м+VIP / 30%на2м / Рекл.</li>
+                  <li className="text-violet-400">• Весь час: 🥇 23% назавжди</li>
                 </ul>
               </div>
             </div>
@@ -813,7 +850,7 @@ const BadgeRules = () => {
 
         <div className="p-2.5 rounded-lg bg-primary/5 border border-primary/10">
           <p className="text-[11px] text-muted-foreground">
-            💡 Пріоритет: 💎Діамантова → 🥇Золота → 🥈Срібна → 🥉Бронзова → 🔷Синя → ✅Зелена. Учасники за межами Топ-10 не отримують галочку.
+            💡 Пріоритет галочок: 💎Діамантова → 🥇Золота → 🥈Срібна → 🥉Бронзова → 🔷Синя → ✅Зелена. Кубки: 🏆Золотий(1) → 🥈Срібний(2) → 🥉Бронзовий(3). Учасники за межами Топ-10 не отримують галочку.
           </p>
         </div>
       </CollapsibleContent>
