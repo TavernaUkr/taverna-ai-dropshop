@@ -114,12 +114,12 @@ const rankColors = ["text-yellow-500", "text-slate-400", "text-amber-600"];
 const rankBgs = ["bg-yellow-500/10", "bg-slate-400/10", "bg-amber-600/10"];
 
 // Badge colors based on period tier (not place)
-const periodBadgeColors: Record<Period, { text: string; bg: string; glow: string }> = {
-  alltime: { text: "text-violet-400", bg: "bg-violet-400/15", glow: "animate-badge-glow-diamond" },
-  year: { text: "text-yellow-500", bg: "bg-yellow-500/15", glow: "animate-badge-glow-gold" },
-  month: { text: "text-slate-400", bg: "bg-slate-400/15", glow: "animate-badge-glow-silver" },
-  week: { text: "text-amber-600", bg: "bg-amber-600/15", glow: "animate-badge-glow-bronze" },
-  day: { text: "text-blue-500", bg: "bg-blue-500/15", glow: "animate-badge-glow-blue" },
+const periodBadgeColors: Record<Period, { text: string; bg: string; glow: string; shimmer: string }> = {
+  alltime: { text: "text-violet-400", bg: "bg-violet-400/15", glow: "animate-badge-glow-diamond", shimmer: "text-diamond-shimmer" },
+  year: { text: "text-yellow-500", bg: "bg-yellow-500/15", glow: "animate-badge-glow-gold", shimmer: "text-gold-shimmer" },
+  month: { text: "text-slate-400", bg: "bg-slate-400/15", glow: "animate-badge-glow-silver", shimmer: "text-silver-shimmer" },
+  week: { text: "text-amber-600", bg: "bg-amber-600/15", glow: "animate-badge-glow-bronze", shimmer: "text-bronze-shimmer" },
+  day: { text: "text-blue-500", bg: "bg-blue-500/15", glow: "animate-badge-glow-blue", shimmer: "text-blue-shimmer" },
 };
 
 // Rebalanced customer bonus amounts per period (max 1.5% of turnover)
