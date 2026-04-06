@@ -203,7 +203,7 @@ export default function BonusAccount() {
           {/* Usage limits */}
           <div className="bg-muted/50 rounded-xl p-3 mt-2">
             <p className="text-[10px] text-muted-foreground leading-relaxed">
-              💡 <span className="font-medium">Ліміт:</span> 5% (до 10 замовлень), 8% (10+), 10% (25+), 12% (50+). Бонуси не конвертуються у гроші.
+              💡 <span className="font-medium">Ліміт:</span> макс 7% від суми замовлення. Бонуси не конвертуються у гроші.
             </p>
           </div>
 
