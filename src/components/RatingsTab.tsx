@@ -114,30 +114,30 @@ const rankColors = ["text-yellow-500", "text-slate-400", "text-amber-600"];
 const rankBgs = ["bg-yellow-500/10", "bg-slate-400/10", "bg-amber-600/10"];
 
 // Badge colors based on period tier (not place)
-const periodBadgeColors: Record<Period, { text: string; bg: string; glow: string }> = {
-  alltime: { text: "text-violet-400", bg: "bg-violet-400/15", glow: "animate-badge-glow-diamond" },
-  year: { text: "text-yellow-500", bg: "bg-yellow-500/15", glow: "animate-badge-glow-gold" },
-  month: { text: "text-slate-400", bg: "bg-slate-400/15", glow: "animate-badge-glow-silver" },
-  week: { text: "text-amber-600", bg: "bg-amber-600/15", glow: "animate-badge-glow-bronze" },
-  day: { text: "text-blue-500", bg: "bg-blue-500/15", glow: "animate-badge-glow-blue" },
+const periodBadgeColors: Record<Period, { text: string; bg: string; glow: string; shimmer: string }> = {
+  alltime: { text: "text-violet-400", bg: "bg-violet-400/15", glow: "animate-badge-glow-diamond", shimmer: "text-diamond-shimmer" },
+  year: { text: "text-yellow-500", bg: "bg-yellow-500/15", glow: "animate-badge-glow-gold", shimmer: "text-gold-shimmer" },
+  month: { text: "text-slate-400", bg: "bg-slate-400/15", glow: "animate-badge-glow-silver", shimmer: "text-silver-shimmer" },
+  week: { text: "text-amber-600", bg: "bg-amber-600/15", glow: "animate-badge-glow-bronze", shimmer: "text-bronze-shimmer" },
+  day: { text: "text-blue-500", bg: "bg-blue-500/15", glow: "animate-badge-glow-blue", shimmer: "text-blue-shimmer" },
 };
 
-// Rebalanced customer bonus amounts per period (max 1.5% of turnover)
+// Rebalanced customer bonus amounts per period — enhanced 1st place
 const customerBonuses: Record<Period, { first: string; second: string; third: string }> = {
-  day: { first: "+10₴", second: "+5₴", third: "+3₴" },
-  week: { first: "+30₴", second: "+15₴", third: "+8₴" },
-  month: { first: "+150₴", second: "+75₴", third: "+30₴" },
-  year: { first: "+500₴", second: "+250₴", third: "+100₴" },
-  alltime: { first: "🚚 Безк. доставка", second: "+500₴", third: "+200₴" },
+  day: { first: "+15₴ + безк. доставка (1 день)", second: "+5₴", third: "+3₴" },
+  week: { first: "+50₴ + -5% знижка (тижд.)", second: "+15₴", third: "+8₴" },
+  month: { first: "+200₴ + безк. доставка (міс.)", second: "+75₴", third: "+30₴" },
+  year: { first: "+700₴ + VIP-статус", second: "+250₴", third: "+100₴" },
+  alltime: { first: "🚚 Безк. доставка назавжди", second: "+500₴", third: "+200₴" },
 };
 
-// Rebalanced supplier perks per period
+// Rebalanced supplier perks per period — enhanced 1st place
 const supplierPerks: Record<Period, { first: string; second: string; third: string }> = {
-  day: { first: "Буст 12год", second: "Пріоритет", third: "+20 бонусів" },
-  week: { first: "1 безк. пост", second: "Буст 3дн", third: "Пріоритет" },
-  month: { first: "30% націнка", second: "1 безк. пост", third: "Пріоритет" },
-  year: { first: "28% на 1міс", second: "30% на 2міс", third: "1 безк. реклама" },
-  alltime: { first: "💎 25% назавжди", second: "28% на 3міс", third: "30% на 2міс" },
+  day: { first: "Буст 24год + безк. пост", second: "Пріоритет", third: "+20 бонусів" },
+  week: { first: "2 безк. пости + Буст 7дн", second: "Буст 3дн", third: "Пріоритет" },
+  month: { first: "28% націнка + 2 безк. пости", second: "1 безк. пост", third: "Пріоритет" },
+  year: { first: "25% на 3міс + VIP-бейдж", second: "30% на 2міс", third: "1 безк. реклама" },
+  alltime: { first: "💎 23% назавжди", second: "28% на 3міс", third: "30% на 2міс" },
 };
 
 const StarRating = ({ rating, size = "sm" }: { rating: number; size?: "sm" | "md" }) => (
@@ -253,7 +253,7 @@ const CustomerRankings = () => {
         {customers.map((customer) => (
           <div key={customer.rank} className={cn(
             "p-3 rounded-xl border transition-all",
-            isAlltime && customer.rank === 1 ? "bg-violet-500/10 border-violet-500/20" :
+            customer.rank === 1 ? `${periodBadgeColors[period].bg} border-${period === "alltime" ? "violet-500/20" : "primary/20"}` :
             customer.rank <= 3 ? `${rankBgs[customer.rank - 1]} border-transparent` : "border-border bg-card"
           )}>
             <div className="flex items-center gap-3 mb-2">
@@ -272,7 +272,7 @@ const CustomerRankings = () => {
               )}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <p className={cn("font-semibold text-sm", isAlltime && customer.rank === 1 ? "text-diamond-shimmer" : "text-foreground")}>{customer.name}</p>
+                  <p className={cn("font-semibold text-sm", customer.rank === 1 ? periodBadgeColors[period].shimmer : "text-foreground")}>{customer.name}</p>
                   {customer.badge && <SupplierBadge badge={{ ...customer.badge, ownerType: "customer" }} size="sm" />}
                 </div>
                 <div className="flex items-center gap-2 mt-0.5">
@@ -354,7 +354,7 @@ const SupplierRankings = () => {
         {suppliers.map((supplier) => (
           <div key={supplier.rank} className={cn(
             "p-3 rounded-xl border transition-all",
-            isAlltime && supplier.rank === 1 ? "bg-violet-500/10 border-violet-500/20" :
+            supplier.rank === 1 ? `${periodBadgeColors[period].bg} border-${period === "alltime" ? "violet-500/20" : "primary/20"}` :
             supplier.rank <= 3 ? `${rankBgs[supplier.rank - 1]} border-transparent` : "border-border bg-card"
           )}>
             <div className="flex items-center gap-3 mb-2">
@@ -373,7 +373,7 @@ const SupplierRankings = () => {
               )}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <p className={cn("font-semibold text-sm", isAlltime && supplier.rank === 1 ? "text-diamond-shimmer" : "text-foreground")}>{supplier.shopName}</p>
+                  <p className={cn("font-semibold text-sm", supplier.rank === 1 ? periodBadgeColors[period].shimmer : "text-foreground")}>{supplier.shopName}</p>
                   {supplier.badge && <SupplierBadge badge={supplier.badge} size="sm" />}
                 </div>
                 <div className="flex items-center gap-2 mt-0.5">
