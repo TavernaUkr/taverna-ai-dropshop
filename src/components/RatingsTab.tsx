@@ -122,22 +122,22 @@ const periodBadgeColors: Record<Period, { text: string; bg: string; glow: string
   day: { text: "text-blue-500", bg: "bg-blue-500/15", glow: "animate-badge-glow-blue", shimmer: "text-blue-shimmer" },
 };
 
-// Rebalanced customer bonus amounts per period (max 1.5% of turnover)
+// Rebalanced customer bonus amounts per period — enhanced 1st place
 const customerBonuses: Record<Period, { first: string; second: string; third: string }> = {
-  day: { first: "+10₴", second: "+5₴", third: "+3₴" },
-  week: { first: "+30₴", second: "+15₴", third: "+8₴" },
-  month: { first: "+150₴", second: "+75₴", third: "+30₴" },
-  year: { first: "+500₴", second: "+250₴", third: "+100₴" },
-  alltime: { first: "🚚 Безк. доставка", second: "+500₴", third: "+200₴" },
+  day: { first: "+15₴ + безк. доставка (1 день)", second: "+5₴", third: "+3₴" },
+  week: { first: "+50₴ + -5% знижка (тижд.)", second: "+15₴", third: "+8₴" },
+  month: { first: "+200₴ + безк. доставка (міс.)", second: "+75₴", third: "+30₴" },
+  year: { first: "+700₴ + VIP-статус", second: "+250₴", third: "+100₴" },
+  alltime: { first: "🚚 Безк. доставка назавжди", second: "+500₴", third: "+200₴" },
 };
 
-// Rebalanced supplier perks per period
+// Rebalanced supplier perks per period — enhanced 1st place
 const supplierPerks: Record<Period, { first: string; second: string; third: string }> = {
-  day: { first: "Буст 12год", second: "Пріоритет", third: "+20 бонусів" },
-  week: { first: "1 безк. пост", second: "Буст 3дн", third: "Пріоритет" },
-  month: { first: "30% націнка", second: "1 безк. пост", third: "Пріоритет" },
-  year: { first: "28% на 1міс", second: "30% на 2міс", third: "1 безк. реклама" },
-  alltime: { first: "💎 25% назавжди", second: "28% на 3міс", third: "30% на 2міс" },
+  day: { first: "Буст 24год + безк. пост", second: "Пріоритет", third: "+20 бонусів" },
+  week: { first: "2 безк. пости + Буст 7дн", second: "Буст 3дн", third: "Пріоритет" },
+  month: { first: "28% націнка + 2 безк. пости", second: "1 безк. пост", third: "Пріоритет" },
+  year: { first: "25% на 3міс + VIP-бейдж", second: "30% на 2міс", third: "1 безк. реклама" },
+  alltime: { first: "💎 23% назавжди", second: "28% на 3міс", third: "30% на 2міс" },
 };
 
 const StarRating = ({ rating, size = "sm" }: { rating: number; size?: "sm" | "md" }) => (
