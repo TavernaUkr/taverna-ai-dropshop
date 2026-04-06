@@ -274,72 +274,93 @@ function RatingBonusesPage({ onBack, onGoToRatings }: { onBack: () => void; onGo
           </div>
 
           {/* Daily */}
-          <Card className="mb-2 border-border/50">
+          <Card className="mb-2 border-blue-500/20">
             <CardContent className="p-3">
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <span className="text-[10px] font-bold text-primary">Д</span>
+                <div className="w-6 h-6 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                  <span className="text-[10px] font-bold text-blue-500">Д</span>
                 </div>
                 <span className="text-xs font-medium text-foreground">Щоденний</span>
                 <span className="text-[9px] text-muted-foreground ml-auto">оновлення о 00:00</span>
               </div>
               <div className="space-y-1 text-[11px] text-muted-foreground">
-                <p>🥇 <span className="text-foreground font-medium">Топ-1:</span> +2 персональних бонуси (наступний день)</p>
-                <p>🥈 <span className="text-foreground font-medium">Топ 2-3:</span> +1 персональний бонус</p>
+                <p>🥇 <span className="text-foreground font-medium">Топ-1:</span> +15₴ + безкоштовна доставка (на 1 день)</p>
+                <p>🥈 <span className="text-foreground font-medium">Топ-2:</span> +5₴ бонусів</p>
+                <p>🥉 <span className="text-foreground font-medium">Топ-3:</span> +3₴ бонусів</p>
               </div>
             </CardContent>
           </Card>
 
           {/* Weekly */}
-          <Card className="mb-2 border-border/50">
+          <Card className="mb-2 border-amber-600/20">
             <CardContent className="p-3">
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <span className="text-[10px] font-bold text-primary">Т</span>
+                <div className="w-6 h-6 rounded-lg bg-amber-600/10 flex items-center justify-center">
+                  <span className="text-[10px] font-bold text-amber-600">Т</span>
                 </div>
                 <span className="text-xs font-medium text-foreground">Тижневий</span>
                 <span className="text-[9px] text-muted-foreground ml-auto">щопонеділка</span>
               </div>
               <div className="space-y-1 text-[11px] text-muted-foreground">
-                <p>🥇 <span className="text-foreground font-medium">Топ-1:</span> 75₴ бонусів</p>
-                <p>🥈 <span className="text-foreground font-medium">Топ 2-3:</span> 40₴ бонусів</p>
-                <p>🥉 <span className="text-foreground font-medium">Топ 4-10:</span> 15₴ бонусів</p>
+                <p>🥇 <span className="text-foreground font-medium">Топ-1:</span> +50₴ + знижка -5% (на тиждень)</p>
+                <p>🥈 <span className="text-foreground font-medium">Топ-2:</span> +15₴ бонусів</p>
+                <p>🥉 <span className="text-foreground font-medium">Топ-3:</span> +8₴ бонусів</p>
+                <p>📗 <span className="text-foreground font-medium">Топ 4-10:</span> +3₴ бонусів</p>
               </div>
             </CardContent>
           </Card>
 
           {/* Monthly */}
-          <Card className="mb-2 border-primary/20">
+          <Card className="mb-2 border-slate-400/30">
             <CardContent className="p-3">
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-6 h-6 rounded-lg bg-primary/15 flex items-center justify-center">
-                  <span className="text-[10px] font-bold text-primary">М</span>
+                <div className="w-6 h-6 rounded-lg bg-slate-400/15 flex items-center justify-center">
+                  <span className="text-[10px] font-bold text-slate-500">М</span>
                 </div>
                 <span className="text-xs font-medium text-foreground">Місячний</span>
-                <span className="text-[9px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium ml-auto">Головний</span>
+                <span className="text-[9px] bg-slate-400/10 text-slate-500 px-1.5 py-0.5 rounded-full font-medium ml-auto">Срібло</span>
               </div>
               <div className="space-y-1 text-[11px] text-muted-foreground">
-                <p>🥇 <span className="text-foreground font-medium">Топ-1:</span> 500₴ + безкоштовна доставка (1 міс)</p>
-                <p>🥈 <span className="text-foreground font-medium">Топ 2-3:</span> 200₴ бонусів</p>
-                <p>🥉 <span className="text-foreground font-medium">Топ 4-10:</span> 100₴ бонусів</p>
+                <p>🥇 <span className="text-foreground font-medium">Топ-1:</span> +200₴ + безк. доставка (на місяць)</p>
+                <p>🥈 <span className="text-foreground font-medium">Топ-2:</span> +75₴ бонусів</p>
+                <p>🥉 <span className="text-foreground font-medium">Топ-3:</span> +30₴ бонусів</p>
+                <p>📗 <span className="text-foreground font-medium">Топ 4-10:</span> +10₴ бонусів</p>
               </div>
             </CardContent>
           </Card>
 
           {/* Yearly */}
-          <Card className="mb-2 border-rating/20">
+          <Card className="mb-2 border-yellow-500/30">
             <CardContent className="p-3">
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-6 h-6 rounded-lg bg-rating/10 flex items-center justify-center">
-                  <Crown className="w-3 h-3 text-rating" />
+                <div className="w-6 h-6 rounded-lg bg-yellow-500/10 flex items-center justify-center">
+                  <Crown className="w-3 h-3 text-yellow-500" />
                 </div>
                 <span className="text-xs font-medium text-foreground">Річний</span>
-                <span className="text-[9px] bg-rating/10 text-rating px-1.5 py-0.5 rounded-full font-medium ml-auto">Гранд-приз</span>
+                <span className="text-[9px] bg-yellow-500/10 text-yellow-600 px-1.5 py-0.5 rounded-full font-medium ml-auto">Золото</span>
               </div>
               <div className="space-y-1 text-[11px] text-muted-foreground">
-                <p>🏆 <span className="text-foreground font-medium">Топ-1:</span> Безкоштовне замовлення до 1500₴ + VIP</p>
-                <p>🥇 <span className="text-foreground font-medium">Топ 2-3:</span> 1000₴ бонусів</p>
-                <p>🥈 <span className="text-foreground font-medium">Топ 4-10:</span> 500₴ бонусів</p>
+                <p>🏆 <span className="text-foreground font-medium">Топ-1:</span> +700₴ + VIP-статус</p>
+                <p>🥇 <span className="text-foreground font-medium">Топ 2-3:</span> +250₴ бонусів</p>
+                <p>🥈 <span className="text-foreground font-medium">Топ 4-10:</span> +100₴ бонусів</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* All-time */}
+          <Card className="mb-2 border-violet-400/30 bg-violet-500/5">
+            <CardContent className="p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-6 h-6 rounded-lg bg-violet-400/15 flex items-center justify-center">
+                  <Diamond className="w-3 h-3 text-violet-400" />
+                </div>
+                <span className="text-xs font-medium text-foreground">Весь час</span>
+                <span className="text-[9px] bg-violet-400/10 text-violet-400 px-1.5 py-0.5 rounded-full font-medium ml-auto">💎 Легенда</span>
+              </div>
+              <div className="space-y-1 text-[11px] text-muted-foreground">
+                <p>💎 <span className="text-violet-400 font-medium">Топ-1:</span> Безкоштовна доставка назавжди (до 150₴)</p>
+                <p>🥇 <span className="text-foreground font-medium">Топ-2:</span> +500₴ бонусів</p>
+                <p>🥈 <span className="text-foreground font-medium">Топ-3:</span> +200₴ бонусів</p>
               </div>
             </CardContent>
           </Card>
