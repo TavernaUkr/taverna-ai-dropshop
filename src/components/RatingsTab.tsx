@@ -253,7 +253,7 @@ const CustomerRankings = () => {
         {customers.map((customer) => (
           <div key={customer.rank} className={cn(
             "p-3 rounded-xl border transition-all",
-            isAlltime && customer.rank === 1 ? "bg-violet-500/10 border-violet-500/20" :
+            customer.rank === 1 ? `${periodBadgeColors[period].bg} border-${period === "alltime" ? "violet-500/20" : "primary/20"}` :
             customer.rank <= 3 ? `${rankBgs[customer.rank - 1]} border-transparent` : "border-border bg-card"
           )}>
             <div className="flex items-center gap-3 mb-2">
