@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import {
   Wallet, ChevronLeft, Users, Tag, ShoppingBag, ChevronRight,
   Sparkles, Copy, Check, Trophy, Star, Award, Crown, MessageSquare,
-  TrendingUp, Zap, Gift,
+  TrendingUp, Zap, Gift, Diamond,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
