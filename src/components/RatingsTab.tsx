@@ -373,7 +373,7 @@ const SupplierRankings = () => {
               )}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <p className={cn("font-semibold text-sm", isAlltime && supplier.rank === 1 ? "text-diamond-shimmer" : "text-foreground")}>{supplier.shopName}</p>
+                  <p className={cn("font-semibold text-sm", supplier.rank === 1 ? periodBadgeColors[period].shimmer : "text-foreground")}>{supplier.shopName}</p>
                   {supplier.badge && <SupplierBadge badge={supplier.badge} size="sm" />}
                 </div>
                 <div className="flex items-center gap-2 mt-0.5">
