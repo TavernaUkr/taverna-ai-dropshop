@@ -17,6 +17,8 @@ import {
   CheckCircle2,
   Clock,
   ShieldCheck,
+  Trophy,
+  Gift,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,93 +56,35 @@ interface AdvertisingTabProps {
   selectedProduct: Product | null;
   setSelectedProduct: (product: Product | null) => void;
   setProducts: (products: Product[]) => void;
+  supplierId?: string | null;
+  selectedShopName?: string | null;
 }
 
-// Advertising platforms with their conditions
+// All advertising platforms grouped
 const AD_PLATFORMS = [
-  {
-    id: "telegram",
-    name: "Telegram",
-    icon: "📱",
-    minBudget: 100,
-    reach: "10K-50K",
-    cpm: 15,
-    features: ["Таргетована аудиторія", "Кнопки дій", "Статистика"],
-    apiStatus: "connected" as const,
-  },
-  {
-    id: "instagram",
-    name: "Instagram",
-    icon: "📸",
-    minBudget: 200,
-    reach: "15K-80K",
-    cpm: 25,
-    features: ["Stories & Reels", "Візуальний контент", "Шопінг теги"],
-    apiStatus: "pending" as const,
-  },
-  {
-    id: "facebook",
-    name: "Facebook",
-    icon: "👥",
-    minBudget: 200,
-    reach: "20K-100K",
-    cpm: 20,
-    features: ["Широка аудиторія", "Ретаргетинг", "Детальний таргетинг"],
-    apiStatus: "pending" as const,
-  },
-  {
-    id: "olx",
-    name: "OLX",
-    icon: "🛒",
-    minBudget: 50,
-    reach: "5K-30K",
-    cpm: 10,
-    features: ["Топ оголошення", "Підняття в пошуку", "VIP статус"],
-    apiStatus: "pending" as const,
-  },
-  {
-    id: "prom",
-    name: "Prom.ua",
-    icon: "🏪",
-    minBudget: 100,
-    reach: "8K-40K",
-    cpm: 18,
-    features: ["Топ у категорії", "Рекомендації", "Бейджі"],
-    apiStatus: "pending" as const,
-  },
-  {
-    id: "tiktok",
-    name: "TikTok",
-    icon: "🎵",
-    minBudget: 300,
-    reach: "50K-200K",
-    cpm: 12,
-    features: ["Вірусний потенціал", "Молода аудиторія", "Тренди"],
-    apiStatus: "pending" as const,
-  },
-  {
-    id: "youtube",
-    name: "YouTube",
-    icon: "▶️",
-    minBudget: 500,
-    reach: "30K-150K",
-    cpm: 35,
-    features: ["Відео реклама", "Детальна аналітика", "Скіпабельні оголошення"],
-    apiStatus: "pending" as const,
-  },
-  {
-    id: "google",
-    name: "Google Ads",
-    icon: "🔍",
-    minBudget: 200,
-    reach: "Необмежений",
-    cpm: 30,
-    features: ["Пошукова реклама", "Контекстний таргетинг", "Ремаркетинг"],
-    apiStatus: "pending" as const,
-  },
+  // Social
+  { id: "telegram", name: "Telegram", icon: "📱", minBudget: 100, reach: "10K-50K", cpm: 15, features: ["Таргетована аудиторія", "Кнопки дій", "Статистика"], apiStatus: "connected" as const, category: "social" },
+  { id: "instagram", name: "Instagram", icon: "📸", minBudget: 200, reach: "15K-80K", cpm: 25, features: ["Stories & Reels", "Візуальний контент", "Шопінг теги"], apiStatus: "pending" as const, category: "social" },
+  { id: "facebook", name: "Facebook", icon: "👥", minBudget: 200, reach: "20K-100K", cpm: 20, features: ["Широка аудиторія", "Ретаргетинг", "Детальний таргетинг"], apiStatus: "pending" as const, category: "social" },
+  { id: "tiktok", name: "TikTok", icon: "🎵", minBudget: 300, reach: "50K-200K", cpm: 12, features: ["Вірусний потенціал", "Молода аудиторія", "Тренди"], apiStatus: "pending" as const, category: "social" },
+  { id: "youtube", name: "YouTube", icon: "▶️", minBudget: 500, reach: "30K-150K", cpm: 35, features: ["Відео реклама", "Детальна аналітика", "Скіпабельні оголошення"], apiStatus: "pending" as const, category: "social" },
+  { id: "twitter", name: "X (Twitter)", icon: "🐦", minBudget: 150, reach: "10K-60K", cpm: 22, features: ["Promoted tweets", "Тренди", "Таргетинг за інтересами"], apiStatus: "pending" as const, category: "social" },
+  { id: "threads", name: "Threads", icon: "🧵", minBudget: 100, reach: "5K-30K", cpm: 18, features: ["Текстовий контент", "Meta інтеграція", "Органічний охоплення"], apiStatus: "pending" as const, category: "social" },
+  { id: "pinterest", name: "Pinterest", icon: "📌", minBudget: 150, reach: "8K-40K", cpm: 20, features: ["Візуальний пошук", "Довгий lifecycle", "Shopping Pins"], apiStatus: "pending" as const, category: "social" },
+  { id: "linkedin", name: "LinkedIn", icon: "💼", minBudget: 300, reach: "5K-25K", cpm: 40, features: ["B2B таргетинг", "Професійна аудиторія", "Sponsored content"], apiStatus: "pending" as const, category: "social" },
+  // Messengers
+  { id: "viber", name: "Viber", icon: "💬", minBudget: 100, reach: "15K-70K", cpm: 12, features: ["Масові розсилки", "Стікери", "Бізнес-повідомлення"], apiStatus: "pending" as const, category: "messenger" },
+  { id: "whatsapp", name: "WhatsApp", icon: "📞", minBudget: 100, reach: "10K-50K", cpm: 14, features: ["Бізнес-каталог", "Статуси", "Розсилки"], apiStatus: "pending" as const, category: "messenger" },
+  // Marketplaces
+  { id: "olx", name: "OLX", icon: "🛒", minBudget: 50, reach: "5K-30K", cpm: 10, features: ["Топ оголошення", "Підняття в пошуку", "VIP статус"], apiStatus: "pending" as const, category: "marketplace" },
+  { id: "prom", name: "Prom.ua", icon: "🏪", minBudget: 100, reach: "8K-40K", cpm: 18, features: ["Топ у категорії", "Рекомендації", "Бейджі"], apiStatus: "pending" as const, category: "marketplace" },
+  { id: "rozetka", name: "Rozetka", icon: "🟢", minBudget: 200, reach: "20K-100K", cpm: 22, features: ["Спонсоровані позиції", "Банери", "Категорійне просування"], apiStatus: "pending" as const, category: "marketplace" },
+  { id: "ria", name: "RIA.com", icon: "📋", minBudget: 50, reach: "3K-15K", cpm: 8, features: ["Топ оголошення", "VIP позиції", "Авто/нерухомість"], apiStatus: "pending" as const, category: "marketplace" },
+  { id: "shafa", name: "Shafa", icon: "👗", minBudget: 50, reach: "3K-20K", cpm: 10, features: ["Промо в стрічці", "Категорійне просування", "Мода"], apiStatus: "pending" as const, category: "marketplace" },
+  // Search
+  { id: "google", name: "Google Ads", icon: "🔍", minBudget: 200, reach: "Необмежений", cpm: 30, features: ["Пошукова реклама", "Контекстний таргетинг", "Ремаркетинг"], apiStatus: "pending" as const, category: "search" },
 ];
 
-// Tiered ad markup based on budget
 function getAdMarkupPercent(budget: number): number {
   if (budget >= 10000) return 23;
   if (budget >= 2000) return 28;
@@ -148,7 +92,6 @@ function getAdMarkupPercent(budget: number): number {
   return 40;
 }
 
-// Multi-platform discount on markup
 function getMultiPlatformDiscount(platformCount: number, budget: number): number {
   if (platformCount <= 1) return 0;
   if (budget >= 10000) return 3;
@@ -158,7 +101,6 @@ function getMultiPlatformDiscount(platformCount: number, budget: number): number
     if (platformCount >= 3) return 6;
     return 3;
   }
-  // < 500
   if (platformCount >= 3) return 8;
   if (platformCount >= 2) return 5;
   return 0;
@@ -167,10 +109,17 @@ function getMultiPlatformDiscount(platformCount: number, budget: number): number
 function calculateAdMarkup(budget: number, platformCount: number): number {
   const baseMarkup = getAdMarkupPercent(budget);
   const discount = getMultiPlatformDiscount(platformCount, budget);
-  return Math.max(baseMarkup - discount, 15); // floor at 15%
+  return Math.max(baseMarkup - discount, 15);
 }
 
 type AdStatus = "draft" | "pending_review" | "approved" | "active" | "rejected" | "completed";
+
+const CATEGORY_LABELS: Record<string, string> = {
+  social: "📱 Соціальні мережі",
+  messenger: "💬 Месенджери",
+  marketplace: "🛒 Маркетплейси",
+  search: "🔍 Пошукова реклама",
+};
 
 export function AdvertisingTab({
   products,
@@ -180,6 +129,8 @@ export function AdvertisingTab({
   selectedProduct,
   setSelectedProduct,
   setProducts,
+  supplierId,
+  selectedShopName,
 }: AdvertisingTabProps) {
   const [isAutoAds, setIsAutoAds] = useState(false);
   const [aiText, setAiText] = useState("");
@@ -216,7 +167,7 @@ export function AdvertisingTab({
       const { data, error } = await supabase.functions.invoke("generate-description", {
         body: {
           product: selectedProduct,
-          type: platformType === "olx" || platformType === "prom" ? "marketplace" : 
+          type: platformType === "olx" || platformType === "prom" || platformType === "rozetka" ? "marketplace" : 
                 platformType === "instagram" || platformType === "facebook" || platformType === "tiktok" ? "social" : 
                 "telegram",
           aiHint: aiPromptHint || undefined,
@@ -273,7 +224,6 @@ export function AdvertisingTab({
     setAdStatus("pending_review");
     toast.success("Оплата успішна! Рекламу передано на модерацію.");
     
-    // Save campaign to database
     try {
       const { error } = await supabase.from("promotions").insert({
         product_id: selectedProduct?.id,
@@ -283,6 +233,7 @@ export function AdvertisingTab({
         budget: budget,
         ai_generated_text: aiText,
         start_date: new Date().toISOString(),
+        supplier_id: supplierId || undefined,
       });
 
       if (error) {
@@ -292,7 +243,6 @@ export function AdvertisingTab({
       console.error("Save promotion error:", err);
     }
     
-    // Simulate moderation process
     setTimeout(() => {
       setAdStatus("approved");
       toast.success("Рекламу схвалено! Запуск кампанії...");
@@ -306,8 +256,31 @@ export function AdvertisingTab({
 
   const totalCost = calculateTotalCost();
 
+  // Group platforms
+  const categories = ["social", "messenger", "marketplace", "search"];
+
   return (
     <div className="space-y-4">
+      {/* Rating Bonus Info */}
+      {supplierId && (
+        <Card className="border-amber-500/30 bg-gradient-to-r from-amber-500/5 to-transparent">
+          <CardContent className="p-3">
+            <div className="flex items-center gap-2">
+              <Trophy className="h-4 w-4 text-amber-500" />
+              <div className="flex-1">
+                <p className="text-xs font-medium text-foreground">Рейтингові знижки на рекламу</p>
+                <p className="text-xs text-muted-foreground">
+                  Чим вищий ваш рейтинг — тим менша націнка на рекламу. Легенда платформи: фіксовані 23%
+                </p>
+              </div>
+              <Badge variant="outline" className="text-xs bg-amber-500/10 text-amber-600 border-amber-500/30">
+                -{currentMarkup}%
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Instructions */}
       <Accordion type="single" collapsible className="bg-card rounded-lg border border-border">
         <AccordionItem value="instructions" className="border-0">
@@ -320,7 +293,7 @@ export function AdvertisingTab({
           <AccordionContent className="px-4 pb-4">
             <div className="space-y-3 text-sm text-muted-foreground">
               <p>
-                <strong className="text-foreground">Реклама</strong> — платне просування ваших товарів на різних платформах з розширеним охопленням.
+                <strong className="text-foreground">Реклама</strong> — платне просування ваших товарів на {AD_PLATFORMS.length} платформах з розширеним охопленням.
               </p>
               <div className="space-y-2">
                 <p className="font-medium text-foreground">💰 Тарифна сітка націнок:</p>
@@ -330,7 +303,7 @@ export function AdvertisingTab({
                   <li>2000₴ – 10 000₴ — <strong>28%</strong></li>
                   <li>10 000₴+ — <strong>23%</strong></li>
                   <li>Знижка <strong>-3..8%</strong> за кілька платформ одразу</li>
-                  <li>Мінімальний бюджет: <strong>100₴</strong></li>
+                  <li>Мінімальний бюджет: <strong>50₴</strong> (залежить від платформи)</li>
                 </ul>
               </div>
               <div className="p-3 bg-primary/10 rounded-lg">
@@ -340,15 +313,15 @@ export function AdvertisingTab({
                   <li>• Автоматична модерація контенту</li>
                   <li>• Таргетинг на вашу аудиторію</li>
                   <li>• Детальна статистика та звіти</li>
-                  <li>• Перевірка ефективності реклами</li>
                 </ul>
               </div>
-              <div className="p-3 bg-warning/10 rounded-lg border border-warning/20">
-                <p className="font-medium text-foreground mb-1">⚠️ Модерація:</p>
-                <p className="text-xs">
-                  Кожна реклама проходить автоматичну перевірку перед публікацією.
-                  Час модерації залежить від платформи (від 30 хв до 24 год).
-                </p>
+              <div className="p-3 bg-amber-500/10 rounded-lg border border-amber-500/20">
+                <p className="font-medium text-foreground mb-1">🏆 Рейтингові бонуси:</p>
+                <ul className="space-y-1 text-xs">
+                  <li>• <strong>Топ-1 за місяць:</strong> знижена націнка 30% (замість 33%)</li>
+                  <li>• <strong>Топ-1 за рік:</strong> 28% на 1 міс / 1 безкоштовна реклама</li>
+                  <li>• <strong>💎 Легенда:</strong> фіксована 23% на все просування назавжди</li>
+                </ul>
               </div>
             </div>
           </AccordionContent>
@@ -375,7 +348,7 @@ export function AdvertisingTab({
           {isAutoAds && (
             <div className="mt-3 p-3 bg-muted rounded-lg space-y-2">
               <p className="text-xs text-muted-foreground">
-                ✅ Ваші товари автоматично рекламуються на всіх платформах Taverna по черзі
+                ✅ Товари{selectedShopName ? ` магазину "${selectedShopName}"` : ""} автоматично рекламуються на всіх платформах Taverna по черзі
               </p>
               <div className="flex items-center gap-2">
                 <Clock className="h-3 w-3 text-muted-foreground" />
@@ -390,7 +363,12 @@ export function AdvertisingTab({
 
       {/* Product Search */}
       <div className="space-y-2">
-        <Label>Оберіть товар для реклами</Label>
+        <Label>
+          Оберіть товар для реклами
+          {selectedShopName && (
+            <span className="text-xs text-muted-foreground ml-2">({selectedShopName})</span>
+          )}
+        </Label>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -461,10 +439,10 @@ export function AdvertisingTab({
         )}
       </div>
 
-      {/* Platform Selection */}
+      {/* Platform Selection — grouped by category */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <Label>Оберіть платформи для реклами</Label>
+          <Label>Оберіть платформи для реклами ({selectedPlatforms.length})</Label>
           <Button
             variant="ghost"
             size="sm"
@@ -475,57 +453,67 @@ export function AdvertisingTab({
             Умови
           </Button>
         </div>
-        <div className="grid grid-cols-1 gap-2">
-          {AD_PLATFORMS.map((platform) => (
-            <button
-              key={platform.id}
-              onClick={() => togglePlatform(platform.id)}
-              className={cn(
-                "flex items-center gap-3 p-3 rounded-lg border-2 transition-all text-left",
-                selectedPlatforms.includes(platform.id)
-                  ? "border-primary bg-primary/10"
-                  : "border-border hover:border-primary/50"
-              )}
-            >
-              <span className="text-2xl">{platform.icon}</span>
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-sm">{platform.name}</span>
-                  <Badge variant="outline" className="text-xs">
-                    від {platform.minBudget} ₴
-                  </Badge>
-                  <Badge variant="secondary" className="text-xs">
-                    +{currentMarkup}%
-                  </Badge>
-                  {platform.apiStatus === "connected" ? (
-                    <Badge variant="outline" className="text-xs bg-success/10 text-success border-success/30">
-                      <CheckCircle2 className="h-3 w-3 mr-1" />
-                      API
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline" className="text-xs bg-warning/10 text-warning border-warning/30">
-                      <Clock className="h-3 w-3 mr-1" />
-                      Скоро
-                    </Badge>
-                  )}
-                </div>
-                <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <Users className="h-3 w-3" />
-                    {platform.reach}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Eye className="h-3 w-3" />
-                    ~{platform.cpm} ₴/1000
-                  </span>
-                </div>
+
+        {categories.map((cat) => {
+          const catPlatforms = AD_PLATFORMS.filter(p => p.category === cat);
+          if (catPlatforms.length === 0) return null;
+          return (
+            <div key={cat} className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">{CATEGORY_LABELS[cat]}</p>
+              <div className="grid grid-cols-1 gap-2">
+                {catPlatforms.map((platform) => (
+                  <button
+                    key={platform.id}
+                    onClick={() => togglePlatform(platform.id)}
+                    className={cn(
+                      "flex items-center gap-3 p-3 rounded-lg border-2 transition-all text-left",
+                      selectedPlatforms.includes(platform.id)
+                        ? "border-primary bg-primary/10"
+                        : "border-border hover:border-primary/50"
+                    )}
+                  >
+                    <span className="text-2xl">{platform.icon}</span>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium text-sm">{platform.name}</span>
+                        <Badge variant="outline" className="text-xs">
+                          від {platform.minBudget} ₴
+                        </Badge>
+                        <Badge variant="secondary" className="text-xs">
+                          +{currentMarkup}%
+                        </Badge>
+                        {platform.apiStatus === "connected" ? (
+                          <Badge variant="outline" className="text-xs bg-success/10 text-success border-success/30">
+                            <CheckCircle2 className="h-3 w-3 mr-1" />
+                            API
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-xs bg-warning/10 text-warning border-warning/30">
+                            <Clock className="h-3 w-3 mr-1" />
+                            Скоро
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <Users className="h-3 w-3" />
+                          {platform.reach}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Eye className="h-3 w-3" />
+                          ~{platform.cpm} ₴/1000
+                        </span>
+                      </div>
+                    </div>
+                    {selectedPlatforms.includes(platform.id) && (
+                      <Check className="h-5 w-5 text-primary" />
+                    )}
+                  </button>
+                ))}
               </div>
-              {selectedPlatforms.includes(platform.id) && (
-                <Check className="h-5 w-5 text-primary" />
-              )}
-            </button>
-          ))}
-        </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Platform Conditions */}
@@ -687,9 +675,14 @@ export function AdvertisingTab({
                 );
               })}
             </div>
-            <div className="pt-2 border-t border-border">
-              <p className="text-xs text-muted-foreground mb-2">Оберіть спосіб оплати:</p>
-            </div>
+            {selectedPlatforms.length >= 2 && (
+              <div className="pt-2 border-t border-border">
+                <p className="text-xs text-success flex items-center gap-1">
+                  <Gift className="h-3 w-3" />
+                  Знижка за {selectedPlatforms.length} платформ: -{getMultiPlatformDiscount(selectedPlatforms.length, budget)}% від націнки
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

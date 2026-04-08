@@ -14,6 +14,8 @@ import {
   RefreshCw,
   AlertCircle,
   CheckCircle2,
+  Trophy,
+  Gift,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,6 +58,8 @@ interface PostingTabProps {
   selectedProduct: Product | null;
   setSelectedProduct: (product: Product | null) => void;
   setProducts: (products: Product[]) => void;
+  supplierId?: string | null;
+  selectedShopName?: string | null;
 }
 
 const POSTING_INTERVALS = {
@@ -65,11 +69,22 @@ const POSTING_INTERVALS = {
 };
 
 const POSTING_PLATFORMS = [
-  { id: "telegram", name: "Telegram", icon: "📱", price: 40 },
-  { id: "instagram", name: "Instagram", icon: "📸", price: 80 },
-  { id: "facebook", name: "Facebook", icon: "👥", price: 80 },
-  { id: "olx", name: "OLX", icon: "🛒", price: 25 },
-  { id: "prom", name: "Prom.ua", icon: "🏪", price: 35 },
+  { id: "telegram", name: "Telegram", icon: "📱", price: 40, category: "messenger" },
+  { id: "instagram", name: "Instagram", icon: "📸", price: 80, category: "social" },
+  { id: "facebook", name: "Facebook", icon: "👥", price: 80, category: "social" },
+  { id: "tiktok", name: "TikTok", icon: "🎵", price: 90, category: "social" },
+  { id: "youtube", name: "YouTube", icon: "▶️", price: 120, category: "social" },
+  { id: "twitter", name: "X (Twitter)", icon: "🐦", price: 60, category: "social" },
+  { id: "threads", name: "Threads", icon: "🧵", price: 50, category: "social" },
+  { id: "pinterest", name: "Pinterest", icon: "📌", price: 45, category: "social" },
+  { id: "linkedin", name: "LinkedIn", icon: "💼", price: 70, category: "social" },
+  { id: "viber", name: "Viber", icon: "💬", price: 35, category: "messenger" },
+  { id: "whatsapp", name: "WhatsApp", icon: "📞", price: 35, category: "messenger" },
+  { id: "olx", name: "OLX", icon: "🛒", price: 25, category: "marketplace" },
+  { id: "prom", name: "Prom.ua", icon: "🏪", price: 35, category: "marketplace" },
+  { id: "rozetka", name: "Rozetka", icon: "🟢", price: 45, category: "marketplace" },
+  { id: "ria", name: "RIA.com", icon: "📋", price: 30, category: "marketplace" },
+  { id: "shafa", name: "Shafa", icon: "👗", price: 25, category: "marketplace" },
 ];
 
 type PostStatus = "draft" | "pending" | "approved" | "published" | "rejected";
@@ -82,6 +97,8 @@ export function PostingTab({
   selectedProduct,
   setSelectedProduct,
   setProducts,
+  supplierId,
+  selectedShopName,
 }: PostingTabProps) {
   const [isAutoPosting, setIsAutoPosting] = useState(false);
   const [aiText, setAiText] = useState("");
@@ -105,7 +122,7 @@ export function PostingTab({
       const { data, error } = await supabase.functions.invoke("generate-description", {
         body: {
           product: selectedProduct,
-          type: selectedPlatform === "olx" || selectedPlatform === "prom" ? "marketplace" : "telegram",
+          type: selectedPlatform === "olx" || selectedPlatform === "prom" || selectedPlatform === "rozetka" ? "marketplace" : "telegram",
           aiHint: aiPromptHint || undefined,
         },
       });
@@ -169,7 +186,6 @@ export function PostingTab({
     setPostStatus("approved");
     toast.success("Оплата успішна! Пост буде опублікований негайно.");
     
-    // Save paid posting to database
     try {
       await supabase.from("promotions").insert({
         product_id: selectedProduct?.id,
@@ -179,6 +195,7 @@ export function PostingTab({
         budget: paidPostingPrice,
         ai_generated_text: aiText,
         start_date: new Date().toISOString(),
+        supplier_id: supplierId || undefined,
       });
     } catch (err) {
       console.error("Save promotion error:", err);
@@ -190,8 +207,34 @@ export function PostingTab({
   const selectedPlatformData = POSTING_PLATFORMS.find((p) => p.id === selectedPlatform);
   const paidPostingPrice = selectedPlatformData?.price || 50;
 
+  // Group platforms by category
+  const socialPlatforms = POSTING_PLATFORMS.filter(p => p.category === "social");
+  const messengerPlatforms = POSTING_PLATFORMS.filter(p => p.category === "messenger");
+  const marketplacePlatforms = POSTING_PLATFORMS.filter(p => p.category === "marketplace");
+
   return (
     <div className="space-y-4">
+      {/* Rating Bonus Info */}
+      {supplierId && (
+        <Card className="border-amber-500/30 bg-gradient-to-r from-amber-500/5 to-transparent">
+          <CardContent className="p-3">
+            <div className="flex items-center gap-2">
+              <Trophy className="h-4 w-4 text-amber-500" />
+              <div className="flex-1">
+                <p className="text-xs font-medium text-foreground">Рейтингові бонуси</p>
+                <p className="text-xs text-muted-foreground">
+                  Топ-3 у рейтингу = безкоштовні пости, знижка на платний постинг та буст товарів
+                </p>
+              </div>
+              <Badge variant="outline" className="text-xs bg-amber-500/10 text-amber-600 border-amber-500/30">
+                <Gift className="h-3 w-3 mr-1" />
+                Плюшки
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Instructions */}
       <Accordion type="single" collapsible className="bg-card rounded-lg border border-border">
         <AccordionItem value="instructions" className="border-0">
@@ -204,7 +247,7 @@ export function PostingTab({
           <AccordionContent className="px-4 pb-4">
             <div className="space-y-3 text-sm text-muted-foreground">
               <p>
-                <strong className="text-foreground">Постинг</strong> — це моментна публікація ваших товарів у Telegram-канал Taverna Group та інші платформи.
+                <strong className="text-foreground">Постинг</strong> — це моментна публікація ваших товарів у соціальні мережі, месенджери та маркетплейси.
               </p>
               <div className="space-y-2">
                 <p className="font-medium text-foreground">🎯 Як це працює:</p>
@@ -229,6 +272,15 @@ export function PostingTab({
                   Обходить чергу та публікується <strong>негайно</strong>. 
                   AI-опис, кнопка замовлення та пріоритетне розміщення включені.
                 </p>
+              </div>
+              <div className="p-3 bg-amber-500/10 rounded-lg border border-amber-500/20">
+                <p className="font-medium text-foreground mb-1">🏆 Рейтингові бонуси для постинга:</p>
+                <ul className="space-y-1 text-xs">
+                  <li>• <strong>🥇 Топ-1 за тиждень:</strong> 1 безкоштовний пост</li>
+                  <li>• <strong>🥇 Топ-1 за місяць:</strong> 1 безкоштовний пост + Буст 3 дні</li>
+                  <li>• <strong>🥇 Топ-1 за рік:</strong> 1 безкоштовна реклама на будь-якій платформі</li>
+                  <li>• <strong>💎 Легенда (Весь час):</strong> фіксована націнка 23% на все просування</li>
+                </ul>
               </div>
             </div>
           </AccordionContent>
@@ -255,10 +307,10 @@ export function PostingTab({
           {isAutoPosting && (
             <div className="mt-3 p-3 bg-muted rounded-lg space-y-2">
               <p className="text-xs text-muted-foreground">
-                ✅ Товари автоматично публікуються в Telegram та паралельно у всі мережі Taverna
+                ✅ Товари{selectedShopName ? ` магазину "${selectedShopName}"` : ""} автоматично публікуються у всі мережі Taverna
               </p>
               <div className="flex flex-wrap gap-1">
-                {["📱 Telegram", "📸 Instagram", "👥 Facebook", "🎵 TikTok"].map((platform) => (
+                {["📱 Telegram", "📸 Instagram", "👥 Facebook", "🎵 TikTok", "🐦 X", "💬 Viber"].map((platform) => (
                   <Badge key={platform} variant="secondary" className="text-xs">
                     {platform}
                   </Badge>
@@ -307,32 +359,85 @@ export function PostingTab({
 
       {/* Platform Selection for Paid Posting */}
       {showPaidPosting && (
-        <div className="space-y-2">
+        <div className="space-y-3">
           <Label>Оберіть платформу для публікації</Label>
-          <Select value={selectedPlatform} onValueChange={setSelectedPlatform}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {POSTING_PLATFORMS.map((platform) => (
-                <SelectItem key={platform.id} value={platform.id}>
-                  <div className="flex items-center gap-2">
-                    <span>{platform.icon}</span>
-                    <span>{platform.name}</span>
-                    <Badge variant="secondary" className="text-xs ml-2">
-                      {platform.price} ₴
-                    </Badge>
-                  </div>
-                </SelectItem>
+          
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-muted-foreground">📱 Соціальні мережі</p>
+            <div className="grid grid-cols-2 gap-2">
+              {socialPlatforms.map((platform) => (
+                <button
+                  key={platform.id}
+                  onClick={() => setSelectedPlatform(platform.id)}
+                  className={cn(
+                    "flex items-center gap-2 p-2.5 rounded-lg border transition-all text-left text-sm",
+                    selectedPlatform === platform.id
+                      ? "border-primary bg-primary/10"
+                      : "border-border hover:border-primary/50"
+                  )}
+                >
+                  <span>{platform.icon}</span>
+                  <span className="flex-1 truncate">{platform.name}</span>
+                  <span className="text-xs text-muted-foreground">{platform.price}₴</span>
+                </button>
               ))}
-            </SelectContent>
-          </Select>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-muted-foreground">💬 Месенджери</p>
+            <div className="grid grid-cols-2 gap-2">
+              {messengerPlatforms.map((platform) => (
+                <button
+                  key={platform.id}
+                  onClick={() => setSelectedPlatform(platform.id)}
+                  className={cn(
+                    "flex items-center gap-2 p-2.5 rounded-lg border transition-all text-left text-sm",
+                    selectedPlatform === platform.id
+                      ? "border-primary bg-primary/10"
+                      : "border-border hover:border-primary/50"
+                  )}
+                >
+                  <span>{platform.icon}</span>
+                  <span className="flex-1 truncate">{platform.name}</span>
+                  <span className="text-xs text-muted-foreground">{platform.price}₴</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-muted-foreground">🛒 Маркетплейси</p>
+            <div className="grid grid-cols-2 gap-2">
+              {marketplacePlatforms.map((platform) => (
+                <button
+                  key={platform.id}
+                  onClick={() => setSelectedPlatform(platform.id)}
+                  className={cn(
+                    "flex items-center gap-2 p-2.5 rounded-lg border transition-all text-left text-sm",
+                    selectedPlatform === platform.id
+                      ? "border-primary bg-primary/10"
+                      : "border-border hover:border-primary/50"
+                  )}
+                >
+                  <span>{platform.icon}</span>
+                  <span className="flex-1 truncate">{platform.name}</span>
+                  <span className="text-xs text-muted-foreground">{platform.price}₴</span>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
       {/* Product Search */}
       <div className="space-y-2">
-        <Label>Оберіть товар для постинга</Label>
+        <Label>
+          Оберіть товар для постинга
+          {selectedShopName && (
+            <span className="text-xs text-muted-foreground ml-2">({selectedShopName})</span>
+          )}
+        </Label>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input

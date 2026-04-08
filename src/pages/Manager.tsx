@@ -16,12 +16,22 @@ import {
   Wand2,
   Image,
   Check,
+  Store,
+  Trophy,
+  Gift,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -36,12 +46,20 @@ import {
 } from "recharts";
 import { PostingTab } from "@/components/manager/PostingTab";
 import { AdvertisingTab } from "@/components/manager/AdvertisingTab";
+import { useTelegramAuthContext } from "@/components/TelegramAuthProvider";
 
 interface Product {
   id: string;
   name: string;
   price: number;
   images: string[];
+}
+
+interface ShopOption {
+  id: string;
+  shop_name: string;
+  logo_url: string | null;
+  is_active: boolean;
 }
 
 interface PromotionalPost {
@@ -58,17 +76,23 @@ const platforms = [
   { id: "telegram", name: "Telegram", icon: "📱" },
   { id: "instagram", name: "Instagram", icon: "📸" },
   { id: "facebook", name: "Facebook", icon: "👥" },
-  { id: "olx", name: "OLX", icon: "🛒" },
-  { id: "prom", name: "Prom.ua", icon: "🏪" },
   { id: "tiktok", name: "TikTok", icon: "🎵" },
   { id: "youtube", name: "YouTube", icon: "▶️" },
   { id: "viber", name: "Viber", icon: "💬" },
   { id: "whatsapp", name: "WhatsApp", icon: "📞" },
   { id: "twitter", name: "X (Twitter)", icon: "🐦" },
+  { id: "olx", name: "OLX", icon: "🛒" },
+  { id: "prom", name: "Prom.ua", icon: "🏪" },
+  { id: "rozetka", name: "Rozetka", icon: "🟢" },
+  { id: "pinterest", name: "Pinterest", icon: "📌" },
+  { id: "linkedin", name: "LinkedIn", icon: "💼" },
+  { id: "threads", name: "Threads", icon: "🧵" },
+  { id: "google", name: "Google Ads", icon: "🔍" },
 ];
 
 export default function Manager() {
   const navigate = useNavigate();
+  const { profile, effectiveRole } = useTelegramAuthContext();
   const [activeTab, setActiveTab] = useState("posting");
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -78,35 +102,97 @@ export default function Manager() {
   const [supplierId, setSupplierId] = useState<string | null>(null);
   const [promotionalPosts, setPromotionalPosts] = useState<PromotionalPost[]>([]);
   const [queueStats, setQueueStats] = useState({ pending: 0, active: 0 });
+  const [availableShops, setAvailableShops] = useState<ShopOption[]>([]);
+  const [selectedShopId, setSelectedShopId] = useState<string>("all");
 
-  // Get current supplier ID from profile
+  const isAdminOrMod = effectiveRole === "admin" || effectiveRole === "moderator";
+
+  // Fetch available shops based on role
   useEffect(() => {
-    const getSupplierInfo = async () => {
-      // For now, get first supplier - in production, link to user profile
-      const { data: suppliers } = await supabase
-        .from("suppliers")
-        .select("id")
-        .eq("is_active", true)
-        .limit(1);
-      
-      if (suppliers?.[0]) {
-        setSupplierId(suppliers[0].id);
+    const fetchShops = async () => {
+      if (!profile?.id) return;
+
+      try {
+        if (isAdminOrMod) {
+          // Admin/Moderator see all active shops
+          const { data } = await supabase
+            .from("suppliers")
+            .select("id, shop_name, logo_url, is_active")
+            .eq("is_active", true)
+            .order("shop_name");
+          if (data) setAvailableShops(data);
+        } else {
+          // Supplier: own shops via telegram_id
+          const { data: ownShops } = await supabase
+            .from("suppliers")
+            .select("id, shop_name, logo_url, is_active")
+            .eq("telegram_id", profile.telegram_id || 0);
+
+          // Manager: linked shops
+          const { data: links } = await supabase
+            .from("shop_manager_links")
+            .select("supplier_id")
+            .eq("profile_id", profile.id);
+
+          const linkedIds = links?.map(l => l.supplier_id) || [];
+
+          let allShops = ownShops || [];
+
+          if (linkedIds.length > 0) {
+            const { data: linkedShops } = await supabase
+              .from("suppliers")
+              .select("id, shop_name, logo_url, is_active")
+              .in("id", linkedIds);
+            if (linkedShops) {
+              const existingIds = new Set(allShops.map(s => s.id));
+              linkedShops.forEach(s => {
+                if (!existingIds.has(s.id)) allShops.push(s);
+              });
+            }
+          }
+
+          setAvailableShops(allShops);
+
+          // Auto-select first shop
+          if (allShops.length === 1) {
+            setSelectedShopId(allShops[0].id);
+            setSupplierId(allShops[0].id);
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching shops:", err);
       }
     };
-    getSupplierInfo();
-  }, []);
+    fetchShops();
+  }, [profile?.id, isAdminOrMod]);
+
+  // Update supplierId when shop selection changes
+  useEffect(() => {
+    if (selectedShopId === "all") {
+      setSupplierId(null);
+    } else {
+      setSupplierId(selectedShopId);
+    }
+    // Reset product selection when shop changes
+    setSelectedProduct(null);
+    setProductSearch("");
+    setProducts([]);
+  }, [selectedShopId]);
 
   // Fetch promotional posts from database
   useEffect(() => {
     const fetchPromotions = async () => {
-      if (!supplierId) return;
-
-      const { data, error } = await supabase
+      let query = supabase
         .from("promotions")
         .select("*, product:products(id, name, price, images)")
-        .eq("supplier_id", supplierId)
         .order("created_at", { ascending: false })
         .limit(20);
+
+      if (supplierId) {
+        query = query.eq("supplier_id", supplierId);
+      }
+
+      const { data, error } = await query;
 
       if (!error && data) {
         const posts: PromotionalPost[] = data.map((p) => ({
@@ -160,7 +246,7 @@ export default function Manager() {
           .ilike("name", `%${productSearch}%`)
           .eq("in_stock", true);
         
-        // Filter by supplier if available
+        // Filter by supplier if a specific shop is selected
         if (supplierId) {
           query = query.eq("supplier_id", supplierId);
         }
@@ -181,6 +267,8 @@ export default function Manager() {
     return () => clearTimeout(debounce);
   }, [productSearch, supplierId]);
 
+  const selectedShop = availableShops.find(s => s.id === selectedShopId);
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -195,7 +283,7 @@ export default function Manager() {
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
-              <h1 className="font-bold text-lg text-foreground">Панель партнера</h1>
+              <h1 className="font-bold text-lg text-foreground">Просування</h1>
               <p className="text-xs text-muted-foreground">Постинг та реклама</p>
             </div>
           </div>
@@ -204,6 +292,46 @@ export default function Manager() {
             Запросити
           </Button>
         </div>
+
+        {/* Shop Selector */}
+        {availableShops.length > 0 && (
+          <div className="px-4 pb-3">
+            <Select value={selectedShopId} onValueChange={setSelectedShopId}>
+              <SelectTrigger className="w-full bg-muted/50">
+                <div className="flex items-center gap-2">
+                  <Store className="h-4 w-4 text-primary" />
+                  <SelectValue placeholder="Оберіть магазин" />
+                </div>
+              </SelectTrigger>
+              <SelectContent>
+                {isAdminOrMod && (
+                  <SelectItem value="all">
+                    <div className="flex items-center gap-2">
+                      <span>🌐</span>
+                      <span>Усі магазини (глобальний каталог)</span>
+                    </div>
+                  </SelectItem>
+                )}
+                {availableShops.map((shop) => (
+                  <SelectItem key={shop.id} value={shop.id}>
+                    <div className="flex items-center gap-2">
+                      {shop.logo_url ? (
+                        <img src={shop.logo_url} alt="" className="w-5 h-5 rounded-full object-cover" />
+                      ) : (
+                        <Store className="h-4 w-4 text-muted-foreground" />
+                      )}
+                      <span>{shop.shop_name}</span>
+                      {!shop.is_active && (
+                        <Badge variant="outline" className="text-xs text-muted-foreground">Неактивний</Badge>
+                      )}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
         {inviteLink && (
           <div className="px-4 pb-3">
             <div className="bg-primary/10 rounded-lg p-2 text-xs text-center">
@@ -246,6 +374,8 @@ export default function Manager() {
               selectedProduct={selectedProduct}
               setSelectedProduct={setSelectedProduct}
               setProducts={setProducts}
+              supplierId={supplierId}
+              selectedShopName={selectedShop?.shop_name || null}
             />
           </TabsContent>
 
@@ -259,6 +389,8 @@ export default function Manager() {
               selectedProduct={selectedProduct}
               setSelectedProduct={setSelectedProduct}
               setProducts={setProducts}
+              supplierId={supplierId}
+              selectedShopName={selectedShop?.shop_name || null}
             />
           </TabsContent>
 
@@ -318,7 +450,7 @@ export default function Manager() {
                             {post.scheduledAt?.toLocaleDateString("uk-UA")}
                           </span>
                         </div>
-                        <div className="flex gap-1 mt-2">
+                        <div className="flex gap-1 mt-2 flex-wrap">
                           {post.platforms.map((p) => (
                             <Badge key={p} variant="secondary" className="text-xs">
                               {platforms.find((pl) => pl.id === p)?.icon}
@@ -546,7 +678,7 @@ export default function Manager() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{post.product?.name}</p>
-                        <div className="flex gap-1">
+                        <div className="flex gap-1 flex-wrap">
                           {post.platforms.map((p) => (
                             <span key={p} className="text-xs">
                               {platforms.find((pl) => pl.id === p)?.icon}
