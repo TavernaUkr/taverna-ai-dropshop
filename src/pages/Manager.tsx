@@ -19,19 +19,28 @@ import {
   Store,
   Trophy,
   Gift,
+  X,
+  Search,
+  ListOrdered,
+  Shuffle,
+  Pause,
+  Play,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -53,6 +62,7 @@ interface Product {
   name: string;
   price: number;
   images: string[];
+  supplier_id?: string;
 }
 
 interface ShopOption {
@@ -70,6 +80,18 @@ interface PromotionalPost {
   scheduledAt?: Date;
   platforms: string[];
   type: "posting" | "advertising";
+}
+
+interface AutoQueueItem {
+  id: string;
+  shopIds: string[];
+  mode: "random" | "manual";
+  productIds?: string[];
+  platforms: string[];
+  intervalMinutes: number;
+  type: "posting" | "advertising";
+  isPaused: boolean;
+  createdAt: string;
 }
 
 const platforms = [
@@ -99,13 +121,38 @@ export default function Manager() {
   const [productSearch, setProductSearch] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [inviteLink, setInviteLink] = useState<string | null>(null);
-  const [supplierId, setSupplierId] = useState<string | null>(null);
   const [promotionalPosts, setPromotionalPosts] = useState<PromotionalPost[]>([]);
   const [queueStats, setQueueStats] = useState({ pending: 0, active: 0 });
+
+  // Multi-shop selection
   const [availableShops, setAvailableShops] = useState<ShopOption[]>([]);
-  const [selectedShopId, setSelectedShopId] = useState<string>("all");
+  const [myShops, setMyShops] = useState<ShopOption[]>([]);
+  const [partnerShops, setPartnerShops] = useState<ShopOption[]>([]);
+  const [selectedShopIds, setSelectedShopIds] = useState<string[]>([]);
+  const [shopSearchQuery, setShopSearchQuery] = useState("");
+  const [shopSelectorOpen, setShopSelectorOpen] = useState(false);
+
+  // Auto-queue
+  const [autoQueues, setAutoQueues] = useState<AutoQueueItem[]>([]);
+  const [queueSubTab, setQueueSubTab] = useState<"scheduled" | "auto">("scheduled");
 
   const isAdminOrMod = effectiveRole === "admin" || effectiveRole === "moderator";
+  const isAdmin = effectiveRole === "admin";
+
+  // Load auto-queues from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem("taverna_auto_queues");
+    if (saved) {
+      try {
+        setAutoQueues(JSON.parse(saved));
+      } catch {}
+    }
+  }, []);
+
+  // Save auto-queues to localStorage
+  useEffect(() => {
+    localStorage.setItem("taverna_auto_queues", JSON.stringify(autoQueues));
+  }, [autoQueues]);
 
   // Fetch available shops based on role
   useEffect(() => {
@@ -114,13 +161,44 @@ export default function Manager() {
 
       try {
         if (isAdminOrMod) {
-          // Admin/Moderator see all active shops
-          const { data } = await supabase
+          const { data: allShops } = await supabase
             .from("suppliers")
             .select("id, shop_name, logo_url, is_active")
             .eq("is_active", true)
             .order("shop_name");
-          if (data) setAvailableShops(data);
+
+          const shops = allShops || [];
+          setAvailableShops(shops);
+
+          if (isAdmin) {
+            // Split: admin's own shops (telegram_id match or via shop_manager_links)
+            const { data: adminOwnShops } = await supabase
+              .from("suppliers")
+              .select("id, shop_name, logo_url, is_active")
+              .eq("telegram_id", profile.telegram_id || 0);
+
+            const { data: adminLinks } = await supabase
+              .from("shop_manager_links")
+              .select("supplier_id")
+              .eq("profile_id", profile.id);
+
+            const adminLinkedIds = new Set(adminLinks?.map(l => l.supplier_id) || []);
+            const adminOwnIds = new Set((adminOwnShops || []).map(s => s.id));
+
+            const mySet = new Set<string>();
+            adminOwnIds.forEach(id => mySet.add(id));
+            adminLinkedIds.forEach(id => mySet.add(id));
+
+            setMyShops(shops.filter(s => mySet.has(s.id)));
+            setPartnerShops(shops.filter(s => !mySet.has(s.id)));
+          } else {
+            // Moderator — all are "platform shops"
+            setMyShops([]);
+            setPartnerShops(shops);
+          }
+
+          // Default: select all
+          setSelectedShopIds(shops.map(s => s.id));
         } else {
           // Supplier: own shops via telegram_id
           const { data: ownShops } = await supabase
@@ -135,7 +213,6 @@ export default function Manager() {
             .eq("profile_id", profile.id);
 
           const linkedIds = links?.map(l => l.supplier_id) || [];
-
           let allShops = ownShops || [];
 
           if (linkedIds.length > 0) {
@@ -152,32 +229,30 @@ export default function Manager() {
           }
 
           setAvailableShops(allShops);
+          setMyShops(allShops);
+          setPartnerShops([]);
 
-          // Auto-select first shop
-          if (allShops.length === 1) {
-            setSelectedShopId(allShops[0].id);
-            setSupplierId(allShops[0].id);
-          }
+          // Auto-select all
+          setSelectedShopIds(allShops.map(s => s.id));
         }
       } catch (err) {
         console.error("Error fetching shops:", err);
       }
     };
     fetchShops();
-  }, [profile?.id, isAdminOrMod]);
+  }, [profile?.id, isAdminOrMod, isAdmin]);
 
-  // Update supplierId when shop selection changes
+  // Derive supplierIds for child components
+  const supplierIds = selectedShopIds.length === availableShops.length
+    ? [] // empty means "all" (no filter)
+    : selectedShopIds;
+
+  // Update product selection when shops change
   useEffect(() => {
-    if (selectedShopId === "all") {
-      setSupplierId(null);
-    } else {
-      setSupplierId(selectedShopId);
-    }
-    // Reset product selection when shop changes
     setSelectedProduct(null);
     setProductSearch("");
     setProducts([]);
-  }, [selectedShopId]);
+  }, [selectedShopIds.join(",")]);
 
   // Fetch promotional posts from database
   useEffect(() => {
@@ -188,8 +263,8 @@ export default function Manager() {
         .order("created_at", { ascending: false })
         .limit(20);
 
-      if (supplierId) {
-        query = query.eq("supplier_id", supplierId);
+      if (supplierIds.length > 0) {
+        query = query.in("supplier_id", supplierIds);
       }
 
       const { data, error } = await query;
@@ -218,7 +293,7 @@ export default function Manager() {
       }
     };
     fetchPromotions();
-  }, [supplierId]);
+  }, [supplierIds.join(",")]);
 
   // Generate invite link for new suppliers
   const generateInviteLink = () => {
@@ -242,13 +317,12 @@ export default function Manager() {
       try {
         let query = supabase
           .from("products")
-          .select("id, name, price, images")
+          .select("id, name, price, images, supplier_id")
           .ilike("name", `%${productSearch}%`)
           .eq("in_stock", true);
         
-        // Filter by supplier if a specific shop is selected
-        if (supplierId) {
-          query = query.eq("supplier_id", supplierId);
+        if (supplierIds.length > 0) {
+          query = query.in("supplier_id", supplierIds);
         }
         
         const { data, error } = await query.limit(15);
@@ -265,9 +339,54 @@ export default function Manager() {
 
     const debounce = setTimeout(searchProducts, 300);
     return () => clearTimeout(debounce);
-  }, [productSearch, supplierId]);
+  }, [productSearch, supplierIds.join(",")]);
 
-  const selectedShop = availableShops.find(s => s.id === selectedShopId);
+  // Shop selector helpers
+  const toggleShop = (shopId: string) => {
+    setSelectedShopIds(prev =>
+      prev.includes(shopId)
+        ? prev.filter(id => id !== shopId)
+        : [...prev, shopId]
+    );
+  };
+
+  const selectAllShops = () => setSelectedShopIds(availableShops.map(s => s.id));
+  const selectMyShops = () => setSelectedShopIds(myShops.map(s => s.id));
+  const clearShops = () => setSelectedShopIds([]);
+
+  const filteredShopsForSelector = (shops: ShopOption[]) => {
+    if (!shopSearchQuery) return shops;
+    return shops.filter(s => s.shop_name.toLowerCase().includes(shopSearchQuery.toLowerCase()));
+  };
+
+  const selectedShopNames = availableShops
+    .filter(s => selectedShopIds.includes(s.id))
+    .map(s => s.shop_name);
+
+  // Auto-queue helpers
+  const addAutoQueue = (type: "posting" | "advertising") => {
+    const newQueue: AutoQueueItem = {
+      id: crypto.randomUUID(),
+      shopIds: selectedShopIds,
+      mode: "random",
+      platforms: ["telegram"],
+      intervalMinutes: 15,
+      type,
+      isPaused: false,
+      createdAt: new Date().toISOString(),
+    };
+    setAutoQueues(prev => [...prev, newQueue]);
+    toast.success("Авто-чергу створено!");
+  };
+
+  const toggleQueuePause = (id: string) => {
+    setAutoQueues(prev => prev.map(q => q.id === id ? { ...q, isPaused: !q.isPaused } : q));
+  };
+
+  const deleteQueue = (id: string) => {
+    setAutoQueues(prev => prev.filter(q => q.id !== id));
+    toast.success("Авто-чергу видалено");
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -293,42 +412,163 @@ export default function Manager() {
           </Button>
         </div>
 
-        {/* Shop Selector */}
+        {/* Multi-Shop Selector */}
         {availableShops.length > 0 && (
           <div className="px-4 pb-3">
-            <Select value={selectedShopId} onValueChange={setSelectedShopId}>
-              <SelectTrigger className="w-full bg-muted/50">
-                <div className="flex items-center gap-2">
-                  <Store className="h-4 w-4 text-primary" />
-                  <SelectValue placeholder="Оберіть магазин" />
+            <Popover open={shopSelectorOpen} onOpenChange={setShopSelectorOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="w-full justify-start bg-muted/50 h-auto min-h-[2.75rem] py-2">
+                  <Store className="h-4 w-4 text-primary mr-2 shrink-0" />
+                  <div className="flex-1 flex flex-wrap gap-1 text-left">
+                    {selectedShopIds.length === 0 ? (
+                      <span className="text-muted-foreground text-sm">Оберіть магазини...</span>
+                    ) : selectedShopIds.length === availableShops.length ? (
+                      <Badge variant="secondary" className="text-xs">
+                        🌐 Усі магазини ({availableShops.length})
+                      </Badge>
+                    ) : selectedShopNames.length <= 3 ? (
+                      selectedShopNames.map(name => (
+                        <Badge key={name} variant="secondary" className="text-xs">
+                          {name}
+                        </Badge>
+                      ))
+                    ) : (
+                      <Badge variant="secondary" className="text-xs">
+                        {selectedShopIds.length} магазинів обрано
+                      </Badge>
+                    )}
+                  </div>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80 p-0" align="start">
+                {/* Search */}
+                <div className="p-3 border-b border-border">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      value={shopSearchQuery}
+                      onChange={(e) => setShopSearchQuery(e.target.value)}
+                      placeholder="Пошук магазину..."
+                      className="pl-9 h-9"
+                    />
+                  </div>
                 </div>
-              </SelectTrigger>
-              <SelectContent>
-                {isAdminOrMod && (
-                  <SelectItem value="all">
-                    <div className="flex items-center gap-2">
-                      <span>🌐</span>
-                      <span>Усі магазини (глобальний каталог)</span>
-                    </div>
-                  </SelectItem>
-                )}
-                {availableShops.map((shop) => (
-                  <SelectItem key={shop.id} value={shop.id}>
-                    <div className="flex items-center gap-2">
+
+                {/* Quick actions */}
+                <div className="flex gap-1 p-2 border-b border-border">
+                  <Button variant="ghost" size="sm" className="text-xs h-7" onClick={selectAllShops}>
+                    🌐 Усі
+                  </Button>
+                  {isAdmin && myShops.length > 0 && (
+                    <Button variant="ghost" size="sm" className="text-xs h-7" onClick={selectMyShops}>
+                      🏠 Мої
+                    </Button>
+                  )}
+                  <Button variant="ghost" size="sm" className="text-xs h-7" onClick={clearShops}>
+                    Скинути
+                  </Button>
+                </div>
+
+                {/* Shop lists */}
+                <div className="max-h-64 overflow-y-auto p-2 space-y-1">
+                  {/* Admin: My shops section */}
+                  {isAdmin && myShops.length > 0 && (
+                    <>
+                      <p className="text-xs font-medium text-muted-foreground px-2 py-1">🏠 Мої магазини</p>
+                      {filteredShopsForSelector(myShops).map(shop => (
+                        <label
+                          key={shop.id}
+                          className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer"
+                        >
+                          <Checkbox
+                            checked={selectedShopIds.includes(shop.id)}
+                            onCheckedChange={() => toggleShop(shop.id)}
+                          />
+                          {shop.logo_url ? (
+                            <img src={shop.logo_url} alt="" className="w-5 h-5 rounded-full object-cover" />
+                          ) : (
+                            <Store className="h-4 w-4 text-muted-foreground" />
+                          )}
+                          <span className="text-sm flex-1 truncate">{shop.shop_name}</span>
+                        </label>
+                      ))}
+                    </>
+                  )}
+
+                  {/* Admin: Partner shops / Moderator: All shops / Supplier: My shops */}
+                  {(isAdmin && partnerShops.length > 0) && (
+                    <p className="text-xs font-medium text-muted-foreground px-2 py-1 mt-2">
+                      🌐 Партнерські магазини
+                    </p>
+                  )}
+                  {(!isAdmin && !isAdminOrMod && myShops.length > 0) && (
+                    <p className="text-xs font-medium text-muted-foreground px-2 py-1">
+                      🏠 Мої магазини
+                    </p>
+                  )}
+                  {(effectiveRole === "moderator") && (
+                    <p className="text-xs font-medium text-muted-foreground px-2 py-1">
+                      🌐 Усі магазини платформи
+                    </p>
+                  )}
+
+                  {filteredShopsForSelector(
+                    isAdmin ? partnerShops :
+                    !isAdminOrMod ? myShops :
+                    availableShops
+                  ).map(shop => (
+                    <label
+                      key={shop.id}
+                      className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer"
+                    >
+                      <Checkbox
+                        checked={selectedShopIds.includes(shop.id)}
+                        onCheckedChange={() => toggleShop(shop.id)}
+                      />
                       {shop.logo_url ? (
                         <img src={shop.logo_url} alt="" className="w-5 h-5 rounded-full object-cover" />
                       ) : (
                         <Store className="h-4 w-4 text-muted-foreground" />
                       )}
-                      <span>{shop.shop_name}</span>
+                      <span className="text-sm flex-1 truncate">{shop.shop_name}</span>
                       {!shop.is_active && (
-                        <Badge variant="outline" className="text-xs text-muted-foreground">Неактивний</Badge>
+                        <Badge variant="outline" className="text-xs text-muted-foreground">Неакт.</Badge>
                       )}
-                    </div>
-                  </SelectItem>
+                    </label>
+                  ))}
+                </div>
+
+                {/* Footer */}
+                <div className="p-2 border-t border-border flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">
+                    Обрано: {selectedShopIds.length}/{availableShops.length}
+                  </span>
+                  <Button size="sm" className="h-7 text-xs" onClick={() => setShopSelectorOpen(false)}>
+                    Готово
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            {/* Selected shops chips */}
+            {selectedShopIds.length > 0 && selectedShopIds.length < availableShops.length && selectedShopIds.length <= 5 && (
+              <div className="flex flex-wrap gap-1 mt-2">
+                {selectedShopNames.map(name => (
+                  <Badge key={name} variant="outline" className="text-xs gap-1">
+                    {name}
+                    <button
+                      onClick={() => {
+                        const shop = availableShops.find(s => s.shop_name === name);
+                        if (shop) toggleShop(shop.id);
+                      }}
+                      className="ml-1 hover:text-destructive"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
                 ))}
-              </SelectContent>
-            </Select>
+              </div>
+            )}
           </div>
         )}
 
@@ -374,8 +614,9 @@ export default function Manager() {
               selectedProduct={selectedProduct}
               setSelectedProduct={setSelectedProduct}
               setProducts={setProducts}
-              supplierId={supplierId}
-              selectedShopName={selectedShop?.shop_name || null}
+              supplierIds={supplierIds}
+              selectedShopNames={selectedShopNames}
+              availableShops={availableShops}
             />
           </TabsContent>
 
@@ -389,84 +630,216 @@ export default function Manager() {
               selectedProduct={selectedProduct}
               setSelectedProduct={setSelectedProduct}
               setProducts={setProducts}
-              supplierId={supplierId}
-              selectedShopName={selectedShop?.shop_name || null}
+              supplierIds={supplierIds}
+              selectedShopNames={selectedShopNames}
+              availableShops={availableShops}
             />
           </TabsContent>
 
           {/* Scheduled Posts Tab */}
           <TabsContent value="scheduled" className="space-y-4">
-            <div className="grid grid-cols-2 gap-3 mb-4">
-              <Card className="p-3">
-                <div className="flex items-center gap-2">
-                  <Send className="h-4 w-4 text-primary" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">У черзі постинга</p>
-                    <p className="text-lg font-bold">{queueStats.pending}</p>
-                  </div>
-                </div>
-              </Card>
-              <Card className="p-3">
-                <div className="flex items-center gap-2">
-                  <Megaphone className="h-4 w-4 text-warning" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">Активна реклама</p>
-                    <p className="text-lg font-bold">{queueStats.active}</p>
-                  </div>
-                </div>
-              </Card>
+            {/* Sub-tabs */}
+            <div className="flex gap-2 mb-4">
+              <Button
+                variant={queueSubTab === "scheduled" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setQueueSubTab("scheduled")}
+              >
+                <Clock className="h-4 w-4 mr-1" />
+                Заплановані
+              </Button>
+              <Button
+                variant={queueSubTab === "auto" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setQueueSubTab("auto")}
+              >
+                <Shuffle className="h-4 w-4 mr-1" />
+                Авто-черга
+              </Button>
             </div>
 
-            {promotionalPosts
-              .filter((p) => p.status === "scheduled")
-              .map((post) => (
-                <Card key={post.id}>
-                  <CardContent className="p-4">
-                    <div className="flex items-start gap-3">
-                      <div className="w-16 h-16 bg-muted rounded-lg flex items-center justify-center">
-                        <Image className="h-6 w-6 text-muted-foreground" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <p className="font-medium text-sm">{post.product?.name}</p>
-                          <Badge 
-                            variant="outline" 
-                            className={cn(
-                              "text-xs",
-                              post.type === "posting" 
-                                ? "bg-primary/10 text-primary border-primary/20" 
-                                : "bg-warning/10 text-warning border-warning/20"
-                            )}
-                          >
-                            {post.type === "posting" ? "Постинг" : "Реклама"}
-                          </Badge>
-                        </div>
-                        <p className="text-xs text-muted-foreground line-clamp-2">
-                          {post.aiText}
-                        </p>
-                        <div className="flex items-center gap-2 mt-2">
-                          <Clock className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-xs text-muted-foreground">
-                            {post.scheduledAt?.toLocaleDateString("uk-UA")}
-                          </span>
-                        </div>
-                        <div className="flex gap-1 mt-2 flex-wrap">
-                          {post.platforms.map((p) => (
-                            <Badge key={p} variant="secondary" className="text-xs">
-                              {platforms.find((pl) => pl.id === p)?.icon}
-                            </Badge>
-                          ))}
-                        </div>
+            {queueSubTab === "scheduled" && (
+              <>
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  <Card className="p-3">
+                    <div className="flex items-center gap-2">
+                      <Send className="h-4 w-4 text-primary" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">У черзі постинга</p>
+                        <p className="text-lg font-bold">{queueStats.pending}</p>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
+                  </Card>
+                  <Card className="p-3">
+                    <div className="flex items-center gap-2">
+                      <Megaphone className="h-4 w-4 text-warning" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Активна реклама</p>
+                        <p className="text-lg font-bold">{queueStats.active}</p>
+                      </div>
+                    </div>
+                  </Card>
+                </div>
 
-            {promotionalPosts.filter((p) => p.status === "scheduled").length === 0 && (
-              <div className="text-center py-8 text-muted-foreground">
-                <Clock className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                <p className="text-sm">Немає запланованих публікацій</p>
+                {promotionalPosts
+                  .filter((p) => p.status === "scheduled")
+                  .map((post) => (
+                    <Card key={post.id}>
+                      <CardContent className="p-4">
+                        <div className="flex items-start gap-3">
+                          <div className="w-16 h-16 bg-muted rounded-lg flex items-center justify-center">
+                            <Image className="h-6 w-6 text-muted-foreground" />
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <p className="font-medium text-sm">{post.product?.name}</p>
+                              <Badge 
+                                variant="outline" 
+                                className={cn(
+                                  "text-xs",
+                                  post.type === "posting" 
+                                    ? "bg-primary/10 text-primary border-primary/20" 
+                                    : "bg-warning/10 text-warning border-warning/20"
+                                )}
+                              >
+                                {post.type === "posting" ? "Постинг" : "Реклама"}
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground line-clamp-2">
+                              {post.aiText}
+                            </p>
+                            <div className="flex items-center gap-2 mt-2">
+                              <Clock className="h-3 w-3 text-muted-foreground" />
+                              <span className="text-xs text-muted-foreground">
+                                {post.scheduledAt?.toLocaleDateString("uk-UA")}
+                              </span>
+                            </div>
+                            <div className="flex gap-1 mt-2 flex-wrap">
+                              {post.platforms.map((p) => (
+                                <Badge key={p} variant="secondary" className="text-xs">
+                                  {platforms.find((pl) => pl.id === p)?.icon}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+
+                {promotionalPosts.filter((p) => p.status === "scheduled").length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Clock className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                    <p className="text-sm">Немає запланованих публікацій</p>
+                  </div>
+                )}
+              </>
+            )}
+
+            {queueSubTab === "auto" && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-medium text-foreground">Авто-черги</h3>
+                    <p className="text-xs text-muted-foreground">
+                      Автоматична публікація товарів з обраних магазинів
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => addAutoQueue("posting")}>
+                      <Send className="h-4 w-4 mr-1" />
+                      Постинг
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => addAutoQueue("advertising")}>
+                      <Megaphone className="h-4 w-4 mr-1" />
+                      Реклама
+                    </Button>
+                  </div>
+                </div>
+
+                {autoQueues.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Shuffle className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                    <p className="text-sm">Немає активних авто-черг</p>
+                    <p className="text-xs mt-1">Створіть авто-чергу для автоматичного просування товарів</p>
+                  </div>
+                ) : (
+                  autoQueues.map(queue => {
+                    const queueShopNames = availableShops
+                      .filter(s => queue.shopIds.includes(s.id))
+                      .map(s => s.shop_name);
+
+                    return (
+                      <Card key={queue.id} className={cn(queue.isPaused && "opacity-60")}>
+                        <CardContent className="p-4">
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              {queue.type === "posting" ? (
+                                <Send className="h-4 w-4 text-primary" />
+                              ) : (
+                                <Megaphone className="h-4 w-4 text-warning" />
+                              )}
+                              <Badge variant="outline" className="text-xs">
+                                {queue.type === "posting" ? "Авто-постинг" : "Авто-реклама"}
+                              </Badge>
+                              <Badge variant="secondary" className="text-xs">
+                                {queue.mode === "random" ? (
+                                  <><Shuffle className="h-3 w-3 mr-1" />Рандом</>
+                                ) : (
+                                  <><ListOrdered className="h-3 w-3 mr-1" />Черга</>
+                                )}
+                              </Badge>
+                              {queue.isPaused && (
+                                <Badge variant="destructive" className="text-xs">Пауза</Badge>
+                              )}
+                            </div>
+                            <div className="flex gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                onClick={() => toggleQueuePause(queue.id)}
+                              >
+                                {queue.isPaused ? (
+                                  <Play className="h-3.5 w-3.5 text-success" />
+                                ) : (
+                                  <Pause className="h-3.5 w-3.5 text-warning" />
+                                )}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                onClick={() => deleteQueue(queue.id)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                              </Button>
+                            </div>
+                          </div>
+
+                          <div className="space-y-1 text-xs text-muted-foreground">
+                            <p>
+                              <strong>Магазини:</strong>{" "}
+                              {queueShopNames.length <= 2
+                                ? queueShopNames.join(", ")
+                                : `${queueShopNames.length} магазинів`}
+                            </p>
+                            <p>
+                              <strong>Інтервал:</strong> кожні {queue.intervalMinutes} хв
+                            </p>
+                            <div className="flex gap-1 mt-1 flex-wrap">
+                              {queue.platforms.map(p => (
+                                <Badge key={p} variant="secondary" className="text-xs">
+                                  {platforms.find(pl => pl.id === p)?.icon} {platforms.find(pl => pl.id === p)?.name}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })
+                )}
               </div>
             )}
           </TabsContent>
