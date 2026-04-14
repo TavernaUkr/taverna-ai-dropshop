@@ -245,7 +245,7 @@ export function AdvertisingTab({
         budget: budget,
         ai_generated_text: aiText,
         start_date: new Date().toISOString(),
-        supplier_id: supplierId || undefined,
+        supplier_id: supplierId || (supplierIds?.[0]) || undefined,
       });
 
       if (error) {
@@ -274,7 +274,7 @@ export function AdvertisingTab({
   return (
     <div className="space-y-4">
       {/* Rating Bonus Info */}
-      {supplierId && (
+      {(supplierIds && supplierIds.length > 0) && (
         <Card className="border-amber-500/30 bg-gradient-to-r from-amber-500/5 to-transparent">
           <CardContent className="p-3">
             <div className="flex items-center gap-2">
