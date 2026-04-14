@@ -50,6 +50,13 @@ interface Product {
   images: string[];
 }
 
+interface ShopOption {
+  id: string;
+  shop_name: string;
+  logo_url: string | null;
+  is_active: boolean;
+}
+
 interface PostingTabProps {
   products: Product[];
   isSearching: boolean;
@@ -58,8 +65,9 @@ interface PostingTabProps {
   selectedProduct: Product | null;
   setSelectedProduct: (product: Product | null) => void;
   setProducts: (products: Product[]) => void;
-  supplierId?: string | null;
-  selectedShopName?: string | null;
+  supplierIds?: string[];
+  selectedShopNames?: string[];
+  availableShops?: ShopOption[];
 }
 
 const POSTING_INTERVALS = {
@@ -97,9 +105,14 @@ export function PostingTab({
   selectedProduct,
   setSelectedProduct,
   setProducts,
-  supplierId,
-  selectedShopName,
+  supplierIds,
+  selectedShopNames,
+  availableShops,
 }: PostingTabProps) {
+  const supplierId = supplierIds && supplierIds.length === 1 ? supplierIds[0] : null;
+  const multiShop = (supplierIds?.length || 0) > 1;
+  const selectedShopName = selectedShopNames?.length === 1 ? selectedShopNames[0] : 
+    (selectedShopNames && selectedShopNames.length > 1) ? `${selectedShopNames.length} магазинів` : null;
   const [isAutoPosting, setIsAutoPosting] = useState(false);
   const [aiText, setAiText] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -195,7 +208,7 @@ export function PostingTab({
         budget: paidPostingPrice,
         ai_generated_text: aiText,
         start_date: new Date().toISOString(),
-        supplier_id: supplierId || undefined,
+        supplier_id: supplierId || (supplierIds?.[0]) || undefined,
       });
     } catch (err) {
       console.error("Save promotion error:", err);
@@ -215,7 +228,7 @@ export function PostingTab({
   return (
     <div className="space-y-4">
       {/* Rating Bonus Info */}
-      {supplierId && (
+      {(supplierIds && supplierIds.length > 0) && (
         <Card className="border-amber-500/30 bg-gradient-to-r from-amber-500/5 to-transparent">
           <CardContent className="p-3">
             <div className="flex items-center gap-2">
