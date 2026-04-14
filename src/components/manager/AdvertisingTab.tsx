@@ -48,6 +48,13 @@ interface Product {
   images: string[];
 }
 
+interface ShopOption {
+  id: string;
+  shop_name: string;
+  logo_url: string | null;
+  is_active: boolean;
+}
+
 interface AdvertisingTabProps {
   products: Product[];
   isSearching: boolean;
@@ -56,8 +63,9 @@ interface AdvertisingTabProps {
   selectedProduct: Product | null;
   setSelectedProduct: (product: Product | null) => void;
   setProducts: (products: Product[]) => void;
-  supplierId?: string | null;
-  selectedShopName?: string | null;
+  supplierIds?: string[];
+  selectedShopNames?: string[];
+  availableShops?: ShopOption[];
 }
 
 // All advertising platforms grouped
@@ -129,9 +137,13 @@ export function AdvertisingTab({
   selectedProduct,
   setSelectedProduct,
   setProducts,
-  supplierId,
-  selectedShopName,
+  supplierIds,
+  selectedShopNames,
+  availableShops,
 }: AdvertisingTabProps) {
+  const supplierId = supplierIds && supplierIds.length === 1 ? supplierIds[0] : null;
+  const selectedShopName = selectedShopNames?.length === 1 ? selectedShopNames[0] : 
+    (selectedShopNames && selectedShopNames.length > 1) ? `${selectedShopNames.length} магазинів` : null;
   const [isAutoAds, setIsAutoAds] = useState(false);
   const [aiText, setAiText] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
