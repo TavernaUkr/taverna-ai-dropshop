@@ -1,42 +1,54 @@
 
 
-## Plan: Language Selector & Region/Country Selector in Header
+## План: Покращення вибірки магазинів у панелі "Просування"
 
-### What to build
+### Що змінюється
 
-Two new icon buttons in the Header, positioned **between the logo/brand text and the existing right action icons** (before Wallet). They follow the same visual style as existing header icons.
+Поточний Shop Selector — це single-select dropdown. Потрібно перетворити його на multi-select з чіпсами, кнопкою "Всі магазини", розділенням для адміна (свої / платформи), та інтеграцією авто-черги.
 
-1. **Language selector** (`Globe` icon from lucide-react) — opens a small modal/popover to pick UI language. Currently only Ukrainian (UA) is active. Future languages: English, Polish, German, Italian, etc.
+### Зміни по файлах
 
-2. **Region/Country selector** (`Flag` icon from lucide-react) — opens a modal showing available regions. Ukraine is active (default). Other countries (Poland, Germany, Italy, USA, etc.) show a "Скоро" badge, disabled.
+**1. `src/pages/Manager.tsx`** — Основна логіка вибірки магазинів
 
-### Layout in Header
+- Замінити `selectedShopId: string` на `selectedShopIds: string[]` (мульти-вибір)
+- Додати режими: `"all"`, `"my"` (для адміна — його магазини), та конкретні ID
+- Для **постачальника/менеджера**: кнопка "Всі мої магазини" + чекбокси окремих магазинів
+- Для **адміна**: два блоки — "Мої магазини" (зареєстровані через адмін-панель, де `manager_telegram` = admin) та "Всі магазини платформи" (глобальний каталог)
+- Для **модератора**: один блок — "Всі магазини платформи"
+- Передавати `supplierIds: string[]` замість `supplierId: string | null` в PostingTab та AdvertisingTab
+- Оновити пошук товарів: `query.in("supplier_id", selectedShopIds)` замість `.eq()`
+- Оновити завантаження промо-постів з фільтром `.in("supplier_id", ...)`
 
-```text
-[Logo + Taverna Group] [🌐 Lang] [🚩 Region] ... [Wallet] [Trophy] [Gift] [Search] [Heart] [Cart]
-```
+**2. UI компонент мульти-селектора** — всередині `Manager.tsx`
 
-The two new buttons sit right after the brand text, visually grouped with the left side but using the same `w-8 h-8` icon button style as the right-side actions.
+- Чіпси обраних магазинів з кнопкою ✕ для видалення
+- Dropdown з чекбоксами + пошук по назві магазину
+- Швидкі кнопки: "Всі", "Мої" (для адміна), "Скинути"
+- Візуальне розділення: для адміна секції "🏠 Мої магазини" та "🌐 Партнерські магазини"
 
-### Implementation Details
+**3. Авто-черга (Auto-Queue)** — нова секція у вкладці "Черга"
 
-**New files:**
-- `src/components/LanguageSelectorModal.tsx` — Bottom sheet / dialog with language list. UA selected by default, others available but functional (stored in localStorage for now, no i18n library yet — just saves preference).
-- `src/components/RegionSelectorModal.tsx` — Bottom sheet / dialog with country list. Ukraine active, others show "Скоро" / "В проєкті" badge and are disabled.
+- Додати підвкладку "Авто-черга" у TabsContent `scheduled`
+- Можливість створити авто-чергу: обрати магазин(и) → обрати товари (або "рандом з вибірки") → задати інтервал → обрати платформи
+- Список активних авто-черг з можливістю паузи/видалення
+- Два режими: "Рандомні товари з обраних магазинів" та "Власна черга" (drag-and-drop список конкретних товарів)
 
-**Modified files:**
-- `src/components/Header.tsx` — Add `Globe` and `Flag` icons between logo and right actions. Each opens its respective modal. Language button shows current language code (e.g., tiny "UA" badge). Region button shows a small flag emoji or country code.
+**4. `src/components/manager/PostingTab.tsx`** та **`AdvertisingTab.tsx`**
 
-### Language Modal
-- List of languages: Українська (active), English, Polski, Deutsch, Italiano
-- Radio-style selection, saves to `localStorage('app-language')`
-- No actual i18n translation yet — just the preference storage and UI. Shows toast "Мову змінено" on selection.
+- Змінити prop `supplierId?: string | null` на `supplierIds?: string[]`
+- Оновити пошук товарів з `.in()` замість `.eq()`
+- Показувати назву магазину біля кожного знайденого товару (коли обрано кілька магазинів)
 
-### Region Modal  
-- Ukraine 🇺🇦 — active, selectable
-- Poland 🇵🇱, Germany 🇩🇪, Italy 🇮🇹, USA 🇺🇸 — each with a "Скоро" / "В проєкті" badge, grayed out, not selectable
-- Clean card-based list with flag emojis
+**5. Адмін-розділення магазинів**
 
-### Visual style
-Both buttons use the same pattern as existing header icons: `w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground active:scale-95 transition-all`. The Globe icon gets a subtle blue tint (`text-blue-500`), the Flag icon gets a yellow-blue tint for Ukraine (`text-yellow-500`).
+- При завантаженні магазинів для адміна, розділити на:
+  - "Мої": де `telegram_id` = admin telegram_id (або через `shop_manager_links`)
+  - "Партнерські": решта активних магазинів
+- Кожна група відображається окремою секцією в селекторі
+
+### Технічні деталі
+
+- Мульти-вибір через Popover + Checkbox list (не Select, бо Select не підтримує multi)
+- `supplierIds` фільтрація: `supabase.from("products").in("supplier_id", ids)`
+- Авто-черга зберігається локально (localStorage) до реалізації серверної частини
 
