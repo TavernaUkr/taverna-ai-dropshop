@@ -84,14 +84,20 @@ interface PromotionalPost {
 
 interface AutoQueueItem {
   id: string;
-  shopIds: string[];
-  mode: "random" | "manual";
-  productIds?: string[];
-  platforms: string[];
-  intervalMinutes: number;
+  name: string;
   type: "posting" | "advertising";
-  isPaused: boolean;
-  createdAt: string;
+  mode: "random" | "manual";
+  supplier_ids: string[];
+  product_ids: string[];
+  interval_minutes: number;
+  platforms: string[];
+  budget: number;
+  active_hours_start: number | null;
+  active_hours_end: number | null;
+  is_paused: boolean;
+  total_published: number;
+  next_execution_at: string | null;
+  created_at: string;
 }
 
 const platforms = [
