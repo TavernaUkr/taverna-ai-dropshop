@@ -36,6 +36,11 @@ serve(async (req) => {
 
     console.log("Starting auto-post cycle...");
 
+    // ========== USER AUTO-QUEUES (per-user custom queues) ==========
+    const userQueueResults = await processUserAutoQueues(supabase, TELEGRAM_BOT_TOKEN, LOVABLE_API_KEY);
+    console.log(`Processed ${userQueueResults.length} user auto-queues`);
+
+    // ========== PLATFORM ROUND-ROBIN (legacy supplier queue) ==========
     // Get the next supplier in the queue (round-robin)
     const { data: queue, error: queueError } = await supabase
       .from("auto_promotion_queue")
@@ -47,7 +52,7 @@ serve(async (req) => {
     if (queueError || !queue) {
       console.log("No suppliers in auto-promotion queue");
       return new Response(
-        JSON.stringify({ success: false, message: "No suppliers in queue" }),
+        JSON.stringify({ success: true, user_queues_processed: userQueueResults.length, message: "No platform suppliers in queue" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
