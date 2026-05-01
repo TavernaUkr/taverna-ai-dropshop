@@ -1147,6 +1147,27 @@ export default function Manager() {
           </TabsContent>
         </Tabs>
       </div>
+
+      <AutoQueueDialog
+        open={autoQueueDialogOpen}
+        onOpenChange={setAutoQueueDialogOpen}
+        initialData={editingQueue ? {
+          id: editingQueue.id,
+          name: editingQueue.name,
+          type: editingQueue.type,
+          mode: editingQueue.mode,
+          supplier_ids: editingQueue.supplier_ids,
+          product_ids: editingQueue.product_ids,
+          interval_minutes: editingQueue.interval_minutes,
+          platforms: editingQueue.platforms,
+          budget: editingQueue.budget,
+          active_hours_start: editingQueue.active_hours_start,
+          active_hours_end: editingQueue.active_hours_end,
+        } : undefined}
+        availableShops={availableShops.map(s => ({ id: s.id, shop_name: s.shop_name }))}
+        defaultShopIds={selectedShopIds}
+        onSave={saveAutoQueue}
+      />
     </div>
   );
 }
