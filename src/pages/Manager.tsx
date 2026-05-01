@@ -812,13 +812,9 @@ export default function Manager() {
                     </p>
                   </div>
                   <div className="flex gap-2">
-                    <Button size="sm" variant="outline" onClick={() => addAutoQueue("posting")}>
-                      <Send className="h-4 w-4 mr-1" />
-                      Постинг
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => addAutoQueue("advertising")}>
-                      <Megaphone className="h-4 w-4 mr-1" />
-                      Реклама
+                    <Button size="sm" variant="default" onClick={openCreateQueue}>
+                      <Plus className="h-4 w-4 mr-1" />
+                      Створити чергу
                     </Button>
                   </div>
                 </div>
@@ -832,41 +828,47 @@ export default function Manager() {
                 ) : (
                   autoQueues.map(queue => {
                     const queueShopNames = availableShops
-                      .filter(s => queue.shopIds.includes(s.id))
+                      .filter(s => queue.supplier_ids.includes(s.id))
                       .map(s => s.shop_name);
+                    const nextExec = queue.next_execution_at ? new Date(queue.next_execution_at) : null;
+                    const minsToNext = nextExec ? Math.max(0, Math.round((nextExec.getTime() - Date.now()) / 60000)) : null;
 
                     return (
-                      <Card key={queue.id} className={cn(queue.isPaused && "opacity-60")}>
+                      <Card key={queue.id} className={cn(queue.is_paused && "opacity-60")}>
                         <CardContent className="p-4">
                           <div className="flex items-start justify-between mb-2">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                               {queue.type === "posting" ? (
                                 <Send className="h-4 w-4 text-primary" />
                               ) : (
                                 <Megaphone className="h-4 w-4 text-warning" />
                               )}
+                              <span className="font-medium text-sm">{queue.name}</span>
                               <Badge variant="outline" className="text-xs">
-                                {queue.type === "posting" ? "Авто-постинг" : "Авто-реклама"}
+                                {queue.type === "posting" ? "Постинг" : "Реклама"}
                               </Badge>
                               <Badge variant="secondary" className="text-xs">
                                 {queue.mode === "random" ? (
                                   <><Shuffle className="h-3 w-3 mr-1" />Рандом</>
                                 ) : (
-                                  <><ListOrdered className="h-3 w-3 mr-1" />Черга</>
+                                  <><ListOrdered className="h-3 w-3 mr-1" />Черга ({queue.product_ids.length})</>
                                 )}
                               </Badge>
-                              {queue.isPaused && (
+                              {queue.is_paused && (
                                 <Badge variant="destructive" className="text-xs">Пауза</Badge>
                               )}
                             </div>
                             <div className="flex gap-1">
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditQueue(queue)}>
+                                <Wand2 className="h-3.5 w-3.5" />
+                              </Button>
                               <Button
                                 variant="ghost"
                                 size="icon"
                                 className="h-7 w-7"
                                 onClick={() => toggleQueuePause(queue.id)}
                               >
-                                {queue.isPaused ? (
+                                {queue.is_paused ? (
                                   <Play className="h-3.5 w-3.5 text-success" />
                                 ) : (
                                   <Pause className="h-3.5 w-3.5 text-warning" />
@@ -888,10 +890,19 @@ export default function Manager() {
                               <strong>Магазини:</strong>{" "}
                               {queueShopNames.length <= 2
                                 ? queueShopNames.join(", ")
-                                : `${queueShopNames.length} магазинів`}
+                                : `${queueShopNames.slice(0, 2).join(", ")} +${queueShopNames.length - 2}`}
                             </p>
                             <p>
-                              <strong>Інтервал:</strong> кожні {queue.intervalMinutes} хв
+                              <strong>Інтервал:</strong> кожні {queue.interval_minutes} хв
+                              {queue.active_hours_start != null && queue.active_hours_end != null && (
+                                <> · {queue.active_hours_start}:00–{queue.active_hours_end}:00</>
+                              )}
+                            </p>
+                            <p>
+                              <strong>Опубліковано:</strong> {queue.total_published}
+                              {!queue.is_paused && minsToNext != null && (
+                                <> · наступне через {minsToNext} хв</>
+                              )}
                             </p>
                             <div className="flex gap-1 mt-1 flex-wrap">
                               {queue.platforms.map(p => (
