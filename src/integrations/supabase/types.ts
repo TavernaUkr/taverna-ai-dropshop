@@ -1645,6 +1645,78 @@ export type Database = {
           },
         ]
       }
+      user_auto_queues: {
+        Row: {
+          active_hours_end: number | null
+          active_hours_start: number | null
+          budget: number | null
+          created_at: string
+          current_position: number
+          end_date: string | null
+          id: string
+          interval_minutes: number
+          is_paused: boolean
+          last_executed_at: string | null
+          mode: string
+          name: string
+          next_execution_at: string | null
+          platforms: string[]
+          product_ids: string[]
+          profile_id: string
+          start_date: string | null
+          supplier_ids: string[]
+          total_published: number
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          active_hours_end?: number | null
+          active_hours_start?: number | null
+          budget?: number | null
+          created_at?: string
+          current_position?: number
+          end_date?: string | null
+          id?: string
+          interval_minutes?: number
+          is_paused?: boolean
+          last_executed_at?: string | null
+          mode: string
+          name?: string
+          next_execution_at?: string | null
+          platforms?: string[]
+          product_ids?: string[]
+          profile_id: string
+          start_date?: string | null
+          supplier_ids?: string[]
+          total_published?: number
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          active_hours_end?: number | null
+          active_hours_start?: number | null
+          budget?: number | null
+          created_at?: string
+          current_position?: number
+          end_date?: string | null
+          id?: string
+          interval_minutes?: number
+          is_paused?: boolean
+          last_executed_at?: string | null
+          mode?: string
+          name?: string
+          next_execution_at?: string | null
+          platforms?: string[]
+          product_ids?: string[]
+          profile_id?: string
+          start_date?: string | null
+          supplier_ids?: string[]
+          total_published?: number
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_bans: {
         Row: {
           banned_at: string

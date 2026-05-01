@@ -17,6 +17,228 @@ function getRandomInterval(type: "new" | "old"): number {
   return Math.floor(Math.random() * (interval.max - interval.min + 1)) + interval.min;
 }
 
+// ========== USER AUTO-QUEUES PROCESSOR ==========
+async function processUserAutoQueues(
+  supabase: any,
+  TELEGRAM_BOT_TOKEN: string,
+  LOVABLE_API_KEY: string | undefined,
+): Promise<Array<{ queue_id: string; product_id?: string; status: string }>> {
+  const results: Array<{ queue_id: string; product_id?: string; status: string }> = [];
+  const now = new Date();
+
+  // Kyiv hour for active_hours filter
+  const kyivHour = Number(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: "Europe/Kiev",
+      hour: "numeric",
+      hour12: false,
+    }).format(now),
+  );
+
+  const { data: queues } = await supabase
+    .from("user_auto_queues")
+    .select("*")
+    .eq("is_paused", false)
+    .lte("next_execution_at", now.toISOString())
+    .limit(20);
+
+  if (!queues || queues.length === 0) return results;
+
+  for (const q of queues) {
+    try {
+      // Active hours filter (if set)
+      if (q.active_hours_start != null && q.active_hours_end != null) {
+        const inHours =
+          q.active_hours_start <= q.active_hours_end
+            ? kyivHour >= q.active_hours_start && kyivHour < q.active_hours_end
+            : kyivHour >= q.active_hours_start || kyivHour < q.active_hours_end;
+        if (!inHours) {
+          results.push({ queue_id: q.id, status: "outside_hours" });
+          continue;
+        }
+      }
+
+      // Date range filter
+      if (q.start_date && new Date(q.start_date) > now) {
+        results.push({ queue_id: q.id, status: "before_start" });
+        continue;
+      }
+      if (q.end_date && new Date(q.end_date) < now) {
+        await supabase.from("user_auto_queues").update({ is_paused: true }).eq("id", q.id);
+        results.push({ queue_id: q.id, status: "expired" });
+        continue;
+      }
+
+      // Pick product
+      let product: any = null;
+      let nextPosition = q.current_position;
+
+      if (q.mode === "manual") {
+        const ids: string[] = q.product_ids || [];
+        if (ids.length === 0) {
+          results.push({ queue_id: q.id, status: "no_products" });
+          continue;
+        }
+        const pos = q.current_position % ids.length;
+        const productId = ids[pos];
+        const { data: p } = await supabase.from("products").select("*").eq("id", productId).maybeSingle();
+        product = p;
+        nextPosition = pos + 1;
+      } else {
+        // random from selected suppliers, exclude last 24h promoted
+        const supplierIds: string[] = q.supplier_ids || [];
+        if (supplierIds.length === 0) {
+          results.push({ queue_id: q.id, status: "no_shops" });
+          continue;
+        }
+        const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        const { data: recent } = await supabase
+          .from("promotions")
+          .select("product_id")
+          .in("supplier_id", supplierIds)
+          .gte("start_date", since);
+        const recentIds = (recent || []).map((r: any) => r.product_id).filter(Boolean);
+
+        let pq = supabase
+          .from("products")
+          .select("*")
+          .in("supplier_id", supplierIds)
+          .eq("in_stock", true)
+          .limit(40);
+        if (recentIds.length > 0) {
+          pq = pq.not("id", "in", `(${recentIds.join(",")})`);
+        }
+        const { data: pool } = await pq;
+        if (!pool || pool.length === 0) {
+          results.push({ queue_id: q.id, status: "no_available_products" });
+          // shift next exec anyway to avoid spinning
+          await supabase
+            .from("user_auto_queues")
+            .update({ next_execution_at: new Date(Date.now() + q.interval_minutes * 60 * 1000).toISOString() })
+            .eq("id", q.id);
+          continue;
+        }
+        product = pool[Math.floor(Math.random() * pool.length)];
+      }
+
+      if (!product) {
+        results.push({ queue_id: q.id, status: "product_missing" });
+        continue;
+      }
+
+      // Build text
+      const retailPrice = Number(product.price);
+      const marketingOldPrice = Math.ceil((retailPrice * 1.18) / 10) * 10;
+      const savings = marketingOldPrice - retailPrice;
+      const discount = Math.round((savings / marketingOldPrice) * 100);
+      let text = "";
+
+      if (LOVABLE_API_KEY) {
+        try {
+          const aiR = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${LOVABLE_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: "google/gemini-2.5-flash",
+              messages: [
+                {
+                  role: "system",
+                  content: `Ти копірайтер. Створи короткий пост для Telegram (до 350 символів) укр. мовою з емодзі про товар. Без оптових цін.`,
+                },
+                {
+                  role: "user",
+                  content: `Назва: ${product.name}\nЦіна: ${retailPrice} ₴\nЗвичайна: ${marketingOldPrice} ₴\nЗнижка: -${discount}%\n${product.description || product.ai_description || ""}`,
+                },
+              ],
+            }),
+          });
+          if (aiR.ok) {
+            const aj = await aiR.json();
+            text = aj.choices?.[0]?.message?.content || "";
+          }
+        } catch (e) {
+          console.error("AI gen error", e);
+        }
+      }
+
+      if (!text) {
+        text = `🔥 ${product.name}\n\n💰 ${retailPrice.toLocaleString()} ₴\n🏷️ Звичайна: ${marketingOldPrice.toLocaleString()} ₴\n✨ Економія: ${savings.toLocaleString()} ₴\n\n👇 Замовляй!`;
+      }
+
+      const platforms: string[] = q.platforms || ["telegram"];
+      const includesTelegram = platforms.includes("telegram");
+      let telegramMessageId: number | null = null;
+
+      if (includesTelegram) {
+        const channelId = "@taverna_ukr_group";
+        const miniAppUrl = `https://taverna-ai-dropshop.lovable.app/product/${product.id}`;
+        const inlineKeyboard = {
+          inline_keyboard: [
+            [{ text: "🛒 Замовити зараз", url: miniAppUrl }],
+          ],
+        };
+        const imageUrl = product.images?.[0];
+        const tgRes = imageUrl
+          ? await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                chat_id: channelId,
+                photo: imageUrl,
+                caption: text.slice(0, 1024),
+                reply_markup: inlineKeyboard,
+              }),
+            })
+          : await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                chat_id: channelId,
+                text,
+                reply_markup: inlineKeyboard,
+              }),
+            });
+        const tgJson = await tgRes.json();
+        if (tgJson.ok) telegramMessageId = tgJson.result.message_id;
+      }
+
+      // Record promotion (per platform, simplified: one row with platforms[])
+      await supabase.from("promotions").insert({
+        supplier_id: product.supplier_id,
+        product_id: product.id,
+        promotion_type: q.type === "advertising" ? "auto_ad" : "auto",
+        status: "active",
+        platforms,
+        telegram_message_id: telegramMessageId,
+        telegram_channel_id: includesTelegram ? "@taverna_ukr_group" : null,
+        ai_generated_text: text,
+        start_date: now.toISOString(),
+      });
+
+      // Update queue
+      await supabase
+        .from("user_auto_queues")
+        .update({
+          last_executed_at: now.toISOString(),
+          next_execution_at: new Date(Date.now() + q.interval_minutes * 60 * 1000).toISOString(),
+          total_published: (q.total_published || 0) + 1,
+          current_position: nextPosition,
+        })
+        .eq("id", q.id);
+
+      results.push({ queue_id: q.id, product_id: product.id, status: "published" });
+    } catch (err) {
+      console.error("Queue error", q.id, err);
+      results.push({ queue_id: q.id, status: "error" });
+    }
+  }
+
+  return results;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -36,6 +258,11 @@ serve(async (req) => {
 
     console.log("Starting auto-post cycle...");
 
+    // ========== USER AUTO-QUEUES (per-user custom queues) ==========
+    const userQueueResults = await processUserAutoQueues(supabase, TELEGRAM_BOT_TOKEN, LOVABLE_API_KEY);
+    console.log(`Processed ${userQueueResults.length} user auto-queues`);
+
+    // ========== PLATFORM ROUND-ROBIN (legacy supplier queue) ==========
     // Get the next supplier in the queue (round-robin)
     const { data: queue, error: queueError } = await supabase
       .from("auto_promotion_queue")
@@ -47,7 +274,7 @@ serve(async (req) => {
     if (queueError || !queue) {
       console.log("No suppliers in auto-promotion queue");
       return new Response(
-        JSON.stringify({ success: false, message: "No suppliers in queue" }),
+        JSON.stringify({ success: true, user_queues_processed: userQueueResults.length, message: "No platform suppliers in queue" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

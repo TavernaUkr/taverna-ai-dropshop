@@ -55,6 +55,7 @@ import {
 } from "recharts";
 import { PostingTab } from "@/components/manager/PostingTab";
 import { AdvertisingTab } from "@/components/manager/AdvertisingTab";
+import { AutoQueueDialog } from "@/components/manager/AutoQueueDialog";
 import { useTelegramAuthContext } from "@/components/TelegramAuthProvider";
 
 interface Product {
@@ -84,14 +85,20 @@ interface PromotionalPost {
 
 interface AutoQueueItem {
   id: string;
-  shopIds: string[];
-  mode: "random" | "manual";
-  productIds?: string[];
-  platforms: string[];
-  intervalMinutes: number;
+  name: string;
   type: "posting" | "advertising";
-  isPaused: boolean;
-  createdAt: string;
+  mode: "random" | "manual";
+  supplier_ids: string[];
+  product_ids: string[];
+  interval_minutes: number;
+  platforms: string[];
+  budget: number;
+  active_hours_start: number | null;
+  active_hours_end: number | null;
+  is_paused: boolean;
+  total_published: number;
+  next_execution_at: string | null;
+  created_at: string;
 }
 
 const platforms = [
@@ -139,20 +146,54 @@ export default function Manager() {
   const isAdminOrMod = effectiveRole === "admin" || effectiveRole === "moderator";
   const isAdmin = effectiveRole === "admin";
 
-  // Load auto-queues from localStorage
-  useEffect(() => {
-    const saved = localStorage.getItem("taverna_auto_queues");
-    if (saved) {
-      try {
-        setAutoQueues(JSON.parse(saved));
-      } catch {}
-    }
-  }, []);
+  // Auto-queue dialog state
+  const [autoQueueDialogOpen, setAutoQueueDialogOpen] = useState(false);
+  const [editingQueue, setEditingQueue] = useState<AutoQueueItem | null>(null);
 
-  // Save auto-queues to localStorage
+  // Load auto-queues from Supabase + one-shot migration from localStorage
+  const loadAutoQueues = async () => {
+    if (!profile?.id) return;
+    const { data, error } = await supabase
+      .from("user_auto_queues")
+      .select("*")
+      .eq("profile_id", profile.id)
+      .order("created_at", { ascending: false });
+    if (error) {
+      console.error("Failed to load auto queues:", error);
+      return;
+    }
+    setAutoQueues((data || []) as unknown as AutoQueueItem[]);
+  };
+
   useEffect(() => {
-    localStorage.setItem("taverna_auto_queues", JSON.stringify(autoQueues));
-  }, [autoQueues]);
+    if (!profile?.id) return;
+    (async () => {
+      // One-shot migration from localStorage
+      const legacy = localStorage.getItem("taverna_auto_queues");
+      if (legacy) {
+        try {
+          const parsed = JSON.parse(legacy);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const rows = parsed.map((q: any) => ({
+              profile_id: profile.id,
+              name: "Імпортована черга",
+              type: q.type || "posting",
+              mode: q.mode || "random",
+              supplier_ids: q.shopIds || [],
+              product_ids: q.productIds || [],
+              interval_minutes: q.intervalMinutes || 60,
+              platforms: q.platforms || ["telegram"],
+              budget: 0,
+              is_paused: !!q.isPaused,
+            }));
+            await supabase.from("user_auto_queues").insert(rows);
+          }
+        } catch {}
+        localStorage.removeItem("taverna_auto_queues");
+      }
+      await loadAutoQueues();
+    })();
+  }, [profile?.id]);
 
   // Fetch available shops based on role
   useEffect(() => {
@@ -364,27 +405,53 @@ export default function Manager() {
     .map(s => s.shop_name);
 
   // Auto-queue helpers
-  const addAutoQueue = (type: "posting" | "advertising") => {
-    const newQueue: AutoQueueItem = {
-      id: crypto.randomUUID(),
-      shopIds: selectedShopIds,
-      mode: "random",
-      platforms: ["telegram"],
-      intervalMinutes: 15,
-      type,
-      isPaused: false,
-      createdAt: new Date().toISOString(),
-    };
-    setAutoQueues(prev => [...prev, newQueue]);
-    toast.success("Авто-чергу створено!");
+  const openCreateQueue = () => {
+    if (selectedShopIds.length === 0) {
+      toast.error("Спочатку оберіть магазини у селекторі");
+      return;
+    }
+    setEditingQueue(null);
+    setAutoQueueDialogOpen(true);
   };
 
-  const toggleQueuePause = (id: string) => {
-    setAutoQueues(prev => prev.map(q => q.id === id ? { ...q, isPaused: !q.isPaused } : q));
+  const openEditQueue = (q: AutoQueueItem) => {
+    setEditingQueue(q);
+    setAutoQueueDialogOpen(true);
   };
 
-  const deleteQueue = (id: string) => {
+  const saveAutoQueue = async (data: any) => {
+    if (!profile?.id) return;
+    if (editingQueue?.id) {
+      const { error } = await supabase
+        .from("user_auto_queues")
+        .update({ ...data, profile_id: profile.id })
+        .eq("id", editingQueue.id);
+      if (error) throw error;
+      toast.success("Авто-чергу оновлено");
+    } else {
+      const { error } = await supabase
+        .from("user_auto_queues")
+        .insert({ ...data, profile_id: profile.id });
+      if (error) throw error;
+      toast.success("Авто-чергу створено");
+    }
+    await loadAutoQueues();
+  };
+
+  const toggleQueuePause = async (id: string) => {
+    const queue = autoQueues.find(q => q.id === id);
+    if (!queue) return;
+    const newPaused = !queue.is_paused;
+    setAutoQueues(prev => prev.map(q => q.id === id ? { ...q, is_paused: newPaused } : q));
+    await supabase.from("user_auto_queues").update({
+      is_paused: newPaused,
+      next_execution_at: newPaused ? null : new Date().toISOString(),
+    }).eq("id", id);
+  };
+
+  const deleteQueue = async (id: string) => {
     setAutoQueues(prev => prev.filter(q => q.id !== id));
+    await supabase.from("user_auto_queues").delete().eq("id", id);
     toast.success("Авто-чергу видалено");
   };
 
@@ -746,13 +813,9 @@ export default function Manager() {
                     </p>
                   </div>
                   <div className="flex gap-2">
-                    <Button size="sm" variant="outline" onClick={() => addAutoQueue("posting")}>
-                      <Send className="h-4 w-4 mr-1" />
-                      Постинг
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => addAutoQueue("advertising")}>
-                      <Megaphone className="h-4 w-4 mr-1" />
-                      Реклама
+                    <Button size="sm" variant="default" onClick={openCreateQueue}>
+                      <Plus className="h-4 w-4 mr-1" />
+                      Створити чергу
                     </Button>
                   </div>
                 </div>
@@ -766,41 +829,47 @@ export default function Manager() {
                 ) : (
                   autoQueues.map(queue => {
                     const queueShopNames = availableShops
-                      .filter(s => queue.shopIds.includes(s.id))
+                      .filter(s => queue.supplier_ids.includes(s.id))
                       .map(s => s.shop_name);
+                    const nextExec = queue.next_execution_at ? new Date(queue.next_execution_at) : null;
+                    const minsToNext = nextExec ? Math.max(0, Math.round((nextExec.getTime() - Date.now()) / 60000)) : null;
 
                     return (
-                      <Card key={queue.id} className={cn(queue.isPaused && "opacity-60")}>
+                      <Card key={queue.id} className={cn(queue.is_paused && "opacity-60")}>
                         <CardContent className="p-4">
                           <div className="flex items-start justify-between mb-2">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                               {queue.type === "posting" ? (
                                 <Send className="h-4 w-4 text-primary" />
                               ) : (
                                 <Megaphone className="h-4 w-4 text-warning" />
                               )}
+                              <span className="font-medium text-sm">{queue.name}</span>
                               <Badge variant="outline" className="text-xs">
-                                {queue.type === "posting" ? "Авто-постинг" : "Авто-реклама"}
+                                {queue.type === "posting" ? "Постинг" : "Реклама"}
                               </Badge>
                               <Badge variant="secondary" className="text-xs">
                                 {queue.mode === "random" ? (
                                   <><Shuffle className="h-3 w-3 mr-1" />Рандом</>
                                 ) : (
-                                  <><ListOrdered className="h-3 w-3 mr-1" />Черга</>
+                                  <><ListOrdered className="h-3 w-3 mr-1" />Черга ({queue.product_ids.length})</>
                                 )}
                               </Badge>
-                              {queue.isPaused && (
+                              {queue.is_paused && (
                                 <Badge variant="destructive" className="text-xs">Пауза</Badge>
                               )}
                             </div>
                             <div className="flex gap-1">
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditQueue(queue)}>
+                                <Wand2 className="h-3.5 w-3.5" />
+                              </Button>
                               <Button
                                 variant="ghost"
                                 size="icon"
                                 className="h-7 w-7"
                                 onClick={() => toggleQueuePause(queue.id)}
                               >
-                                {queue.isPaused ? (
+                                {queue.is_paused ? (
                                   <Play className="h-3.5 w-3.5 text-success" />
                                 ) : (
                                   <Pause className="h-3.5 w-3.5 text-warning" />
@@ -822,10 +891,19 @@ export default function Manager() {
                               <strong>Магазини:</strong>{" "}
                               {queueShopNames.length <= 2
                                 ? queueShopNames.join(", ")
-                                : `${queueShopNames.length} магазинів`}
+                                : `${queueShopNames.slice(0, 2).join(", ")} +${queueShopNames.length - 2}`}
                             </p>
                             <p>
-                              <strong>Інтервал:</strong> кожні {queue.intervalMinutes} хв
+                              <strong>Інтервал:</strong> кожні {queue.interval_minutes} хв
+                              {queue.active_hours_start != null && queue.active_hours_end != null && (
+                                <> · {queue.active_hours_start}:00–{queue.active_hours_end}:00</>
+                              )}
+                            </p>
+                            <p>
+                              <strong>Опубліковано:</strong> {queue.total_published}
+                              {!queue.is_paused && minsToNext != null && (
+                                <> · наступне через {minsToNext} хв</>
+                              )}
                             </p>
                             <div className="flex gap-1 mt-1 flex-wrap">
                               {queue.platforms.map(p => (
@@ -1070,6 +1148,27 @@ export default function Manager() {
           </TabsContent>
         </Tabs>
       </div>
+
+      <AutoQueueDialog
+        open={autoQueueDialogOpen}
+        onOpenChange={setAutoQueueDialogOpen}
+        initialData={editingQueue ? {
+          id: editingQueue.id,
+          name: editingQueue.name,
+          type: editingQueue.type,
+          mode: editingQueue.mode,
+          supplier_ids: editingQueue.supplier_ids,
+          product_ids: editingQueue.product_ids,
+          interval_minutes: editingQueue.interval_minutes,
+          platforms: editingQueue.platforms,
+          budget: editingQueue.budget,
+          active_hours_start: editingQueue.active_hours_start,
+          active_hours_end: editingQueue.active_hours_end,
+        } : undefined}
+        availableShops={availableShops.map(s => ({ id: s.id, shop_name: s.shop_name }))}
+        defaultShopIds={selectedShopIds}
+        onSave={saveAutoQueue}
+      />
     </div>
   );
 }
