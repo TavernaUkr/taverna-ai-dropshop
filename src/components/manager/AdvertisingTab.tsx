@@ -46,6 +46,7 @@ interface Product {
   name: string;
   price: number;
   images: string[];
+  supplier_id?: string;
 }
 
 interface ShopOption {
