@@ -55,6 +55,7 @@ import {
 } from "recharts";
 import { PostingTab } from "@/components/manager/PostingTab";
 import { AdvertisingTab } from "@/components/manager/AdvertisingTab";
+import { AutoQueueDialog } from "@/components/manager/AutoQueueDialog";
 import { useTelegramAuthContext } from "@/components/TelegramAuthProvider";
 
 interface Product {
