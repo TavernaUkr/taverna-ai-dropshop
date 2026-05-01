@@ -404,27 +404,53 @@ export default function Manager() {
     .map(s => s.shop_name);
 
   // Auto-queue helpers
-  const addAutoQueue = (type: "posting" | "advertising") => {
-    const newQueue: AutoQueueItem = {
-      id: crypto.randomUUID(),
-      shopIds: selectedShopIds,
-      mode: "random",
-      platforms: ["telegram"],
-      intervalMinutes: 15,
-      type,
-      isPaused: false,
-      createdAt: new Date().toISOString(),
-    };
-    setAutoQueues(prev => [...prev, newQueue]);
-    toast.success("Авто-чергу створено!");
+  const openCreateQueue = () => {
+    if (selectedShopIds.length === 0) {
+      toast.error("Спочатку оберіть магазини у селекторі");
+      return;
+    }
+    setEditingQueue(null);
+    setAutoQueueDialogOpen(true);
   };
 
-  const toggleQueuePause = (id: string) => {
-    setAutoQueues(prev => prev.map(q => q.id === id ? { ...q, isPaused: !q.isPaused } : q));
+  const openEditQueue = (q: AutoQueueItem) => {
+    setEditingQueue(q);
+    setAutoQueueDialogOpen(true);
   };
 
-  const deleteQueue = (id: string) => {
+  const saveAutoQueue = async (data: any) => {
+    if (!profile?.id) return;
+    if (editingQueue?.id) {
+      const { error } = await supabase
+        .from("user_auto_queues")
+        .update({ ...data, profile_id: profile.id })
+        .eq("id", editingQueue.id);
+      if (error) throw error;
+      toast.success("Авто-чергу оновлено");
+    } else {
+      const { error } = await supabase
+        .from("user_auto_queues")
+        .insert({ ...data, profile_id: profile.id });
+      if (error) throw error;
+      toast.success("Авто-чергу створено");
+    }
+    await loadAutoQueues();
+  };
+
+  const toggleQueuePause = async (id: string) => {
+    const queue = autoQueues.find(q => q.id === id);
+    if (!queue) return;
+    const newPaused = !queue.is_paused;
+    setAutoQueues(prev => prev.map(q => q.id === id ? { ...q, is_paused: newPaused } : q));
+    await supabase.from("user_auto_queues").update({
+      is_paused: newPaused,
+      next_execution_at: newPaused ? null : new Date().toISOString(),
+    }).eq("id", id);
+  };
+
+  const deleteQueue = async (id: string) => {
     setAutoQueues(prev => prev.filter(q => q.id !== id));
+    await supabase.from("user_auto_queues").delete().eq("id", id);
     toast.success("Авто-чергу видалено");
   };
 
