@@ -145,20 +145,54 @@ export default function Manager() {
   const isAdminOrMod = effectiveRole === "admin" || effectiveRole === "moderator";
   const isAdmin = effectiveRole === "admin";
 
-  // Load auto-queues from localStorage
-  useEffect(() => {
-    const saved = localStorage.getItem("taverna_auto_queues");
-    if (saved) {
-      try {
-        setAutoQueues(JSON.parse(saved));
-      } catch {}
-    }
-  }, []);
+  // Auto-queue dialog state
+  const [autoQueueDialogOpen, setAutoQueueDialogOpen] = useState(false);
+  const [editingQueue, setEditingQueue] = useState<AutoQueueItem | null>(null);
 
-  // Save auto-queues to localStorage
+  // Load auto-queues from Supabase + one-shot migration from localStorage
+  const loadAutoQueues = async () => {
+    if (!profile?.id) return;
+    const { data, error } = await supabase
+      .from("user_auto_queues")
+      .select("*")
+      .eq("profile_id", profile.id)
+      .order("created_at", { ascending: false });
+    if (error) {
+      console.error("Failed to load auto queues:", error);
+      return;
+    }
+    setAutoQueues((data || []) as unknown as AutoQueueItem[]);
+  };
+
   useEffect(() => {
-    localStorage.setItem("taverna_auto_queues", JSON.stringify(autoQueues));
-  }, [autoQueues]);
+    if (!profile?.id) return;
+    (async () => {
+      // One-shot migration from localStorage
+      const legacy = localStorage.getItem("taverna_auto_queues");
+      if (legacy) {
+        try {
+          const parsed = JSON.parse(legacy);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const rows = parsed.map((q: any) => ({
+              profile_id: profile.id,
+              name: "Імпортована черга",
+              type: q.type || "posting",
+              mode: q.mode || "random",
+              supplier_ids: q.shopIds || [],
+              product_ids: q.productIds || [],
+              interval_minutes: q.intervalMinutes || 60,
+              platforms: q.platforms || ["telegram"],
+              budget: 0,
+              is_paused: !!q.isPaused,
+            }));
+            await supabase.from("user_auto_queues").insert(rows);
+          }
+        } catch {}
+        localStorage.removeItem("taverna_auto_queues");
+      }
+      await loadAutoQueues();
+    })();
+  }, [profile?.id]);
 
   // Fetch available shops based on role
   useEffect(() => {
