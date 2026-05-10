@@ -1,144 +1,120 @@
-## План (Частина 2): Завершення панелі "Просування" — реальна авто-черга, діалог налаштувань та серверна персистентність
+# План: Безпека персональних даних + виправлення RLS
 
-### Що вже реалізовано (Частина 1, затверджена раніше)
+## Принципи
 
-- Мульти-селектор магазинів з чіпсами та чекбоксами
-- Розділення для адміна: "Мої магазини" / "Партнерські магазини"
-- Передача `supplierIds: string[]` у `PostingTab` та `AdvertisingTab` з фільтрацією `.in("supplier_id", ...)`
-- UI-каркас вкладки "Авто-черга" з кнопками створення, паузою, видаленням
-- Збереження авто-черг у `localStorage`
+1. **Персональні дані (ПД) — лише адмін.** Усі чутливі поля (email, phone, IBAN, tax_code, payment_*, telegram_id, повне ім'я, адреси доставки) ізольовані. Прямий доступ з клієнта (anon key) — заборонено для всіх, окрім адміна.
+2. **Адмін = повний доступ.** Реальна роль `admin` (через `has_role`) → всі CRUD у всіх таблицях.
+3. **Тест-ролі (Dev Role Switcher) ⊂ реальні ролі.** Тест-ролі — це лише UI-симуляція в межах прав адміна. Жодних виключень у RLS для "тестового" режиму. Тест ніколи не отримує більше прав, ніж реальна роль того самого користувача (тобто адміна, який тестує). Test → Real, ніколи Real ← Test.
+4. **Інші користувачі (гість/клієнт/постачальник/менеджер/модератор)** працюють лише через **Edge Functions** з валідацією Telegram-сесії на сервері.
 
-### Що ще НЕ реалізовано (поточна задача)
-
-#### 1. Діалог створення авто-черги (зараз: створюється з дефолтами)
-
-Замінити прямий `addAutoQueue()` на повноцінний модальний діалог `AutoQueueDialog.tsx` з полями:
-
-- **Назва черги** (для зручності розпізнавання)
-- **Тип**: Постинг / Реклама (radio)
-- **Магазини**: успадковуються з мульти-селектора, але можна зняти/додати в межах діалогу
-- **Режим вибору товарів**:
-  - `random` — рандомний товар з обраних магазинів (як зараз працює `auto-post`)
-  - `manual` — вибір конкретних товарів зі списку (з пошуком + drag-and-drop порядок)
-- **Інтервал постинга**: пресети (5хв / 15хв / 1год / 3год / 6год / 12год / 24год) + custom
-- **Платформи**: чекбокси (Telegram, Instagram, TikTok, Viber, OLX і т.д. — з `platforms` з PostingTab)
-- **Бюджет** (для типу "advertising"): денний ліміт у грн
-- **Час активності**: "Цілодобово" або "Робочі години 09:00–21:00"
-- **Дата старту/закінчення** (опціонально)
-
-#### 2. Серверна персистентність авто-черг
-
-Створити нову таблицю `user_auto_queues`:
+## Архітектура доступу
 
 ```text
-- id uuid pk
-- profile_id uuid (власник черги)
-- supplier_ids uuid[] (магазини)
-- product_ids uuid[] (для manual mode, порядок зберігається)
-- name text
-- type text ('posting' | 'advertising')
-- mode text ('random' | 'manual')
-- interval_minutes int
-- platforms text[]
-- budget numeric (для реклами)
-- active_hours_start int (0-23, null = 24/7)
-- active_hours_end int
-- start_date / end_date timestamptz
-- is_paused boolean
-- last_executed_at timestamptz
-- next_execution_at timestamptz
-- total_published int
-- created_at / updated_at
+                      ┌─────────────────────┐
+  anon key (client) ──┤  RLS: USING(false)  │── для всіх PII-таблиць
+                      └──────────┬──────────┘
+                                 │
+                      ┌──────────▼──────────────┐
+                      │  Edge Function          │
+                      │  (validates session +   │
+                      │   role server-side)     │
+                      └──────────┬──────────────┘
+                                 │ service_role
+                      ┌──────────▼──────────┐
+                      │  Tables (full data) │
+                      └─────────────────────┘
+
+  Окремий випадок: admin (real role)
+  → SELECT/UPDATE/DELETE дозволено напряму через has_role(auth.uid(),'admin')
+    АЛЕ оскільки auth.uid()=NULL у Telegram-сесії, адмін теж ходить через
+    edge function `admin-data-access`, яка перевіряє admin-сесію.
 ```
 
-RLS: користувач бачить/редагує свої черги; service_role повний доступ; admin/moderator бачить усі.
+## Зміни в БД (міграція)
 
-Мігрувати існуючі `localStorage` черги при першому завантаженні (one-shot перенос).
+### A. Жорсткі RLS для PII-таблиць
+Замінити всі `USING(true)` на `USING(false)` для:
+- `profiles`, `suppliers`, `delivery_addresses`, `cart_items`, `sessions`,
+  `user_roles`, `shop_manager_links`, `user_bans`, `supplier_payouts`,
+  `supplier_payment_deadlines`, `supplier_applications`
 
-#### 3. Серверне виконання авто-черг через `auto-post` edge function
+Service role bypass-ить RLS автоматично — політики `USING(true)` не потрібні.
 
-Розширити `supabase/functions/auto-post/index.ts`:
-
-- Окрім існуючої логіки round-robin по `auto_promotion_queue` (платформенний рівень), додати **другий цикл**: проходити по `user_auto_queues` де `is_paused = false` AND `next_execution_at <= now()` AND активні години відповідають поточному UTC.
-- Для `mode = "random"`: випадковий товар з `supplier_ids` (без повторів останніх 24 год)
-- Для `mode = "manual"`: наступний товар з `product_ids` (round-robin по позиції)
-- Публікація на всі обрані `platforms` (Telegram через існуючу логіку, інші платформи — створення запису в `promotions` зі статусом `scheduled` для майбутньої інтеграції)
-- Оновити `last_executed_at`, `next_execution_at = now() + interval_minutes`, `total_published++`
-- Логування у `import_logs` або окремій таблиці `auto_queue_executions` для аудиту
-
-#### 4. Drag-and-drop для manual режиму
-
-Додати `@dnd-kit/sortable` (вже може бути встановлений — перевірити `package.json`). Список обраних товарів у діалозі з можливістю перетягування для зміни порядку публікації.
-
-#### 5. Назва магазину біля товару при мульти-вибірці
-
-У `PostingTab.tsx` та `AdvertisingTab.tsx` коли `supplierIds.length > 1`:
-
-- Завантажувати `shop_name` для знайдених товарів через окремий запит (або join)
-- Відображати маленький бейдж з назвою магазину під назвою товару у списку результатів пошуку
-
-#### 6. Картка авто-черги — розширений вигляд
-
-У `Manager.tsx` (вкладка "Авто-черга") показувати для кожної черги:
-
-- Назву та режим (як зараз)
-- **Прогрес**: `total_published` публікацій · наступна через X хв
-- **Список магазинів** (chip-style, до 3, далі "+N")
-- **Платформи** (іконки)
-- Кнопку "Редагувати" → відкриває той самий `AutoQueueDialog` з заповненими полями
-- Кнопки Пауза/Старт та Видалити (вже є)
-
-#### 7. Валідації при створенні
-
-- Не давати створити чергу без обраних магазинів → toast попередження
-- Для `manual` — мінімум 1 товар
-- Для `advertising` — мінімум бюджет 50 грн/день
-
-### Зміни по файлах
-
-```text
-src/pages/Manager.tsx
-  — замінити addAutoQueue() на відкриття діалогу
-  — підвантажувати auto-queues з БД (а не з localStorage)
-  — one-shot міграція localStorage → БД
-  — оновити картки авто-черг (прогрес, магазини, платформи, edit)
-
-src/components/manager/AutoQueueDialog.tsx (НОВИЙ)
-  — повний форм-діалог з усіма полями
-  — drag-and-drop для manual режиму
-  — пресети інтервалів + custom
-
-src/components/manager/PostingTab.tsx
-src/components/manager/AdvertisingTab.tsx
-  — бейдж з назвою магазину біля товарів при мульти-вибірці
-  — підвантаження shop_name батчем
-
-supabase/migrations/<new>_user_auto_queues.sql (НОВИЙ)
-  — таблиця user_auto_queues + RLS
-
-supabase/functions/auto-post/index.ts
-  — додати обробку user_auto_queues (другий цикл)
-  — логіка manual queue (round-robin по позиції)
-  — врахування active_hours, start_date/end_date
+### B. Безпечні публічні в'ю (без ПД) — для каталогу
+```sql
+CREATE VIEW public.suppliers_public WITH (security_invoker=on) AS
+  SELECT id, shop_name, logo_url, cover_image_url, description,
+         shop_photos, return_policy, exchange_policy, shipping_schedule,
+         shipping_days, website_url, telegram_channel_url, is_active,
+         markup_percentage, created_at
+  FROM public.suppliers
+  WHERE is_active = true;
+-- БЕЗ: contact_email, contact_phone, tax_code, payment_*, telegram_id,
+--      contact_name, manager_telegram, company_name
 ```
 
-### pg_cron
+Аналогічно `profiles_public` (тільки first_name + avatar для відображення в відгуках).
 
-Існуючий cron job `auto-post` (кожні 5 хв) — нічого не змінювати, він просто почне додатково обробляти `user_auto_queues`.
+### C. Виправлення `user_roles` (CRITICAL)
+```sql
+DROP POLICY "Service role can manage roles" ON public.user_roles;
+DROP POLICY "Users can view own roles" ON public.user_roles;
+-- залишається тільки доступ через service_role (edge function)
+```
 
-### Етапність
+## Нові Edge Functions
 
-1. Створити таблицю `user_auto_queues` з RLS
-2. Створити `AutoQueueDialog.tsx`
-3. Інтегрувати діалог у `Manager.tsx` + завантаження/збереження в БД
-4. One-shot міграція з `localStorage`
-5. Розширити `auto-post` edge function
-6. Додати бейджі магазинів у Posting/Advertising табах
+| Функція | Призначення | Перевірка |
+|---|---|---|
+| `manage-user-roles` | додати/видалити роль (для AdminRolesManager) | `validateSession` → `has_role(admin)` |
+| `manage-cart` | add/update/delete cart_items | session.profile_id = item.profile_id |
+| `manage-supplier` | оновлення власного магазину | session власник або admin |
+| `manage-profile` | оновлення власного профілю | session.profile_id = id |
+| `manage-shop-links` | прив'язка менеджерів | admin only |
+| `admin-data-access` | універсальний read для адмін-панелей (PII) | `has_role(admin)` |
 
-### Технічні деталі
+Усі функції:
+- читають `session_token` із body → `validateSession()` (як у telegram-auth)
+- перевіряють роль через `has_role` RPC
+- логують спробу доступу до ПД
 
-- Drag-and-drop: `@dnd-kit/core` + `@dnd-kit/sortable` (стандарт для shadcn проєктів)
-- Інтервали зберігаються як `interval_minutes` (int), мінімум 5 хв (захист від спаму)
-- `next_execution_at` обчислюється на сервері при кожному виконанні
-- Фільтр активних годин: `EXTRACT(HOUR FROM now() AT TIME ZONE 'Europe/Kiev')` між start/end
-- При паузі `next_execution_at` не зсувається; при знятті з паузи — перераховується від `now()`
+## Refactor клієнтського коду
+
+Замінити прямі `supabase.from(...)` на `supabase.functions.invoke(...)` у:
+- `src/hooks/useCart.tsx` → `manage-cart`
+- `src/services/api.ts` (cart_items блок)
+- `src/components/admin/AdminRolesManager.tsx` → `manage-user-roles`
+- `src/components/admin/AdminStoreManager.tsx`, `ManualSupplierForm.tsx` → `manage-shop-links` + `manage-supplier`
+- `src/components/supplier/SupplierSettings.tsx` → `manage-supplier`
+- `src/pages/Suppliers.tsx`, `SupplierProfile.tsx`, `RatingsTab.tsx` → читання з `suppliers_public`
+- `src/pages/MyShops.tsx`, `Manager.tsx`, `StoreManagement.tsx` → admin/owner потоки через edge functions
+
+## Тест-ролі (Dev Role Switcher)
+Файл `src/components/profile/DevRoleSwitcher.tsx`:
+- Зберігає лише **локально** (sessionStorage) обрану "тест-роль".
+- На сервері НІЯКИХ привілеїв не дає — просто змінює UI.
+- Доступний лише користувачам, які реально мають роль `admin` (перевірка на сервері при відкритті панелі).
+- Якщо адмін симулює "клієнта" — UI показує клієнтські обмеження, але серверні запити йдуть під справжньою admin-сесією → жодних додаткових прав.
+
+## Послідовність виконання
+
+1. **Міграція БД** — нові політики, в'ю, dropping старих.
+2. **6 нових edge functions** — повна реалізація з валідацією.
+3. **Рефактор client коду** — поступово, файл за файлом.
+4. **Перевірка Dev Role Switcher** — серверна перевірка `admin`.
+5. **Оновлення security memory** — нова модель доступу.
+
+## Технічні деталі
+
+- Усі edge functions використовують спільну `validateSession()` із `telegram-auth/index.ts` (винесемо у shared util? Ні — Supabase edge не підтримує імпорти між функціями. Дублюємо інлайн або копіюємо у кожну функцію.)
+- `has_role()` викликається через `supabase.rpc('has_role', {_user_id, _role})` всередині кожної edge function.
+- В'ю `_public` створюються з `security_invoker=on`, щоб RLS базової таблиці поширювалось на читачів в'ю; але оскільки базова таблиця має `USING(false)` для anon, в'ю буде працювати лише через service_role (читання у функції) АБО через окрему позитивну SELECT-політику на конкретні безпечні поля.
+
+  Альтернатива: зробити в'ю з `security_invoker=off` (за замовчуванням `security_definer`), тоді в'ю обходить RLS базової таблиці. Це безпечно, бо в'ю **не містить чутливих стовпців**. Використаємо цей варіант для каталогу.
+
+- Розмір змін: ~1 міграція (~200 рядків SQL), 6 нових edge functions (~150 рядків кожна), ~12 файлів клієнтського коду.
+
+## Що НЕ входить у цей етап
+- Покращення сесій (HMAC, refresh tokens, TTL) — окремий план.
+- Rate limiting на `reports` — окремий план.
+- Аудит логів доступу до ПД — окремий план (можна додати таблицю `pii_access_log`).

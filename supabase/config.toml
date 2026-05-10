@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.ai-order-audit]
 verify_jwt = false
+
+[functions.manage-user-roles]
+verify_jwt = false

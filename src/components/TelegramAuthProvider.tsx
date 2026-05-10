@@ -128,20 +128,20 @@ export function TelegramAuthProvider({ children }: TelegramAuthProviderProps) {
 
   useEffect(() => {
     const fetchRoles = async () => {
-      if (!auth.profile?.id || !auth.isAuthenticated) {
+      if (!auth.profile?.id || !auth.isAuthenticated || !auth.sessionToken) {
         setRealRoles([]);
         return;
       }
 
       setRolesLoading(true);
       try {
-        const { data, error } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', auth.profile.id);
+        const { data, error } = await supabase.functions.invoke('manage-user-roles', {
+          body: { action: 'get_my_roles', session_token: auth.sessionToken },
+        });
 
         if (error) throw error;
-        setRealRoles((data?.map((r: any) => r.role) || []) as AppRole[]);
+        if (data?.error) throw new Error(data.error);
+        setRealRoles((data?.roles || []) as AppRole[]);
       } catch (err) {
         console.error('Error fetching user roles:', err);
         setRealRoles([]);
@@ -151,7 +151,7 @@ export function TelegramAuthProvider({ children }: TelegramAuthProviderProps) {
     };
 
     fetchRoles();
-  }, [auth.isAuthenticated, auth.profile?.id]);
+  }, [auth.isAuthenticated, auth.profile?.id, auth.sessionToken]);
 
   const isRealAdmin = realRoles.includes('admin');
   

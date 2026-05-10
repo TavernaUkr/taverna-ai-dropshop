@@ -10,6 +10,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Bug, X, Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useTelegramAuthContext } from "@/components/TelegramAuthProvider";
 
 type TestRole = "guest" | "customer" | "supplier" | "shop_manager" | "moderator" | "admin";
 
@@ -34,35 +35,31 @@ export const DevRoleSwitcher = ({ currentRole, onRoleChange, profileId }: DevRol
   const [isOpen, setIsOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
+  const { sessionToken } = useTelegramAuthContext();
 
-  // Check if user is a real admin from user_roles table OR if we're in Lovable dev environment
+  // Check if user is a real admin via secure edge function
   useEffect(() => {
     const checkAdminAccess = async () => {
-      // In Lovable dev environment, always allow access for testing
       if (isLovableDevEnvironment()) {
         setIsAdmin(true);
         setIsChecking(false);
         return;
       }
 
-      if (!profileId) {
+      if (!profileId || !sessionToken) {
         setIsChecking(false);
         setIsAdmin(false);
         return;
       }
 
       try {
-        const { data: roles, error } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', profileId);
-
-        if (error) {
-          console.error('Error checking admin access:', error);
+        const { data, error } = await supabase.functions.invoke('manage-user-roles', {
+          body: { action: 'get_my_roles', session_token: sessionToken },
+        });
+        if (error || data?.error) {
           setIsAdmin(false);
         } else {
-          const hasAdminRole = roles?.some(r => r.role === 'admin');
-          setIsAdmin(hasAdminRole || false);
+          setIsAdmin((data?.roles || []).includes('admin'));
         }
       } catch (err) {
         console.error('Error checking admin access:', err);
@@ -73,7 +70,7 @@ export const DevRoleSwitcher = ({ currentRole, onRoleChange, profileId }: DevRol
     };
 
     checkAdminAccess();
-  }, [profileId]);
+  }, [profileId, sessionToken]);
 
   const roleLabels: Record<TestRole, { label: string; color: string; description: string }> = {
     guest: { 
