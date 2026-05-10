@@ -58,39 +58,37 @@ export function AdminRolesManager() {
   const [banDuration, setBanDuration] = useState("30");
   const [banUnit, setBanUnit] = useState<"days" | "years">("days");
   const [isBanning, setIsBanning] = useState(false);
+  const { sessionToken } = useTelegramAuthContext();
+
+  const callFn = useCallback(async (action: string, payload: Record<string, any> = {}) => {
+    if (!sessionToken) throw new Error("Не авторизовано");
+    const { data, error } = await supabase.functions.invoke("manage-user-roles", {
+      body: { action, session_token: sessionToken, ...payload },
+    });
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
+    return data;
+  }, [sessionToken]);
 
   const fetchUsers = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [profilesRes, rolesRes, bansRes] = await Promise.all([
-        supabase.from('profiles_safe' as any).select('id, first_name, last_name, avatar_url').limit(500),
-        supabase.from('user_roles').select('user_id, role'),
-        supabase.from('user_bans' as any).select('id, profile_id, reason, expires_at, banned_at, is_active').eq('is_active', true),
-      ]);
+      const data = await callFn("list_users_with_roles");
+      const list: UserWithRole[] = (data.users || []).map((u: any) => ({
+        id: u.id,
+        first_name: u.first_name,
+        last_name: u.last_name,
+        avatar_url: u.avatar_url,
+        telegram_username: u.telegram_username,
+        telegram_id: u.telegram_id,
+        roles: u.roles || ['customer'],
+        activeBan: u.activeBan ? {
+          reason: u.activeBan.reason,
+          expires_at: u.activeBan.expires_at,
+          banned_at: u.activeBan.banned_at,
+        } : null,
+      }));
 
-      const profiles = (profilesRes.data || []) as any[];
-      const roles = rolesRes.data || [];
-      const bans = (bansRes.data || []) as any[];
-
-      const list: UserWithRole[] = profiles.map((p: any) => {
-        const userRoles = roles.filter(r => r.user_id === p.id).map(r => r.role);
-        const activeBan = bans.find((b: any) => b.profile_id === p.id && b.is_active);
-        return {
-          id: p.id,
-          first_name: p.first_name,
-          last_name: p.last_name,
-          avatar_url: p.avatar_url,
-          roles: userRoles,
-          activeBan: activeBan ? {
-            id: activeBan.id,
-            reason: activeBan.reason,
-            expires_at: activeBan.expires_at,
-            banned_at: activeBan.banned_at,
-          } : null,
-        };
-      });
-
-      // Sort: admins first, then by roles count, then by name
       list.sort((a, b) => {
         if (a.roles.includes('admin') && !b.roles.includes('admin')) return -1;
         if (!a.roles.includes('admin') && b.roles.includes('admin')) return 1;
@@ -99,35 +97,35 @@ export function AdminRolesManager() {
       });
 
       setUsers(list);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error fetching users:', err);
+      toast.error(err.message || 'Помилка завантаження');
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [callFn]);
 
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
   const handleAddRole = async (userId: string, role: string) => {
     try {
-      const { error } = await supabase.from('user_roles').insert({ user_id: userId, role: role as AppRole });
-      if (error) {
-        if (error.code === '23505') { toast.error('Вже має цю роль'); return; }
-        throw error;
-      }
+      await callFn("add_role", { user_id: userId, role });
       toast.success(`Роль «${ROLE_LABELS[role]}» додано`);
       fetchUsers();
-    } catch { toast.error('Помилка додавання ролі'); }
+    } catch (err: any) {
+      toast.error(err.message || 'Помилка додавання ролі');
+    }
   };
 
   const handleRemoveRole = async (userId: string, role: string) => {
     if (role === 'customer') { toast.error('Роль покупця не можна видалити'); return; }
     try {
-      const { error } = await supabase.from('user_roles').delete().eq('user_id', userId).eq('role', role as AppRole);
-      if (error) throw error;
+      await callFn("remove_role", { user_id: userId, role });
       toast.success(`Роль «${ROLE_LABELS[role]}» видалено`);
       fetchUsers();
-    } catch { toast.error('Помилка видалення ролі'); }
+    } catch (err: any) {
+      toast.error(err.message || 'Помилка видалення ролі');
+    }
   };
 
   const handleBanUser = async () => {
@@ -136,22 +134,15 @@ export function AdminRolesManager() {
     try {
       const durationNum = parseInt(banDuration) || 30;
       const now = new Date();
-      let expiresAt: Date;
-      if (banUnit === 'years') {
-        expiresAt = new Date(now.getFullYear() + durationNum, now.getMonth(), now.getDate());
-      } else {
-        expiresAt = new Date(now.getTime() + durationNum * 24 * 60 * 60 * 1000);
-      }
+      const expiresAt = banUnit === 'years'
+        ? new Date(now.getFullYear() + durationNum, now.getMonth(), now.getDate())
+        : new Date(now.getTime() + durationNum * 24 * 60 * 60 * 1000);
 
-      const { error } = await supabase.from('user_bans' as any).insert({
-        profile_id: banDialog.id,
+      await callFn("ban_user", {
+        user_id: banDialog.id,
         reason: banReason.trim(),
         expires_at: expiresAt.toISOString(),
       });
-      if (error) throw error;
-
-      // Deactivate profile
-      await supabase.from('profiles').update({ is_active: false } as any).eq('id', banDialog.id);
 
       toast.success(`Користувача заблоковано на ${durationNum} ${banUnit === 'years' ? 'р.' : 'дн.'}`);
       setBanDialog(null);
@@ -167,11 +158,12 @@ export function AdminRolesManager() {
 
   const handleUnbanUser = async (userId: string) => {
     try {
-      await supabase.from('user_bans' as any).update({ is_active: false }).eq('profile_id', userId).eq('is_active', true);
-      await supabase.from('profiles').update({ is_active: true } as any).eq('id', userId);
+      await callFn("unban_user", { user_id: userId });
       toast.success('Користувача розблоковано');
       fetchUsers();
-    } catch { toast.error('Помилка розблокування'); }
+    } catch (err: any) {
+      toast.error(err.message || 'Помилка розблокування');
+    }
   };
 
   const filteredUsers = users.filter(u => {
