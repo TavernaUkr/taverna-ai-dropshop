@@ -10,6 +10,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Bug, X, Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useTelegramAuthContext } from "@/components/TelegramAuthProvider";
 
 type TestRole = "guest" | "customer" | "supplier" | "shop_manager" | "moderator" | "admin";
 
