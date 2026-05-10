@@ -23,8 +23,10 @@ interface UserWithRole {
   first_name: string | null;
   last_name: string | null;
   avatar_url: string | null;
+  telegram_username?: string | null;
+  telegram_id?: number | null;
   roles: string[];
-  activeBan: { id: string; reason: string; expires_at: string | null; banned_at: string } | null;
+  activeBan: { reason: string; expires_at: string | null; banned_at: string } | null;
 }
 
 const ALL_ROLES = ["admin", "moderator", "supplier", "shop_manager", "customer"] as const;
