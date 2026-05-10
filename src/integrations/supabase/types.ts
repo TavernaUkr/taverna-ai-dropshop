@@ -1850,19 +1850,58 @@ export type Database = {
       }
       suppliers_public: {
         Row: {
+          cover_image_url: string | null
+          created_at: string | null
+          description: string | null
+          exchange_policy: string | null
           id: string | null
           is_active: boolean | null
+          logo_url: string | null
+          markup_percentage: number | null
+          return_policy: string | null
+          shipping_days: string[] | null
+          shipping_schedule: string | null
           shop_name: string | null
+          shop_photos: string[] | null
+          telegram_channel_url: string | null
+          updated_at: string | null
+          website_url: string | null
         }
         Insert: {
+          cover_image_url?: string | null
+          created_at?: string | null
+          description?: string | null
+          exchange_policy?: string | null
           id?: string | null
           is_active?: boolean | null
+          logo_url?: string | null
+          markup_percentage?: number | null
+          return_policy?: string | null
+          shipping_days?: string[] | null
+          shipping_schedule?: string | null
           shop_name?: string | null
+          shop_photos?: string[] | null
+          telegram_channel_url?: string | null
+          updated_at?: string | null
+          website_url?: string | null
         }
         Update: {
+          cover_image_url?: string | null
+          created_at?: string | null
+          description?: string | null
+          exchange_policy?: string | null
           id?: string | null
           is_active?: boolean | null
+          logo_url?: string | null
+          markup_percentage?: number | null
+          return_policy?: string | null
+          shipping_days?: string[] | null
+          shipping_schedule?: string | null
           shop_name?: string | null
+          shop_photos?: string[] | null
+          telegram_channel_url?: string | null
+          updated_at?: string | null
+          website_url?: string | null
         }
         Relationships: []
       }
