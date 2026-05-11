@@ -40,6 +40,7 @@ import { cn } from "@/lib/utils";
 import { PaymentModal } from "./PaymentModal";
 import { AIPostPreview } from "./AIPostPreview";
 import { PlatformConditions } from "./PlatformConditions";
+import { ProductMultiSelector } from "./ProductMultiSelector";
 
 interface Product {
   id: string;
@@ -61,8 +62,10 @@ interface AdvertisingTabProps {
   isSearching: boolean;
   productSearch: string;
   setProductSearch: (value: string) => void;
-  selectedProduct: Product | null;
-  setSelectedProduct: (product: Product | null) => void;
+  selectedProducts: Product[];
+  setSelectedProducts: (p: Product[]) => void;
+  useAllProducts: boolean;
+  setUseAllProducts: (v: boolean) => void;
   setProducts: (products: Product[]) => void;
   supplierIds?: string[];
   selectedShopNames?: string[];
@@ -135,15 +138,21 @@ export function AdvertisingTab({
   isSearching,
   productSearch,
   setProductSearch,
-  selectedProduct,
-  setSelectedProduct,
+  selectedProducts,
+  setSelectedProducts,
+  useAllProducts,
+  setUseAllProducts,
   setProducts,
   supplierIds,
   selectedShopNames,
   availableShops,
 }: AdvertisingTabProps) {
   const supplierId = supplierIds && supplierIds.length === 1 ? supplierIds[0] : null;
-  const selectedShopName = selectedShopNames?.length === 1 ? selectedShopNames[0] : 
+  const selectedProduct = selectedProducts.length === 1 ? selectedProducts[0] : null;
+  const sampleProduct = selectedProduct || selectedProducts[0] || null;
+  const hasSelection = useAllProducts || selectedProducts.length > 0;
+  const productCount = useAllProducts ? "всі" : selectedProducts.length;
+  const selectedShopName = selectedShopNames?.length === 1 ? selectedShopNames[0] :
     (selectedShopNames && selectedShopNames.length > 1) ? `${selectedShopNames.length} магазинів` : null;
   const [isAutoAds, setIsAutoAds] = useState(false);
   const [aiText, setAiText] = useState("");
