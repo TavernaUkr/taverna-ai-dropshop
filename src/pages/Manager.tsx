@@ -291,7 +291,8 @@ export default function Manager() {
 
   // Update product selection when shops change
   useEffect(() => {
-    setSelectedProduct(null);
+    setSelectedProducts([]);
+    setUseAllProducts(false);
     setProductSearch("");
     setProducts([]);
   }, [selectedShopIds.join(",")]);
