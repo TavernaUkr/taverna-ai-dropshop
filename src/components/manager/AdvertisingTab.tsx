@@ -40,6 +40,7 @@ import { cn } from "@/lib/utils";
 import { PaymentModal } from "./PaymentModal";
 import { AIPostPreview } from "./AIPostPreview";
 import { PlatformConditions } from "./PlatformConditions";
+import { ProductMultiSelector } from "./ProductMultiSelector";
 
 interface Product {
   id: string;
@@ -61,8 +62,10 @@ interface AdvertisingTabProps {
   isSearching: boolean;
   productSearch: string;
   setProductSearch: (value: string) => void;
-  selectedProduct: Product | null;
-  setSelectedProduct: (product: Product | null) => void;
+  selectedProducts: Product[];
+  setSelectedProducts: (p: Product[]) => void;
+  useAllProducts: boolean;
+  setUseAllProducts: (v: boolean) => void;
   setProducts: (products: Product[]) => void;
   supplierIds?: string[];
   selectedShopNames?: string[];
@@ -135,15 +138,21 @@ export function AdvertisingTab({
   isSearching,
   productSearch,
   setProductSearch,
-  selectedProduct,
-  setSelectedProduct,
+  selectedProducts,
+  setSelectedProducts,
+  useAllProducts,
+  setUseAllProducts,
   setProducts,
   supplierIds,
   selectedShopNames,
   availableShops,
 }: AdvertisingTabProps) {
   const supplierId = supplierIds && supplierIds.length === 1 ? supplierIds[0] : null;
-  const selectedShopName = selectedShopNames?.length === 1 ? selectedShopNames[0] : 
+  const selectedProduct = selectedProducts.length === 1 ? selectedProducts[0] : null;
+  const sampleProduct = selectedProduct || selectedProducts[0] || null;
+  const hasSelection = useAllProducts || selectedProducts.length > 0;
+  const productCount = useAllProducts ? "всі" : selectedProducts.length;
+  const selectedShopName = selectedShopNames?.length === 1 ? selectedShopNames[0] :
     (selectedShopNames && selectedShopNames.length > 1) ? `${selectedShopNames.length} магазинів` : null;
   const [isAutoAds, setIsAutoAds] = useState(false);
   const [aiText, setAiText] = useState("");
@@ -168,9 +177,16 @@ export function AdvertisingTab({
     );
   };
 
+  const fetchAllProductIds = async (): Promise<string[]> => {
+    let q = supabase.from("products").select("id").eq("in_stock", true);
+    if (supplierIds && supplierIds.length > 0) q = q.in("supplier_id", supplierIds);
+    const { data } = await q.limit(1000);
+    return (data || []).map((r: any) => r.id);
+  };
+
   const handleGenerateDescription = async () => {
-    if (!selectedProduct) {
-      toast.error("Спочатку оберіть товар");
+    if (!sampleProduct) {
+      toast.error("Спочатку оберіть товар або увімкніть режим 'Усі товари'");
       return;
     }
 
@@ -179,11 +195,12 @@ export function AdvertisingTab({
       const platformType = selectedPlatforms[0] || "telegram";
       const { data, error } = await supabase.functions.invoke("generate-description", {
         body: {
-          product: selectedProduct,
-          type: platformType === "olx" || platformType === "prom" || platformType === "rozetka" ? "marketplace" : 
-                platformType === "instagram" || platformType === "facebook" || platformType === "tiktok" ? "social" : 
+          product: sampleProduct,
+          type: platformType === "olx" || platformType === "prom" || platformType === "rozetka" ? "marketplace" :
+                platformType === "instagram" || platformType === "facebook" || platformType === "tiktok" ? "social" :
                 "telegram",
           aiHint: aiPromptHint || undefined,
+          template: useAllProducts || selectedProducts.length > 1,
         },
       });
 
@@ -193,7 +210,10 @@ export function AdvertisingTab({
       toast.success("Рекламний текст згенеровано!");
     } catch (err) {
       console.error("Generate description error:", err);
-      setAiText(`🔥 ${selectedProduct.name}\n\n✨ Преміум якість за найкращою ціною!\n💰 Всього ${selectedProduct.price} ₴\n\n🚀 Швидка доставка по Україні\n✅ Гарантія якості\n\n👉 Замовляй зараз!`);
+      const isTemplate = useAllProducts || selectedProducts.length > 1;
+      const nameTok = isTemplate ? "{name}" : sampleProduct.name;
+      const priceTok = isTemplate ? "{price}" : sampleProduct.price;
+      setAiText(`🔥 ${nameTok}\n\n✨ Преміум якість за найкращою ціною!\n💰 Всього ${priceTok} ₴\n\n🚀 Швидка доставка по Україні\n✅ Гарантія якості\n\n👉 Замовляй зараз!`);
       setShowPreview(true);
       toast.success("Текст згенеровано!");
     } finally {
@@ -217,8 +237,8 @@ export function AdvertisingTab({
   const currentMarkup = calculateAdMarkup(budget, selectedPlatforms.length);
 
   const handleSubmitAd = async () => {
-    if (!selectedProduct) {
-      toast.error("Оберіть товар для реклами");
+    if (!hasSelection) {
+      toast.error("Оберіть товар(и) для реклами");
       return;
     }
     if (selectedPlatforms.length === 0) {
@@ -236,10 +256,19 @@ export function AdvertisingTab({
   const handlePaymentSuccess = async () => {
     setAdStatus("pending_review");
     toast.success("Оплата успішна! Рекламу передано на модерацію.");
-    
+
     try {
-      const { error } = await supabase.from("promotions").insert({
-        product_id: selectedProduct?.id,
+      const ids = useAllProducts
+        ? await fetchAllProductIds()
+        : selectedProducts.map((p) => p.id);
+
+      if (ids.length === 0) {
+        toast.error("Немає товарів для реклами");
+        return;
+      }
+
+      const rows = ids.map((id) => ({
+        product_id: id,
         promotion_type: "paid_advertising",
         status: "pending",
         platforms: selectedPlatforms,
@@ -247,19 +276,19 @@ export function AdvertisingTab({
         ai_generated_text: aiText,
         start_date: new Date().toISOString(),
         supplier_id: supplierId || (supplierIds?.[0]) || undefined,
-      });
+      }));
 
-      if (error) {
-        console.error("Failed to save promotion:", error);
-      }
+      const { error } = await supabase.from("promotions").insert(rows);
+      if (error) console.error("Failed to save promotion:", error);
+      else toast.success(`Створено рекламу для ${ids.length} товарів`);
     } catch (err) {
       console.error("Save promotion error:", err);
     }
-    
+
     setTimeout(() => {
       setAdStatus("approved");
       toast.success("Рекламу схвалено! Запуск кампанії...");
-      
+
       setTimeout(() => {
         setAdStatus("active");
         toast.success("Рекламна кампанія активна!");
@@ -374,90 +403,21 @@ export function AdvertisingTab({
         </CardContent>
       </Card>
 
-      {/* Product Search */}
-      <div className="space-y-2">
-        <Label>
-          Оберіть товар для реклами
-          {selectedShopName && (
-            <span className="text-xs text-muted-foreground ml-2">({selectedShopName})</span>
-          )}
-        </Label>
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            value={productSearch}
-            onChange={(e) => setProductSearch(e.target.value)}
-            placeholder="Пошук товару..."
-            className="pl-10"
-          />
-        </div>
-        
-        {isSearching && (
-          <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span className="text-sm text-muted-foreground">Пошук...</span>
-          </div>
-        )}
-        
-        {products.length > 0 && (
-          <div className="border border-border rounded-lg overflow-hidden max-h-48 overflow-y-auto">
-            {products.map((product) => (
-              <button
-                key={product.id}
-                onClick={() => {
-                  setSelectedProduct(product);
-                  setProductSearch(product.name);
-                  setProducts([]);
-                }}
-                className="w-full flex items-center gap-3 p-3 hover:bg-muted transition-colors border-b border-border last:border-0"
-              >
-                <div className="w-12 h-12 bg-muted rounded-lg overflow-hidden">
-                  {product.images?.[0] && (
-                    <img
-                      src={product.images[0]}
-                      alt={product.name}
-                      className="w-full h-full object-cover"
-                    />
-                  )}
-                </div>
-                <div className="flex-1 text-left min-w-0">
-                  <p className="font-medium text-sm truncate">{product.name}</p>
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm text-primary">{product.price} ₴</p>
-                    {(supplierIds?.length || 0) > 1 && product.supplier_id && (
-                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
-                        {availableShops?.find(s => s.id === product.supplier_id)?.shop_name || "—"}
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
-        )}
-
-        {selectedProduct && (
-          <div className="flex items-center gap-3 p-3 bg-primary/10 rounded-lg border border-primary/20">
-            <Check className="h-5 w-5 text-primary" />
-            <div className="flex-1">
-              <p className="font-medium text-sm">{selectedProduct.name}</p>
-              <p className="text-sm text-primary">{selectedProduct.price} ₴</p>
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => {
-                setSelectedProduct(null);
-                setProductSearch("");
-                setAiText("");
-                setShowPreview(false);
-              }}
-            >
-              <RefreshCw className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
-      </div>
+      {/* Multi product selector */}
+      <ProductMultiSelector
+        products={products}
+        isSearching={isSearching}
+        productSearch={productSearch}
+        setProductSearch={setProductSearch}
+        setProducts={setProducts}
+        selectedProducts={selectedProducts}
+        setSelectedProducts={setSelectedProducts}
+        useAllProducts={useAllProducts}
+        setUseAllProducts={setUseAllProducts}
+        supplierIds={supplierIds}
+        availableShops={availableShops}
+        selectedShopNames={selectedShopNames}
+      />
 
       {/* Platform Selection — grouped by category */}
       <div className="space-y-3">
@@ -591,7 +551,7 @@ export function AdvertisingTab({
               variant="outline"
               size="sm"
               onClick={handleGenerateDescription}
-              disabled={!selectedProduct || isGenerating}
+              disabled={!sampleProduct || isGenerating}
             >
               {isGenerating ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -613,7 +573,7 @@ export function AdvertisingTab({
       {/* AI Post Preview */}
       {showPreview && (
         <AIPostPreview
-          product={selectedProduct}
+          product={sampleProduct}
           postText={aiText}
           platform={(selectedPlatforms[0] || "telegram") as any}
         />
@@ -713,7 +673,7 @@ export function AdvertisingTab({
         size="lg"
         onClick={handleSubmitAd}
         disabled={
-          !selectedProduct || 
+          !hasSelection || 
           selectedPlatforms.length === 0 || 
           !aiText || 
           adStatus === "pending_review" || 
@@ -736,7 +696,7 @@ export function AdvertisingTab({
         open={showPaymentModal}
         onOpenChange={setShowPaymentModal}
         amount={totalCost}
-        description={`Рекламна кампанія: ${selectedProduct?.name || "товар"} на ${selectedPlatforms.length} платформах`}
+        description={`Рекламна кампанія: ${useAllProducts ? "усі товари" : selectedProducts.length > 1 ? `${selectedProducts.length} товарів` : (sampleProduct?.name || "товар")} на ${selectedPlatforms.length} платформах`}
         type="advertising"
         onSuccess={handlePaymentSuccess}
       />

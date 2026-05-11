@@ -43,6 +43,8 @@ import { cn } from "@/lib/utils";
 import { PaymentModal } from "./PaymentModal";
 import { AIPostPreview } from "./AIPostPreview";
 
+import { ProductMultiSelector } from "./ProductMultiSelector";
+
 interface Product {
   id: string;
   name: string;
@@ -63,8 +65,10 @@ interface PostingTabProps {
   isSearching: boolean;
   productSearch: string;
   setProductSearch: (value: string) => void;
-  selectedProduct: Product | null;
-  setSelectedProduct: (product: Product | null) => void;
+  selectedProducts: Product[];
+  setSelectedProducts: (p: Product[]) => void;
+  useAllProducts: boolean;
+  setUseAllProducts: (v: boolean) => void;
   setProducts: (products: Product[]) => void;
   supplierIds?: string[];
   selectedShopNames?: string[];
@@ -103,16 +107,20 @@ export function PostingTab({
   isSearching,
   productSearch,
   setProductSearch,
-  selectedProduct,
-  setSelectedProduct,
+  selectedProducts,
+  setSelectedProducts,
+  useAllProducts,
+  setUseAllProducts,
   setProducts,
   supplierIds,
   selectedShopNames,
   availableShops,
 }: PostingTabProps) {
   const supplierId = supplierIds && supplierIds.length === 1 ? supplierIds[0] : null;
-  const multiShop = (supplierIds?.length || 0) > 1;
-  const selectedShopName = selectedShopNames?.length === 1 ? selectedShopNames[0] : 
+  const selectedProduct = selectedProducts.length === 1 ? selectedProducts[0] : null;
+  const productCount = useAllProducts ? "всі" : selectedProducts.length;
+  const hasSelection = useAllProducts || selectedProducts.length > 0;
+  const selectedShopName = selectedShopNames?.length === 1 ? selectedShopNames[0] :
     (selectedShopNames && selectedShopNames.length > 1) ? `${selectedShopNames.length} магазинів` : null;
   const [isAutoPosting, setIsAutoPosting] = useState(false);
   const [aiText, setAiText] = useState("");
@@ -125,9 +133,18 @@ export function PostingTab({
   const [showPreview, setShowPreview] = useState(false);
   const [postStatus, setPostStatus] = useState<PostStatus>("draft");
 
+  const sampleProduct = selectedProduct || selectedProducts[0] || null;
+
+  const fetchAllProductIds = async (): Promise<string[]> => {
+    let q = supabase.from("products").select("id").eq("in_stock", true);
+    if (supplierIds && supplierIds.length > 0) q = q.in("supplier_id", supplierIds);
+    const { data } = await q.limit(1000);
+    return (data || []).map((r: any) => r.id);
+  };
+
   const handleGenerateDescription = async () => {
-    if (!selectedProduct) {
-      toast.error("Спочатку оберіть товар");
+    if (!sampleProduct) {
+      toast.error("Спочатку оберіть товар або увімкніть режим 'Усі товари'");
       return;
     }
 
@@ -135,9 +152,10 @@ export function PostingTab({
     try {
       const { data, error } = await supabase.functions.invoke("generate-description", {
         body: {
-          product: selectedProduct,
+          product: sampleProduct,
           type: selectedPlatform === "olx" || selectedPlatform === "prom" || selectedPlatform === "rozetka" ? "marketplace" : "telegram",
           aiHint: aiPromptHint || undefined,
+          template: useAllProducts || selectedProducts.length > 1,
         },
       });
 
@@ -147,7 +165,10 @@ export function PostingTab({
       toast.success("Опис згенеровано AI Gemini!");
     } catch (err) {
       console.error("Generate description error:", err);
-      setAiText(`🔥 ${selectedProduct.name} за суперціною!\n\n✅ Висока якість\n✅ Швидка доставка\n✅ Гарантія\n\n💰 Ціна: ${selectedProduct.price} ₴\n\n👉 Замовляй зараз у Taverna Drop Shop!`);
+      const isTemplate = useAllProducts || selectedProducts.length > 1;
+      const nameTok = isTemplate ? "{name}" : sampleProduct.name;
+      const priceTok = isTemplate ? "{price}" : sampleProduct.price;
+      setAiText(`🔥 ${nameTok} за суперціною!\n\n✅ Висока якість\n✅ Швидка доставка\n✅ Гарантія\n\n💰 Ціна: ${priceTok} ₴\n\n👉 Замовляй зараз у Taverna Drop Shop!`);
       setShowPreview(true);
       toast.success("Опис згенеровано!");
     } finally {
@@ -156,8 +177,8 @@ export function PostingTab({
   };
 
   const handlePublish = async () => {
-    if (!selectedProduct || !aiText) {
-      toast.error("Оберіть товар та згенеруйте опис");
+    if (!hasSelection || !aiText) {
+      toast.error("Оберіть товар(и) та згенеруйте опис");
       return;
     }
 
@@ -168,20 +189,45 @@ export function PostingTab({
 
     setIsPublishing(true);
     setPostStatus("pending");
-    
-    try {
-      const { data, error } = await supabase.functions.invoke("telegram-publish", {
-        body: {
-          product_id: selectedProduct.id,
-          custom_text: aiText,
-        },
-      });
 
-      if (error) throw error;
-      setPostStatus("published");
-      toast.success("Пост опубліковано в Telegram!");
+    try {
+      // Single product fast-path: publish directly to Telegram
+      if (!useAllProducts && selectedProducts.length === 1) {
+        const single = selectedProducts[0];
+        const { error } = await supabase.functions.invoke("telegram-publish", {
+          body: { product_id: single.id, custom_text: aiText },
+        });
+        if (error) throw error;
+        setPostStatus("published");
+        toast.success("Пост опубліковано в Telegram!");
+      } else {
+        // Multi/all products: enqueue as promotions for the auto-poster
+        const ids = useAllProducts ? await fetchAllProductIds() : selectedProducts.map((p) => p.id);
+        if (ids.length === 0) {
+          toast.error("Немає товарів для публікації");
+          setIsPublishing(false);
+          setPostStatus("draft");
+          return;
+        }
+        const rows = ids.map((id) => ({
+          product_id: id,
+          promotion_type: "auto",
+          status: "pending",
+          platforms: [selectedPlatform],
+          budget: 0,
+          ai_generated_text: aiText,
+          start_date: new Date().toISOString(),
+          supplier_id: supplierId || (supplierIds?.[0]) || undefined,
+        }));
+        const { error } = await supabase.from("promotions").insert(rows);
+        if (error) throw error;
+        setPostStatus("published");
+        toast.success(`Додано в чергу: ${ids.length} постів`);
+      }
+
       setTimeout(() => {
-        setSelectedProduct(null);
+        setSelectedProducts([]);
+        setUseAllProducts(false);
         setAiText("");
         setProductSearch("");
         setPostStatus("draft");
@@ -199,10 +245,13 @@ export function PostingTab({
   const handlePaymentSuccess = async () => {
     setPostStatus("approved");
     toast.success("Оплата успішна! Пост буде опублікований негайно.");
-    
+
     try {
-      await supabase.from("promotions").insert({
-        product_id: selectedProduct?.id,
+      const ids = useAllProducts
+        ? await fetchAllProductIds()
+        : selectedProducts.map((p) => p.id);
+      const rows = ids.map((id) => ({
+        product_id: id,
         promotion_type: "paid_posting",
         status: "pending",
         platforms: [selectedPlatform],
@@ -210,11 +259,12 @@ export function PostingTab({
         ai_generated_text: aiText,
         start_date: new Date().toISOString(),
         supplier_id: supplierId || (supplierIds?.[0]) || undefined,
-      });
+      }));
+      if (rows.length > 0) await supabase.from("promotions").insert(rows);
     } catch (err) {
       console.error("Save promotion error:", err);
     }
-    
+
     handlePublish();
   };
 
@@ -444,90 +494,21 @@ export function PostingTab({
         </div>
       )}
 
-      {/* Product Search */}
-      <div className="space-y-2">
-        <Label>
-          Оберіть товар для постинга
-          {selectedShopName && (
-            <span className="text-xs text-muted-foreground ml-2">({selectedShopName})</span>
-          )}
-        </Label>
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            value={productSearch}
-            onChange={(e) => setProductSearch(e.target.value)}
-            placeholder="Пошук товару..."
-            className="pl-10"
-          />
-        </div>
-        
-        {isSearching && (
-          <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span className="text-sm text-muted-foreground">Пошук...</span>
-          </div>
-        )}
-        
-        {products.length > 0 && (
-          <div className="border border-border rounded-lg overflow-hidden max-h-48 overflow-y-auto">
-            {products.map((product) => (
-              <button
-                key={product.id}
-                onClick={() => {
-                  setSelectedProduct(product);
-                  setProductSearch(product.name);
-                  setProducts([]);
-                }}
-                className="w-full flex items-center gap-3 p-3 hover:bg-muted transition-colors border-b border-border last:border-0"
-              >
-                <div className="w-12 h-12 bg-muted rounded-lg overflow-hidden">
-                  {product.images?.[0] && (
-                    <img
-                      src={product.images[0]}
-                      alt={product.name}
-                      className="w-full h-full object-cover"
-                    />
-                  )}
-                </div>
-                <div className="flex-1 text-left min-w-0">
-                  <p className="font-medium text-sm truncate">{product.name}</p>
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm text-primary">{product.price} ₴</p>
-                    {multiShop && product.supplier_id && (
-                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
-                        {availableShops?.find(s => s.id === product.supplier_id)?.shop_name || "—"}
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
-        )}
-
-        {selectedProduct && (
-          <div className="flex items-center gap-3 p-3 bg-primary/10 rounded-lg border border-primary/20">
-            <Check className="h-5 w-5 text-primary" />
-            <div className="flex-1">
-              <p className="font-medium text-sm">{selectedProduct.name}</p>
-              <p className="text-sm text-primary">{selectedProduct.price} ₴</p>
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => {
-                setSelectedProduct(null);
-                setProductSearch("");
-                setAiText("");
-                setShowPreview(false);
-              }}
-            >
-              <RefreshCw className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
-      </div>
+      {/* Multi product selector */}
+      <ProductMultiSelector
+        products={products}
+        isSearching={isSearching}
+        productSearch={productSearch}
+        setProductSearch={setProductSearch}
+        setProducts={setProducts}
+        selectedProducts={selectedProducts}
+        setSelectedProducts={setSelectedProducts}
+        useAllProducts={useAllProducts}
+        setUseAllProducts={setUseAllProducts}
+        supplierIds={supplierIds}
+        availableShops={availableShops}
+        selectedShopNames={selectedShopNames}
+      />
 
       {/* AI Prompt Hint */}
       <div className="space-y-2">
@@ -563,7 +544,7 @@ export function PostingTab({
               variant="outline"
               size="sm"
               onClick={handleGenerateDescription}
-              disabled={!selectedProduct || isGenerating}
+              disabled={!sampleProduct || isGenerating}
             >
               {isGenerating ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -585,7 +566,7 @@ export function PostingTab({
       {/* AI Post Preview */}
       {showPreview && (
         <AIPostPreview
-          product={selectedProduct}
+          product={sampleProduct}
           postText={aiText}
           platform={selectedPlatform as any}
         />
@@ -658,14 +639,16 @@ export function PostingTab({
         className="w-full"
         size="lg"
         onClick={handlePublish}
-        disabled={!selectedProduct || !aiText || isPublishing || postStatus === "pending"}
+        disabled={!hasSelection || !aiText || isPublishing || postStatus === "pending"}
       >
         {isPublishing ? (
           <Loader2 className="h-5 w-5 animate-spin mr-2" />
         ) : (
           <Send className="h-5 w-5 mr-2" />
         )}
-        {showPaidPosting ? `Оплатити ${paidPostingPrice} ₴ та опублікувати` : "Додати в чергу постинга"}
+        {showPaidPosting
+          ? `Оплатити ${paidPostingPrice} ₴ та опублікувати`
+          : `Додати в чергу постинга${productCount ? ` (${productCount})` : ""}`}
       </Button>
 
       {/* Payment Modal */}
@@ -673,7 +656,7 @@ export function PostingTab({
         open={showPaymentModal}
         onOpenChange={setShowPaymentModal}
         amount={paidPostingPrice}
-        description={`Платний постинг: ${selectedProduct?.name || "товар"} на ${selectedPlatformData?.name}`}
+        description={`Платний постинг: ${useAllProducts ? `усі товари` : selectedProducts.length > 1 ? `${selectedProducts.length} товарів` : (sampleProduct?.name || "товар")} на ${selectedPlatformData?.name}`}
         type="posting"
         onSuccess={handlePaymentSuccess}
       />

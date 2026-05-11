@@ -124,7 +124,8 @@ export default function Manager() {
   const { profile, effectiveRole } = useTelegramAuthContext();
   const [activeTab, setActiveTab] = useState("posting");
   const [products, setProducts] = useState<Product[]>([]);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
+  const [useAllProducts, setUseAllProducts] = useState(false);
   const [productSearch, setProductSearch] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [inviteLink, setInviteLink] = useState<string | null>(null);
@@ -290,7 +291,8 @@ export default function Manager() {
 
   // Update product selection when shops change
   useEffect(() => {
-    setSelectedProduct(null);
+    setSelectedProducts([]);
+    setUseAllProducts(false);
     setProductSearch("");
     setProducts([]);
   }, [selectedShopIds.join(",")]);
@@ -678,8 +680,10 @@ export default function Manager() {
               isSearching={isSearching}
               productSearch={productSearch}
               setProductSearch={setProductSearch}
-              selectedProduct={selectedProduct}
-              setSelectedProduct={setSelectedProduct}
+              selectedProducts={selectedProducts}
+              setSelectedProducts={setSelectedProducts}
+              useAllProducts={useAllProducts}
+              setUseAllProducts={setUseAllProducts}
               setProducts={setProducts}
               supplierIds={supplierIds}
               selectedShopNames={selectedShopNames}
@@ -694,8 +698,10 @@ export default function Manager() {
               isSearching={isSearching}
               productSearch={productSearch}
               setProductSearch={setProductSearch}
-              selectedProduct={selectedProduct}
-              setSelectedProduct={setSelectedProduct}
+              selectedProducts={selectedProducts}
+              setSelectedProducts={setSelectedProducts}
+              useAllProducts={useAllProducts}
+              setUseAllProducts={setUseAllProducts}
               setProducts={setProducts}
               supplierIds={supplierIds}
               selectedShopNames={selectedShopNames}
