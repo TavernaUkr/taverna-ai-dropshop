@@ -133,9 +133,18 @@ export function PostingTab({
   const [showPreview, setShowPreview] = useState(false);
   const [postStatus, setPostStatus] = useState<PostStatus>("draft");
 
+  const sampleProduct = selectedProduct || selectedProducts[0] || null;
+
+  const fetchAllProductIds = async (): Promise<string[]> => {
+    let q = supabase.from("products").select("id").eq("in_stock", true);
+    if (supplierIds && supplierIds.length > 0) q = q.in("supplier_id", supplierIds);
+    const { data } = await q.limit(1000);
+    return (data || []).map((r: any) => r.id);
+  };
+
   const handleGenerateDescription = async () => {
-    if (!selectedProduct) {
-      toast.error("Спочатку оберіть товар");
+    if (!sampleProduct) {
+      toast.error("Спочатку оберіть товар або увімкніть режим 'Усі товари'");
       return;
     }
 
@@ -143,9 +152,10 @@ export function PostingTab({
     try {
       const { data, error } = await supabase.functions.invoke("generate-description", {
         body: {
-          product: selectedProduct,
+          product: sampleProduct,
           type: selectedPlatform === "olx" || selectedPlatform === "prom" || selectedPlatform === "rozetka" ? "marketplace" : "telegram",
           aiHint: aiPromptHint || undefined,
+          template: useAllProducts || selectedProducts.length > 1,
         },
       });
 
@@ -155,7 +165,10 @@ export function PostingTab({
       toast.success("Опис згенеровано AI Gemini!");
     } catch (err) {
       console.error("Generate description error:", err);
-      setAiText(`🔥 ${selectedProduct.name} за суперціною!\n\n✅ Висока якість\n✅ Швидка доставка\n✅ Гарантія\n\n💰 Ціна: ${selectedProduct.price} ₴\n\n👉 Замовляй зараз у Taverna Drop Shop!`);
+      const isTemplate = useAllProducts || selectedProducts.length > 1;
+      const nameTok = isTemplate ? "{name}" : sampleProduct.name;
+      const priceTok = isTemplate ? "{price}" : sampleProduct.price;
+      setAiText(`🔥 ${nameTok} за суперціною!\n\n✅ Висока якість\n✅ Швидка доставка\n✅ Гарантія\n\n💰 Ціна: ${priceTok} ₴\n\n👉 Замовляй зараз у Taverna Drop Shop!`);
       setShowPreview(true);
       toast.success("Опис згенеровано!");
     } finally {
@@ -164,8 +177,8 @@ export function PostingTab({
   };
 
   const handlePublish = async () => {
-    if (!selectedProduct || !aiText) {
-      toast.error("Оберіть товар та згенеруйте опис");
+    if (!hasSelection || !aiText) {
+      toast.error("Оберіть товар(и) та згенеруйте опис");
       return;
     }
 
@@ -176,20 +189,45 @@ export function PostingTab({
 
     setIsPublishing(true);
     setPostStatus("pending");
-    
-    try {
-      const { data, error } = await supabase.functions.invoke("telegram-publish", {
-        body: {
-          product_id: selectedProduct.id,
-          custom_text: aiText,
-        },
-      });
 
-      if (error) throw error;
-      setPostStatus("published");
-      toast.success("Пост опубліковано в Telegram!");
+    try {
+      // Single product fast-path: publish directly to Telegram
+      if (!useAllProducts && selectedProducts.length === 1) {
+        const single = selectedProducts[0];
+        const { error } = await supabase.functions.invoke("telegram-publish", {
+          body: { product_id: single.id, custom_text: aiText },
+        });
+        if (error) throw error;
+        setPostStatus("published");
+        toast.success("Пост опубліковано в Telegram!");
+      } else {
+        // Multi/all products: enqueue as promotions for the auto-poster
+        const ids = useAllProducts ? await fetchAllProductIds() : selectedProducts.map((p) => p.id);
+        if (ids.length === 0) {
+          toast.error("Немає товарів для публікації");
+          setIsPublishing(false);
+          setPostStatus("draft");
+          return;
+        }
+        const rows = ids.map((id) => ({
+          product_id: id,
+          promotion_type: "auto",
+          status: "pending",
+          platforms: [selectedPlatform],
+          budget: 0,
+          ai_generated_text: aiText,
+          start_date: new Date().toISOString(),
+          supplier_id: supplierId || (supplierIds?.[0]) || undefined,
+        }));
+        const { error } = await supabase.from("promotions").insert(rows);
+        if (error) throw error;
+        setPostStatus("published");
+        toast.success(`Додано в чергу: ${ids.length} постів`);
+      }
+
       setTimeout(() => {
-        setSelectedProduct(null);
+        setSelectedProducts([]);
+        setUseAllProducts(false);
         setAiText("");
         setProductSearch("");
         setPostStatus("draft");
@@ -207,10 +245,13 @@ export function PostingTab({
   const handlePaymentSuccess = async () => {
     setPostStatus("approved");
     toast.success("Оплата успішна! Пост буде опублікований негайно.");
-    
+
     try {
-      await supabase.from("promotions").insert({
-        product_id: selectedProduct?.id,
+      const ids = useAllProducts
+        ? await fetchAllProductIds()
+        : selectedProducts.map((p) => p.id);
+      const rows = ids.map((id) => ({
+        product_id: id,
         promotion_type: "paid_posting",
         status: "pending",
         platforms: [selectedPlatform],
@@ -218,11 +259,12 @@ export function PostingTab({
         ai_generated_text: aiText,
         start_date: new Date().toISOString(),
         supplier_id: supplierId || (supplierIds?.[0]) || undefined,
-      });
+      }));
+      if (rows.length > 0) await supabase.from("promotions").insert(rows);
     } catch (err) {
       console.error("Save promotion error:", err);
     }
-    
+
     handlePublish();
   };
 
