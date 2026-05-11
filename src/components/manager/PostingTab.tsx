@@ -494,90 +494,21 @@ export function PostingTab({
         </div>
       )}
 
-      {/* Product Search */}
-      <div className="space-y-2">
-        <Label>
-          Оберіть товар для постинга
-          {selectedShopName && (
-            <span className="text-xs text-muted-foreground ml-2">({selectedShopName})</span>
-          )}
-        </Label>
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            value={productSearch}
-            onChange={(e) => setProductSearch(e.target.value)}
-            placeholder="Пошук товару..."
-            className="pl-10"
-          />
-        </div>
-        
-        {isSearching && (
-          <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span className="text-sm text-muted-foreground">Пошук...</span>
-          </div>
-        )}
-        
-        {products.length > 0 && (
-          <div className="border border-border rounded-lg overflow-hidden max-h-48 overflow-y-auto">
-            {products.map((product) => (
-              <button
-                key={product.id}
-                onClick={() => {
-                  setSelectedProduct(product);
-                  setProductSearch(product.name);
-                  setProducts([]);
-                }}
-                className="w-full flex items-center gap-3 p-3 hover:bg-muted transition-colors border-b border-border last:border-0"
-              >
-                <div className="w-12 h-12 bg-muted rounded-lg overflow-hidden">
-                  {product.images?.[0] && (
-                    <img
-                      src={product.images[0]}
-                      alt={product.name}
-                      className="w-full h-full object-cover"
-                    />
-                  )}
-                </div>
-                <div className="flex-1 text-left min-w-0">
-                  <p className="font-medium text-sm truncate">{product.name}</p>
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm text-primary">{product.price} ₴</p>
-                    {multiShop && product.supplier_id && (
-                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
-                        {availableShops?.find(s => s.id === product.supplier_id)?.shop_name || "—"}
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
-        )}
-
-        {selectedProduct && (
-          <div className="flex items-center gap-3 p-3 bg-primary/10 rounded-lg border border-primary/20">
-            <Check className="h-5 w-5 text-primary" />
-            <div className="flex-1">
-              <p className="font-medium text-sm">{selectedProduct.name}</p>
-              <p className="text-sm text-primary">{selectedProduct.price} ₴</p>
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => {
-                setSelectedProduct(null);
-                setProductSearch("");
-                setAiText("");
-                setShowPreview(false);
-              }}
-            >
-              <RefreshCw className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
-      </div>
+      {/* Multi product selector */}
+      <ProductMultiSelector
+        products={products}
+        isSearching={isSearching}
+        productSearch={productSearch}
+        setProductSearch={setProductSearch}
+        setProducts={setProducts}
+        selectedProducts={selectedProducts}
+        setSelectedProducts={setSelectedProducts}
+        useAllProducts={useAllProducts}
+        setUseAllProducts={setUseAllProducts}
+        supplierIds={supplierIds}
+        availableShops={availableShops}
+        selectedShopNames={selectedShopNames}
+      />
 
       {/* AI Prompt Hint */}
       <div className="space-y-2">
