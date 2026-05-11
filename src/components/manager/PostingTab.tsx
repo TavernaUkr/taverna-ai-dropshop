@@ -544,7 +544,7 @@ export function PostingTab({
               variant="outline"
               size="sm"
               onClick={handleGenerateDescription}
-              disabled={!selectedProduct || isGenerating}
+              disabled={!sampleProduct || isGenerating}
             >
               {isGenerating ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -566,7 +566,7 @@ export function PostingTab({
       {/* AI Post Preview */}
       {showPreview && (
         <AIPostPreview
-          product={selectedProduct}
+          product={sampleProduct}
           postText={aiText}
           platform={selectedPlatform as any}
         />
@@ -639,14 +639,16 @@ export function PostingTab({
         className="w-full"
         size="lg"
         onClick={handlePublish}
-        disabled={!selectedProduct || !aiText || isPublishing || postStatus === "pending"}
+        disabled={!hasSelection || !aiText || isPublishing || postStatus === "pending"}
       >
         {isPublishing ? (
           <Loader2 className="h-5 w-5 animate-spin mr-2" />
         ) : (
           <Send className="h-5 w-5 mr-2" />
         )}
-        {showPaidPosting ? `Оплатити ${paidPostingPrice} ₴ та опублікувати` : "Додати в чергу постинга"}
+        {showPaidPosting
+          ? `Оплатити ${paidPostingPrice} ₴ та опублікувати`
+          : `Додати в чергу постинга${productCount ? ` (${productCount})` : ""}`}
       </Button>
 
       {/* Payment Modal */}
@@ -654,7 +656,7 @@ export function PostingTab({
         open={showPaymentModal}
         onOpenChange={setShowPaymentModal}
         amount={paidPostingPrice}
-        description={`Платний постинг: ${selectedProduct?.name || "товар"} на ${selectedPlatformData?.name}`}
+        description={`Платний постинг: ${useAllProducts ? `усі товари` : selectedProducts.length > 1 ? `${selectedProducts.length} товарів` : (sampleProduct?.name || "товар")} на ${selectedPlatformData?.name}`}
         type="posting"
         onSuccess={handlePaymentSuccess}
       />
