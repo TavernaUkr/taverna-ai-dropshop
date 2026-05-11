@@ -551,7 +551,7 @@ export function AdvertisingTab({
               variant="outline"
               size="sm"
               onClick={handleGenerateDescription}
-              disabled={!selectedProduct || isGenerating}
+              disabled={!sampleProduct || isGenerating}
             >
               {isGenerating ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -573,7 +573,7 @@ export function AdvertisingTab({
       {/* AI Post Preview */}
       {showPreview && (
         <AIPostPreview
-          product={selectedProduct}
+          product={sampleProduct}
           postText={aiText}
           platform={(selectedPlatforms[0] || "telegram") as any}
         />
@@ -673,7 +673,7 @@ export function AdvertisingTab({
         size="lg"
         onClick={handleSubmitAd}
         disabled={
-          !selectedProduct || 
+          !hasSelection || 
           selectedPlatforms.length === 0 || 
           !aiText || 
           adStatus === "pending_review" || 
@@ -696,7 +696,7 @@ export function AdvertisingTab({
         open={showPaymentModal}
         onOpenChange={setShowPaymentModal}
         amount={totalCost}
-        description={`Рекламна кампанія: ${selectedProduct?.name || "товар"} на ${selectedPlatforms.length} платформах`}
+        description={`Рекламна кампанія: ${useAllProducts ? "усі товари" : selectedProducts.length > 1 ? `${selectedProducts.length} товарів` : (sampleProduct?.name || "товар")} на ${selectedPlatforms.length} платформах`}
         type="advertising"
         onSuccess={handlePaymentSuccess}
       />
