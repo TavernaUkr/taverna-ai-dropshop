@@ -124,7 +124,8 @@ export default function Manager() {
   const { profile, effectiveRole } = useTelegramAuthContext();
   const [activeTab, setActiveTab] = useState("posting");
   const [products, setProducts] = useState<Product[]>([]);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
+  const [useAllProducts, setUseAllProducts] = useState(false);
   const [productSearch, setProductSearch] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [inviteLink, setInviteLink] = useState<string | null>(null);
