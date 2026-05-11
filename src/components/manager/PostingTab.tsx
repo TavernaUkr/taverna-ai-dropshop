@@ -43,6 +43,8 @@ import { cn } from "@/lib/utils";
 import { PaymentModal } from "./PaymentModal";
 import { AIPostPreview } from "./AIPostPreview";
 
+import { ProductMultiSelector } from "./ProductMultiSelector";
+
 interface Product {
   id: string;
   name: string;
@@ -63,8 +65,10 @@ interface PostingTabProps {
   isSearching: boolean;
   productSearch: string;
   setProductSearch: (value: string) => void;
-  selectedProduct: Product | null;
-  setSelectedProduct: (product: Product | null) => void;
+  selectedProducts: Product[];
+  setSelectedProducts: (p: Product[]) => void;
+  useAllProducts: boolean;
+  setUseAllProducts: (v: boolean) => void;
   setProducts: (products: Product[]) => void;
   supplierIds?: string[];
   selectedShopNames?: string[];
@@ -103,16 +107,20 @@ export function PostingTab({
   isSearching,
   productSearch,
   setProductSearch,
-  selectedProduct,
-  setSelectedProduct,
+  selectedProducts,
+  setSelectedProducts,
+  useAllProducts,
+  setUseAllProducts,
   setProducts,
   supplierIds,
   selectedShopNames,
   availableShops,
 }: PostingTabProps) {
   const supplierId = supplierIds && supplierIds.length === 1 ? supplierIds[0] : null;
-  const multiShop = (supplierIds?.length || 0) > 1;
-  const selectedShopName = selectedShopNames?.length === 1 ? selectedShopNames[0] : 
+  const selectedProduct = selectedProducts.length === 1 ? selectedProducts[0] : null;
+  const productCount = useAllProducts ? "всі" : selectedProducts.length;
+  const hasSelection = useAllProducts || selectedProducts.length > 0;
+  const selectedShopName = selectedShopNames?.length === 1 ? selectedShopNames[0] :
     (selectedShopNames && selectedShopNames.length > 1) ? `${selectedShopNames.length} магазинів` : null;
   const [isAutoPosting, setIsAutoPosting] = useState(false);
   const [aiText, setAiText] = useState("");
