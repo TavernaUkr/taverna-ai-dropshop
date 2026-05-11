@@ -177,9 +177,16 @@ export function AdvertisingTab({
     );
   };
 
+  const fetchAllProductIds = async (): Promise<string[]> => {
+    let q = supabase.from("products").select("id").eq("in_stock", true);
+    if (supplierIds && supplierIds.length > 0) q = q.in("supplier_id", supplierIds);
+    const { data } = await q.limit(1000);
+    return (data || []).map((r: any) => r.id);
+  };
+
   const handleGenerateDescription = async () => {
-    if (!selectedProduct) {
-      toast.error("Спочатку оберіть товар");
+    if (!sampleProduct) {
+      toast.error("Спочатку оберіть товар або увімкніть режим 'Усі товари'");
       return;
     }
 
@@ -188,11 +195,12 @@ export function AdvertisingTab({
       const platformType = selectedPlatforms[0] || "telegram";
       const { data, error } = await supabase.functions.invoke("generate-description", {
         body: {
-          product: selectedProduct,
-          type: platformType === "olx" || platformType === "prom" || platformType === "rozetka" ? "marketplace" : 
-                platformType === "instagram" || platformType === "facebook" || platformType === "tiktok" ? "social" : 
+          product: sampleProduct,
+          type: platformType === "olx" || platformType === "prom" || platformType === "rozetka" ? "marketplace" :
+                platformType === "instagram" || platformType === "facebook" || platformType === "tiktok" ? "social" :
                 "telegram",
           aiHint: aiPromptHint || undefined,
+          template: useAllProducts || selectedProducts.length > 1,
         },
       });
 
@@ -202,7 +210,10 @@ export function AdvertisingTab({
       toast.success("Рекламний текст згенеровано!");
     } catch (err) {
       console.error("Generate description error:", err);
-      setAiText(`🔥 ${selectedProduct.name}\n\n✨ Преміум якість за найкращою ціною!\n💰 Всього ${selectedProduct.price} ₴\n\n🚀 Швидка доставка по Україні\n✅ Гарантія якості\n\n👉 Замовляй зараз!`);
+      const isTemplate = useAllProducts || selectedProducts.length > 1;
+      const nameTok = isTemplate ? "{name}" : sampleProduct.name;
+      const priceTok = isTemplate ? "{price}" : sampleProduct.price;
+      setAiText(`🔥 ${nameTok}\n\n✨ Преміум якість за найкращою ціною!\n💰 Всього ${priceTok} ₴\n\n🚀 Швидка доставка по Україні\n✅ Гарантія якості\n\n👉 Замовляй зараз!`);
       setShowPreview(true);
       toast.success("Текст згенеровано!");
     } finally {
@@ -226,8 +237,8 @@ export function AdvertisingTab({
   const currentMarkup = calculateAdMarkup(budget, selectedPlatforms.length);
 
   const handleSubmitAd = async () => {
-    if (!selectedProduct) {
-      toast.error("Оберіть товар для реклами");
+    if (!hasSelection) {
+      toast.error("Оберіть товар(и) для реклами");
       return;
     }
     if (selectedPlatforms.length === 0) {
@@ -245,10 +256,19 @@ export function AdvertisingTab({
   const handlePaymentSuccess = async () => {
     setAdStatus("pending_review");
     toast.success("Оплата успішна! Рекламу передано на модерацію.");
-    
+
     try {
-      const { error } = await supabase.from("promotions").insert({
-        product_id: selectedProduct?.id,
+      const ids = useAllProducts
+        ? await fetchAllProductIds()
+        : selectedProducts.map((p) => p.id);
+
+      if (ids.length === 0) {
+        toast.error("Немає товарів для реклами");
+        return;
+      }
+
+      const rows = ids.map((id) => ({
+        product_id: id,
         promotion_type: "paid_advertising",
         status: "pending",
         platforms: selectedPlatforms,
@@ -256,19 +276,19 @@ export function AdvertisingTab({
         ai_generated_text: aiText,
         start_date: new Date().toISOString(),
         supplier_id: supplierId || (supplierIds?.[0]) || undefined,
-      });
+      }));
 
-      if (error) {
-        console.error("Failed to save promotion:", error);
-      }
+      const { error } = await supabase.from("promotions").insert(rows);
+      if (error) console.error("Failed to save promotion:", error);
+      else toast.success(`Створено рекламу для ${ids.length} товарів`);
     } catch (err) {
       console.error("Save promotion error:", err);
     }
-    
+
     setTimeout(() => {
       setAdStatus("approved");
       toast.success("Рекламу схвалено! Запуск кампанії...");
-      
+
       setTimeout(() => {
         setAdStatus("active");
         toast.success("Рекламна кампанія активна!");
