@@ -680,8 +680,10 @@ export default function Manager() {
               isSearching={isSearching}
               productSearch={productSearch}
               setProductSearch={setProductSearch}
-              selectedProduct={selectedProduct}
-              setSelectedProduct={setSelectedProduct}
+              selectedProducts={selectedProducts}
+              setSelectedProducts={setSelectedProducts}
+              useAllProducts={useAllProducts}
+              setUseAllProducts={setUseAllProducts}
               setProducts={setProducts}
               supplierIds={supplierIds}
               selectedShopNames={selectedShopNames}
@@ -696,8 +698,10 @@ export default function Manager() {
               isSearching={isSearching}
               productSearch={productSearch}
               setProductSearch={setProductSearch}
-              selectedProduct={selectedProduct}
-              setSelectedProduct={setSelectedProduct}
+              selectedProducts={selectedProducts}
+              setSelectedProducts={setSelectedProducts}
+              useAllProducts={useAllProducts}
+              setUseAllProducts={setUseAllProducts}
               setProducts={setProducts}
               supplierIds={supplierIds}
               selectedShopNames={selectedShopNames}
