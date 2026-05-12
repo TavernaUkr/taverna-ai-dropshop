@@ -137,11 +137,11 @@ export function PostingTab({
 
   const sampleProduct = selectedProduct || selectedProducts[0] || null;
 
-  const fetchAllProductIds = async (): Promise<string[]> => {
-    let q = supabase.from("products").select("id").eq("in_stock", true);
+  const fetchAllProducts = async (): Promise<{ id: string; supplier_id: string | null }[]> => {
+    let q = supabase.from("products").select("id, supplier_id").eq("in_stock", true);
     if (supplierIds && supplierIds.length > 0) q = q.in("supplier_id", supplierIds);
     const { data } = await q.limit(1000);
-    return (data || []).map((r: any) => r.id);
+    return (data || []) as any;
   };
 
   const handleGenerateDescription = async () => {
@@ -217,29 +217,32 @@ export function PostingTab({
         toast.success("Пост опубліковано в Telegram!");
       } else {
         // Multi/all products: enqueue as promotions for the auto-poster
-        const ids = useAllProducts ? await fetchAllProductIds() : selectedProducts.map((p) => p.id);
-        if (ids.length === 0) {
+        const items = useAllProducts
+          ? await fetchAllProducts()
+          : selectedProducts.map((p) => ({ id: p.id, supplier_id: p.supplier_id || null }));
+        if (items.length === 0) {
           toast.error("Немає товарів для публікації");
           setIsPublishing(false);
           setPostStatus("draft");
           return;
         }
-        const rows = ids.map((id) => ({
-          product_id: id,
+        const rows = items.map((it) => ({
+          product_id: it.id,
           promotion_type: "auto",
           status: "pending",
           platforms: [selectedPlatform],
           budget: 0,
           ai_generated_text: aiText,
           start_date: new Date().toISOString(),
-          supplier_id: supplierId || (supplierIds?.[0]) || undefined,
+          supplier_id: it.supplier_id || supplierId || (supplierIds?.[0]) || null,
         }));
         const { error } = await supabase.from("promotions").insert(rows);
         if (error) throw error;
         setPostStatus("published");
-        toast.success(`Додано в чергу: ${ids.length} постів`);
+        toast.success(`Додано в чергу: ${items.length} постів. Перші публікації за 1-5 хв.`);
       }
 
+      setShowConfirmDialog(false);
       setTimeout(() => {
         setSelectedProducts([]);
         setUseAllProducts(false);
