@@ -274,7 +274,7 @@ export default function Manager() {
           setMyShops(allShops);
           setPartnerShops([]);
 
-          // Auto-select all
+          // Auto-select single shop if only one available; otherwise select all
           setSelectedShopIds(allShops.map(s => s.id));
         }
       } catch (err) {
