@@ -265,25 +265,31 @@ export function PostingTab({
     toast.success("Оплата успішна! Пост буде опублікований негайно.");
 
     try {
-      const ids = useAllProducts
-        ? await fetchAllProductIds()
-        : selectedProducts.map((p) => p.id);
-      const rows = ids.map((id) => ({
-        product_id: id,
+      const items = useAllProducts
+        ? await fetchAllProducts()
+        : selectedProducts.map((p) => ({ id: p.id, supplier_id: p.supplier_id || null }));
+      const rows = items.map((it) => ({
+        product_id: it.id,
         promotion_type: "paid_posting",
         status: "pending",
         platforms: [selectedPlatform],
         budget: paidPostingPrice,
         ai_generated_text: aiText,
         start_date: new Date().toISOString(),
-        supplier_id: supplierId || (supplierIds?.[0]) || undefined,
+        supplier_id: it.supplier_id || supplierId || (supplierIds?.[0]) || null,
       }));
       if (rows.length > 0) await supabase.from("promotions").insert(rows);
+      toast.success(`Оплачено ${rows.length} постів. Перші публікації за 1-5 хв.`);
     } catch (err) {
       console.error("Save promotion error:", err);
     }
 
-    handlePublish();
+    setShowConfirmDialog(false);
+    setSelectedProducts([]);
+    setUseAllProducts(false);
+    setAiText("");
+    setProductSearch("");
+    setPostStatus("draft");
   };
 
   const selectedPlatformData = POSTING_PLATFORMS.find((p) => p.id === selectedPlatform);
