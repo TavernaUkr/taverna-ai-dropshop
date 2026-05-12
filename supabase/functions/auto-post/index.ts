@@ -397,6 +397,10 @@ serve(async (req) => {
 
     console.log("Starting auto-post cycle...");
 
+    // ========== PENDING PROMOTIONS (user batch inserts) ==========
+    const pendingResults = await processPendingPromotions(supabase, TELEGRAM_BOT_TOKEN, LOVABLE_API_KEY);
+    console.log(`Processed ${pendingResults.length} pending promotions`);
+
     // ========== USER AUTO-QUEUES (per-user custom queues) ==========
     const userQueueResults = await processUserAutoQueues(supabase, TELEGRAM_BOT_TOKEN, LOVABLE_API_KEY);
     console.log(`Processed ${userQueueResults.length} user auto-queues`);
