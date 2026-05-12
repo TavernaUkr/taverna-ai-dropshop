@@ -42,6 +42,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { PaymentModal } from "./PaymentModal";
 import { AIPostPreview } from "./AIPostPreview";
+import { PromotionPreviewDialog } from "./PromotionPreviewDialog";
 
 import { ProductMultiSelector } from "./ProductMultiSelector";
 
@@ -131,6 +132,7 @@ export function PostingTab({
   const [selectedPlatform, setSelectedPlatform] = useState("telegram");
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [postStatus, setPostStatus] = useState<PostStatus>("draft");
 
   const sampleProduct = selectedProduct || selectedProducts[0] || null;
