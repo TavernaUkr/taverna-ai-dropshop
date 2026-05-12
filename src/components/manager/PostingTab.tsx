@@ -684,6 +684,25 @@ export function PostingTab({
         type="posting"
         onSuccess={handlePaymentSuccess}
       />
+
+      {/* Confirmation Preview Dialog */}
+      <PromotionPreviewDialog
+        open={showConfirmDialog}
+        onOpenChange={setShowConfirmDialog}
+        type="posting"
+        selectedProducts={selectedProducts}
+        useAllProducts={useAllProducts}
+        allProductsCount={null}
+        shopNames={selectedShopNames || []}
+        platforms={[selectedPlatform]}
+        aiText={aiText}
+        onAiTextChange={setAiText}
+        estimatedCost={showPaidPosting ? paidPostingPrice : 0}
+        intervalSeconds={90}
+        onConfirm={runPublish}
+        isSubmitting={isPublishing}
+        paid={showPaidPosting}
+      />
     </div>
   );
 }
