@@ -239,6 +239,145 @@ async function processUserAutoQueues(
   return results;
 }
 
+// ========== PENDING PROMOTIONS PROCESSOR (user batch inserts) ==========
+async function processPendingPromotions(
+  supabase: any,
+  TELEGRAM_BOT_TOKEN: string,
+  LOVABLE_API_KEY: string | undefined,
+): Promise<Array<{ promotion_id: string; status: string }>> {
+  const results: Array<{ promotion_id: string; status: string }> = [];
+
+  // Take up to 10 pending promotions per cycle to avoid Telegram rate limits
+  const { data: pending } = await supabase
+    .from("promotions")
+    .select("*, product:products(id, name, price, images, description, ai_description, supplier_id)")
+    .eq("status", "pending")
+    .order("created_at", { ascending: true })
+    .limit(10);
+
+  if (!pending || pending.length === 0) return results;
+
+  for (const promo of pending) {
+    try {
+      const product = promo.product;
+      if (!product) {
+        await supabase
+          .from("promotions")
+          .update({ status: "rejected", updated_at: new Date().toISOString() })
+          .eq("id", promo.id);
+        results.push({ promotion_id: promo.id, status: "no_product" });
+        continue;
+      }
+
+      // Build text — substitute template variables if AI text contains {name}/{price},
+      // otherwise use AI text as-is, or generate via Gemini, or fallback.
+      const retailPrice = Number(product.price);
+      const marketingOldPrice = Math.ceil((retailPrice * 1.18) / 10) * 10;
+      const savings = marketingOldPrice - retailPrice;
+      const discount = Math.round((savings / marketingOldPrice) * 100);
+
+      let text = (promo.ai_generated_text || "").trim();
+      const hasTemplateVars = /\{name\}|\{price\}/i.test(text);
+
+      if (hasTemplateVars) {
+        text = text
+          .replace(/\{name\}/gi, product.name)
+          .replace(/\{price\}/gi, String(retailPrice));
+      } else if (!text && LOVABLE_API_KEY) {
+        try {
+          const aiR = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${LOVABLE_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: "google/gemini-2.5-flash",
+              messages: [
+                {
+                  role: "system",
+                  content: `Ти копірайтер. Створи короткий пост для Telegram (до 350 символів) укр. мовою з емодзі про товар.`,
+                },
+                {
+                  role: "user",
+                  content: `Назва: ${product.name}\nЦіна: ${retailPrice} ₴\nЗнижка: -${discount}%\n${product.description || product.ai_description || ""}`,
+                },
+              ],
+            }),
+          });
+          if (aiR.ok) {
+            const aj = await aiR.json();
+            text = aj.choices?.[0]?.message?.content || "";
+          }
+        } catch (e) {
+          console.error("AI gen error in pending promo", e);
+        }
+      }
+
+      if (!text) {
+        text = `🔥 ${product.name}\n\n💰 ${retailPrice.toLocaleString()} ₴\n🏷️ Звичайна: ${marketingOldPrice.toLocaleString()} ₴\n✨ Економія: ${savings.toLocaleString()} ₴\n\n👇 Замовляй!`;
+      }
+
+      const platforms: string[] = promo.platforms || ["telegram"];
+      const includesTelegram = platforms.includes("telegram");
+      let telegramMessageId: number | null = null;
+
+      if (includesTelegram) {
+        const channelId = "@taverna_ukr_group";
+        const miniAppUrl = `https://taverna-ai-dropshop.lovable.app/product/${product.id}`;
+        const inlineKeyboard = {
+          inline_keyboard: [[{ text: "🛒 Замовити зараз", url: miniAppUrl }]],
+        };
+        const imageUrl = product.images?.[0];
+        const tgRes = imageUrl
+          ? await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                chat_id: channelId,
+                photo: imageUrl,
+                caption: text.slice(0, 1024),
+                reply_markup: inlineKeyboard,
+              }),
+            })
+          : await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                chat_id: channelId,
+                text,
+                reply_markup: inlineKeyboard,
+              }),
+            });
+        const tgJson = await tgRes.json();
+        if (tgJson.ok) telegramMessageId = tgJson.result.message_id;
+      }
+
+      await supabase
+        .from("promotions")
+        .update({
+          status: "active",
+          ai_generated_text: text,
+          telegram_message_id: telegramMessageId,
+          telegram_channel_id: includesTelegram ? "@taverna_ukr_group" : null,
+          start_date: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", promo.id);
+
+      results.push({ promotion_id: promo.id, status: "published" });
+
+      // Tiny gap to avoid Telegram rate limits (1.5s)
+      await new Promise((r) => setTimeout(r, 1500));
+    } catch (err) {
+      console.error("Pending promo error", promo.id, err);
+      results.push({ promotion_id: promo.id, status: "error" });
+    }
+  }
+
+  return results;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -257,6 +396,10 @@ serve(async (req) => {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     console.log("Starting auto-post cycle...");
+
+    // ========== PENDING PROMOTIONS (user batch inserts) ==========
+    const pendingResults = await processPendingPromotions(supabase, TELEGRAM_BOT_TOKEN, LOVABLE_API_KEY);
+    console.log(`Processed ${pendingResults.length} pending promotions`);
 
     // ========== USER AUTO-QUEUES (per-user custom queues) ==========
     const userQueueResults = await processUserAutoQueues(supabase, TELEGRAM_BOT_TOKEN, LOVABLE_API_KEY);

@@ -42,6 +42,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { PaymentModal } from "./PaymentModal";
 import { AIPostPreview } from "./AIPostPreview";
+import { PromotionPreviewDialog } from "./PromotionPreviewDialog";
 
 import { ProductMultiSelector } from "./ProductMultiSelector";
 
@@ -131,15 +132,16 @@ export function PostingTab({
   const [selectedPlatform, setSelectedPlatform] = useState("telegram");
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [postStatus, setPostStatus] = useState<PostStatus>("draft");
 
   const sampleProduct = selectedProduct || selectedProducts[0] || null;
 
-  const fetchAllProductIds = async (): Promise<string[]> => {
-    let q = supabase.from("products").select("id").eq("in_stock", true);
+  const fetchAllProducts = async (): Promise<{ id: string; supplier_id: string | null }[]> => {
+    let q = supabase.from("products").select("id, supplier_id").eq("in_stock", true);
     if (supplierIds && supplierIds.length > 0) q = q.in("supplier_id", supplierIds);
     const { data } = await q.limit(1000);
-    return (data || []).map((r: any) => r.id);
+    return (data || []) as any;
   };
 
   const handleGenerateDescription = async () => {
@@ -176,13 +178,26 @@ export function PostingTab({
     }
   };
 
+  const validateBeforeRun = (): string | null => {
+    if (!hasSelection) return "Оберіть товар(и) або увімкніть 'Усі товари'";
+    if (!aiText.trim()) return "Введіть або згенеруйте текст публікації";
+    if (!selectedPlatform) return "Оберіть платформу";
+    return null;
+  };
+
   const handlePublish = async () => {
-    if (!hasSelection || !aiText) {
-      toast.error("Оберіть товар(и) та згенеруйте опис");
+    const err = validateBeforeRun();
+    if (err) {
+      toast.error(err);
       return;
     }
+    // Always confirm via preview dialog (single source of truth)
+    setShowConfirmDialog(true);
+  };
 
+  const runPublish = async () => {
     if (showPaidPosting) {
+      setShowConfirmDialog(false);
       setShowPaymentModal(true);
       return;
     }
@@ -202,29 +217,32 @@ export function PostingTab({
         toast.success("Пост опубліковано в Telegram!");
       } else {
         // Multi/all products: enqueue as promotions for the auto-poster
-        const ids = useAllProducts ? await fetchAllProductIds() : selectedProducts.map((p) => p.id);
-        if (ids.length === 0) {
+        const items = useAllProducts
+          ? await fetchAllProducts()
+          : selectedProducts.map((p) => ({ id: p.id, supplier_id: p.supplier_id || null }));
+        if (items.length === 0) {
           toast.error("Немає товарів для публікації");
           setIsPublishing(false);
           setPostStatus("draft");
           return;
         }
-        const rows = ids.map((id) => ({
-          product_id: id,
+        const rows = items.map((it) => ({
+          product_id: it.id,
           promotion_type: "auto",
           status: "pending",
           platforms: [selectedPlatform],
           budget: 0,
           ai_generated_text: aiText,
           start_date: new Date().toISOString(),
-          supplier_id: supplierId || (supplierIds?.[0]) || undefined,
+          supplier_id: it.supplier_id || supplierId || (supplierIds?.[0]) || null,
         }));
         const { error } = await supabase.from("promotions").insert(rows);
         if (error) throw error;
         setPostStatus("published");
-        toast.success(`Додано в чергу: ${ids.length} постів`);
+        toast.success(`Додано в чергу: ${items.length} постів. Перші публікації за 1-5 хв.`);
       }
 
+      setShowConfirmDialog(false);
       setTimeout(() => {
         setSelectedProducts([]);
         setUseAllProducts(false);
@@ -247,25 +265,31 @@ export function PostingTab({
     toast.success("Оплата успішна! Пост буде опублікований негайно.");
 
     try {
-      const ids = useAllProducts
-        ? await fetchAllProductIds()
-        : selectedProducts.map((p) => p.id);
-      const rows = ids.map((id) => ({
-        product_id: id,
+      const items = useAllProducts
+        ? await fetchAllProducts()
+        : selectedProducts.map((p) => ({ id: p.id, supplier_id: p.supplier_id || null }));
+      const rows = items.map((it) => ({
+        product_id: it.id,
         promotion_type: "paid_posting",
         status: "pending",
         platforms: [selectedPlatform],
         budget: paidPostingPrice,
         ai_generated_text: aiText,
         start_date: new Date().toISOString(),
-        supplier_id: supplierId || (supplierIds?.[0]) || undefined,
+        supplier_id: it.supplier_id || supplierId || (supplierIds?.[0]) || null,
       }));
       if (rows.length > 0) await supabase.from("promotions").insert(rows);
+      toast.success(`Оплачено ${rows.length} постів. Перші публікації за 1-5 хв.`);
     } catch (err) {
       console.error("Save promotion error:", err);
     }
 
-    handlePublish();
+    setShowConfirmDialog(false);
+    setSelectedProducts([]);
+    setUseAllProducts(false);
+    setAiText("");
+    setProductSearch("");
+    setPostStatus("draft");
   };
 
   const selectedPlatformData = POSTING_PLATFORMS.find((p) => p.id === selectedPlatform);
@@ -659,6 +683,25 @@ export function PostingTab({
         description={`Платний постинг: ${useAllProducts ? `усі товари` : selectedProducts.length > 1 ? `${selectedProducts.length} товарів` : (sampleProduct?.name || "товар")} на ${selectedPlatformData?.name}`}
         type="posting"
         onSuccess={handlePaymentSuccess}
+      />
+
+      {/* Confirmation Preview Dialog */}
+      <PromotionPreviewDialog
+        open={showConfirmDialog}
+        onOpenChange={setShowConfirmDialog}
+        type="posting"
+        selectedProducts={selectedProducts}
+        useAllProducts={useAllProducts}
+        allProductsCount={null}
+        shopNames={selectedShopNames || []}
+        platforms={[selectedPlatform]}
+        aiText={aiText}
+        onAiTextChange={setAiText}
+        estimatedCost={showPaidPosting ? paidPostingPrice : 0}
+        intervalSeconds={90}
+        onConfirm={runPublish}
+        isSubmitting={isPublishing}
+        paid={showPaidPosting}
       />
     </div>
   );
