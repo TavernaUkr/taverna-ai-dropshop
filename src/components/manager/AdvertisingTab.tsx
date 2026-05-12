@@ -41,6 +41,7 @@ import { PaymentModal } from "./PaymentModal";
 import { AIPostPreview } from "./AIPostPreview";
 import { PlatformConditions } from "./PlatformConditions";
 import { ProductMultiSelector } from "./ProductMultiSelector";
+import { PromotionPreviewDialog } from "./PromotionPreviewDialog";
 
 interface Product {
   id: string;
@@ -161,6 +162,7 @@ export function AdvertisingTab({
   const [aiPromptHint, setAiPromptHint] = useState("");
   const [budget, setBudget] = useState<number>(100);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [showConditions, setShowConditions] = useState(false);
   const [adStatus, setAdStatus] = useState<AdStatus>("draft");
@@ -245,11 +247,19 @@ export function AdvertisingTab({
       toast.error("Оберіть хоча б одну платформу");
       return;
     }
-    if (!aiText) {
+    if (!aiText.trim()) {
       toast.error("Згенеруйте або введіть рекламний текст");
       return;
     }
+    if (budget <= 0) {
+      toast.error("Вкажіть бюджет більше 0 ₴");
+      return;
+    }
+    setShowConfirmDialog(true);
+  };
 
+  const proceedToPayment = () => {
+    setShowConfirmDialog(false);
     setShowPaymentModal(true);
   };
 
