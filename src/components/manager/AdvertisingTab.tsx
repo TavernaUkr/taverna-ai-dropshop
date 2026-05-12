@@ -179,11 +179,11 @@ export function AdvertisingTab({
     );
   };
 
-  const fetchAllProductIds = async (): Promise<string[]> => {
-    let q = supabase.from("products").select("id").eq("in_stock", true);
+  const fetchAllProducts = async (): Promise<{ id: string; supplier_id: string | null }[]> => {
+    let q = supabase.from("products").select("id, supplier_id").eq("in_stock", true);
     if (supplierIds && supplierIds.length > 0) q = q.in("supplier_id", supplierIds);
     const { data } = await q.limit(1000);
-    return (data || []).map((r: any) => r.id);
+    return (data || []) as any;
   };
 
   const handleGenerateDescription = async () => {
@@ -268,29 +268,29 @@ export function AdvertisingTab({
     toast.success("Оплата успішна! Рекламу передано на модерацію.");
 
     try {
-      const ids = useAllProducts
-        ? await fetchAllProductIds()
-        : selectedProducts.map((p) => p.id);
+      const items = useAllProducts
+        ? await fetchAllProducts()
+        : selectedProducts.map((p) => ({ id: p.id, supplier_id: p.supplier_id || null }));
 
-      if (ids.length === 0) {
+      if (items.length === 0) {
         toast.error("Немає товарів для реклами");
         return;
       }
 
-      const rows = ids.map((id) => ({
-        product_id: id,
+      const rows = items.map((it) => ({
+        product_id: it.id,
         promotion_type: "paid_advertising",
         status: "pending",
         platforms: selectedPlatforms,
         budget: budget,
         ai_generated_text: aiText,
         start_date: new Date().toISOString(),
-        supplier_id: supplierId || (supplierIds?.[0]) || undefined,
+        supplier_id: it.supplier_id || supplierId || (supplierIds?.[0]) || null,
       }));
 
       const { error } = await supabase.from("promotions").insert(rows);
       if (error) console.error("Failed to save promotion:", error);
-      else toast.success(`Створено рекламу для ${ids.length} товарів`);
+      else toast.success(`Створено рекламу для ${items.length} товарів`);
     } catch (err) {
       console.error("Save promotion error:", err);
     }
@@ -709,6 +709,25 @@ export function AdvertisingTab({
         description={`Рекламна кампанія: ${useAllProducts ? "усі товари" : selectedProducts.length > 1 ? `${selectedProducts.length} товарів` : (sampleProduct?.name || "товар")} на ${selectedPlatforms.length} платформах`}
         type="advertising"
         onSuccess={handlePaymentSuccess}
+      />
+
+      {/* Confirmation Preview Dialog */}
+      <PromotionPreviewDialog
+        open={showConfirmDialog}
+        onOpenChange={setShowConfirmDialog}
+        type="advertising"
+        selectedProducts={selectedProducts}
+        useAllProducts={useAllProducts}
+        allProductsCount={null}
+        shopNames={selectedShopNames || []}
+        platforms={selectedPlatforms}
+        aiText={aiText}
+        onAiTextChange={setAiText}
+        estimatedCost={totalCost}
+        intervalSeconds={120}
+        onConfirm={proceedToPayment}
+        isSubmitting={false}
+        paid
       />
     </div>
   );
