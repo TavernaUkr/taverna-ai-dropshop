@@ -178,13 +178,26 @@ export function PostingTab({
     }
   };
 
+  const validateBeforeRun = (): string | null => {
+    if (!hasSelection) return "Оберіть товар(и) або увімкніть 'Усі товари'";
+    if (!aiText.trim()) return "Введіть або згенеруйте текст публікації";
+    if (!selectedPlatform) return "Оберіть платформу";
+    return null;
+  };
+
   const handlePublish = async () => {
-    if (!hasSelection || !aiText) {
-      toast.error("Оберіть товар(и) та згенеруйте опис");
+    const err = validateBeforeRun();
+    if (err) {
+      toast.error(err);
       return;
     }
+    // Always confirm via preview dialog (single source of truth)
+    setShowConfirmDialog(true);
+  };
 
+  const runPublish = async () => {
     if (showPaidPosting) {
+      setShowConfirmDialog(false);
       setShowPaymentModal(true);
       return;
     }
