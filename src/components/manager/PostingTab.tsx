@@ -128,6 +128,16 @@ export function PostingTab({
   supplierIds,
   selectedShopNames,
   availableShops,
+  myShops = [],
+  partnerShops = [],
+  selectedShopIds = [],
+  toggleShop = () => {},
+  selectAllShops = () => {},
+  selectMyShops = () => {},
+  clearShops = () => {},
+  isAdmin,
+  effectiveRole,
+  profileId,
 }: PostingTabProps) {
   const supplierId = supplierIds && supplierIds.length === 1 ? supplierIds[0] : null;
   const selectedProduct = selectedProducts.length === 1 ? selectedProducts[0] : null;
