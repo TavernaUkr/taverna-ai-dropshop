@@ -284,10 +284,16 @@ export default function Manager() {
     fetchShops();
   }, [profile?.id, isAdminOrMod, isAdmin]);
 
-  // Derive supplierIds for child components
-  const supplierIds = selectedShopIds.length === availableShops.length
-    ? [] // empty means "all" (no filter)
-    : selectedShopIds;
+  // Derive supplierIds for child components.
+  // For non-admin/mod: always restrict to availableShops, even when "all" selected,
+  // so a supplier never accidentally promotes another shop's products.
+  const supplierIds = (() => {
+    if (selectedShopIds.length === 0) return [];
+    if (isAdminOrMod && selectedShopIds.length === availableShops.length) {
+      return []; // admin/mod "all" = no filter (cross-platform)
+    }
+    return selectedShopIds;
+  })();
 
   // Update product selection when shops change
   useEffect(() => {
