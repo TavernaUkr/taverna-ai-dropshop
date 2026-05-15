@@ -1,120 +1,81 @@
+# План: завершення кнопки "Просування"
 
-## Контекст: що вже зроблено і що випало
+## Що зараз і чому користувач не бачить вибір магазинів
 
-За останні три ітерації ми:
-- Зробили мульти-вибір магазинів і товарів у "Просуванні" (`ProductMultiSelector`, `Manager.tsx`, `PostingTab`, `AdvertisingTab`).
-- Зробили серверні авто-черги (`user_auto_queues` + `auto-post` обробка з рандом/мануал, активні години, AI-генерація).
-- Закрили критичну privilege-escalation діру в `user_roles`, винесли керування ролями в edge function.
+Селектор магазинів (`Popover` з "Мої / Партнерські / Усі") існує **у хедері `Manager.tsx`**, а не всередині табів "Постинг" і "Реклама". Тому коли користувач відкриває таб і бачить блок із пошуком товару + платформами — ніякого магазину поруч там немає, і виглядає це як "вибірки магазинів немає". Решта (медіа, перегляд) теж відсутня в робочому потоці табу.
 
-Залишилось три блоки незавершеного, які впливають на користувача прямо зараз:
-
-### Блок A — "Просування" не доводить роботу до кінця
-1. **Батч-публікації не публікуються.** Коли користувач обирає 2+ товарів або "усі товари", `PostingTab`/`AdvertisingTab` робить `INSERT` у `promotions` зі `status='pending'`, але `auto-post` НЕ читає такі рядки. Тобто користувач "оплатив постинг" → нічого не відбулось.
-2. **Немає превʼю кампанії.** Натиснув "Опублікувати 12 товарів" — і відразу списались гроші. Треба модалку: список товарів, шаблон тексту, орієнтовна вартість, час, кнопки "Підтвердити / Скасувати".
-3. **UX вибору магазинів грубий.** Якщо магазин один — все одно треба клікнути. Немає чіткої "сводки" зверху ("Обрано: 2 магазини · 12 товарів · ~24 хв на публікацію").
-4. **Валідація відсутня.** Можна натиснути "Опублікувати" без обраних платформ / без тексту / без товарів — впаде з нечитабельною помилкою.
-5. **Немає списку моїх "в черзі" та можливості скасувати.** Користувач не бачить, що з його батчу опубліковано, що чекає, не може зупинити.
-6. **Мобільний layout (Telegram Mini App).** Чіпси/чекбокси/таби потрібно перевірити на 360px ширині.
-
-### Блок B — Фаза 2 безпеки (з минулого разу)
-- `cart_items`, `delivery_addresses`, `shop_manager_links`, `user_bans` — все ще `USING(true)`.
-- `ManualSupplierForm.tsx`, `AdminStoreManager.tsx` — досі пишуть напряму у `user_roles` (мовчки впадуть).
-- Каталог/відгуки читають `suppliers`/`profiles` напряму замість `_public` view.
-
-### Блок C — Дрібниці що згадувались
-- Ratings бейджі при перегляді магазину (вже є для постингу).
-- Дев-роль перемикач показує "як виглядає клієнтом" — переконатися, що сервер усе одно не пускає тестову роль вище реальних прав адміна.
+Виправляємо це у три блоки.
 
 ---
 
-## План реалізації
+## Блок 1 — Shop Picker всередині кожного табу
 
-Виконуємо у три фази в одному ході. Ціль — щоб користувач бачив одразу зрозумілу, безпечну й завершену кнопку "Просування".
+**Новий компонент** `src/components/manager/ShopPickerInline.tsx`:
+- Перший крок усередині `PostingTab` і `AdvertisingTab` (над пошуком товару).
+- Показує:
+  - Заголовок "Крок 1. Оберіть магазин(и)" + лічильник "Обрано: X / Y".
+  - Кнопки швидкого вибору: **"Усі магазини"** (toggle, що дійсно вмикає/вимикає всі), **"Мої"** (для адміна), **"Скинути"**.
+  - Сітка карток магазинів (логотип + назва + бейдж "Мій / Партнер" + чекбокс).
+  - Поле пошуку магазину при кількості > 6.
+  - Якщо магазин один — авто-обраний та згорнутий у компактну смужку.
+- Бере з `Manager.tsx` через пропси: `availableShops`, `myShops`, `partnerShops`, `selectedShopIds`, `toggleShop`, `selectAllShops`, `selectMyShops`, `clearShops`.
+- У хедері залишаємо лише компактне зведення-чіпси (read-only) як індикатор.
 
-### Фаза 1 — Батч-публікації справді працюють
+**Виправлення "Обрати всі магазини"**:
+- Зараз `selectAllShops` лише виставляє масив, але `supplierIds` повертає `[]` коли вибрано всі — і це працює як "без фільтра" → товари показуються з усіх. Це збиває з пантелику постачальника, у якого свої 3 магазини: він тисне "Усі" і бачить чужі товари. Виправити: `supplierIds` для постачальника/менеджера завжди має бути обмежений `availableShops`, навіть коли "вибрано всі".
 
-**Edge function `auto-post`** (розширення):
-- Перед обробкою `user_auto_queues` додати **`processPendingPromotions()`**: брати до 10 рядків `promotions` зі `status='pending'`, для кожного:
-  - підтягнути товар, побудувати текст (якщо `ai_generated_text` є шаблон з `{name}`/`{price}` — підставити, інакше згенерувати через Gemini),
-  - публікувати в Telegram (як уже робиться),
-  - оновлювати `status='active'`, `telegram_message_id`, `start_date=now`.
-- Між публікаціями робити невелику затримку (1-2с), щоб не впертися в Telegram rate-limit.
+## Блок 2 — Міні-список популярних товарів магазину
 
-**Клієнт (`PostingTab`/`AdvertisingTab`)**:
-- При батч-вставці писати всі поля коректно (`promotion_type`, `platforms`, `ai_generated_text` як шаблон, `supplier_id`, `product_id`).
-- Після успішного `INSERT` показати тост "Додано N в чергу — перші публікації за 1-5 хв".
+**Новий компонент** `src/components/manager/ShopPopularProducts.tsx`:
+- Показується після вибору магазинів і ДО того, як користувач почав пошук.
+- Для кожного обраного магазину (до 3) — горизонтальний скрол з 6-8 товарами (фото, назва, ціна), сортування `views_count desc, created_at desc`.
+- Клік по товару = додати до `selectedProducts` (мульти-вибір зберігається).
+- Кнопка "Показати всі товари магазину" — підставляє supplier_id у фільтр і відкриває повний пошук.
 
-### Фаза 2 — UX "Просування"
+Інтеграція у `ProductMultiSelector` — рендериться над пошуковим полем, коли `productSearch` порожній.
 
-**Зведення зверху** (`Manager.tsx` хедер табу):
-- Картка-стікі: "Магазинів: X · Товарів: Y · Платформ: Z · Орієнтовно: ~N хв".
-- Якщо у користувача рівно один магазин — авто-вибрати його.
+## Блок 3 — Медіа (фото/відео) і Передперегляд
 
-**Превʼю-модалка перед оплатою/публікацією** (`PromotionPreviewDialog.tsx`, новий):
-- Список товарів (перші 5 з лічильником "ще +N"),
-- Згенерований AI-текст / шаблон (з можливістю редагувати перед запуском),
-- Платформи, інтервал, орієнтовна вартість і час,
-- Кнопки "Запустити" / "Скасувати".
-- Викликається з обох табів замість прямого `handleSubmit`.
+**Медіа-аплоадер** (новий `src/components/manager/PostMediaUploader.tsx`):
+- Drag&drop або клік. Прийом: до 5 фото (jpg/png/webp ≤ 5MB) + 1 відео (mp4/mov ≤ 50MB).
+- Завантаження у бакет `shop-assets` під префіксом `promotions/{profile_id}/{uuid}`.
+- Прев'ю плиток із кнопкою "видалити".
+- Передається у `PostingTab`/`AdvertisingTab` як `media: { images: string[], video: string | null }`.
+- Якщо медіа додано — у Telegram постимо як photo/video з caption замість text-only; для інших платформ — додаємо посилання.
 
-**Валідація** (хелпер `validatePromotion()` у `Manager.tsx`):
-- Магазин(и) ✓, товар(и) або режим "усі" ✓, платформи ✓, бюджет>0 для реклами ✓.
-- Кнопка дізейблиться + tooltip із причиною.
+**Передперегляд** (`PromotionPreviewDialog.tsx` уже існує — розширюємо):
+- Додати секцію "Як це виглядатиме" з рендером мок-картки Telegram-посту: фото/відео-плеєр, текст із підставленими `{name}/{price}` для першого товару, лічильник "+N товарів у черзі".
+- Перемикач "Показати приклад для іншого товару зі списку" (стрілки ←/→ у превʼю при батчі).
+- Вибір першого слайду відео (poster) — автоматично з відео.
+- Кнопки "Назад до редагування" / "Запустити".
 
-**"Мої кампанії" таб** (новий `MyCampaignsTab.tsx`):
-- Список рядків `promotions` поточного користувача (через нову edge function `list-my-promotions` що бере supplier_ids з shop_manager_links + own).
-- Статус (pending/active/done), час, кнопка "Скасувати pending".
-- Інтегрується третім табом у `Manager.tsx` поруч з "Постинг" і "Реклама".
-
-**Мобільний layout**:
-- `ProductMultiSelector` — `max-h-56` зменшити до `max-h-[40vh]` на мобілці, чіпси `text-[11px]`.
-- Стікі-зведення фіксується зверху таба.
-
-### Фаза 3 — Безпека (добиваємо)
-
-**Edge function `manage-cart`** — actions `list/add/update/remove`, валідація сесії, `profile_id` із сесії.
-
-**Edge function `manage-supplier`** — actions `get_my_suppliers/update_settings`, перевірка через `shop_manager_links` або власник.
-
-**Edge function `manage-shop-links`** — admin-only `add/remove/list`. Перевести `ManualSupplierForm` і `AdminStoreManager` на `manage-user-roles` + `manage-shop-links`.
-
-**Міграція БД**:
-- `cart_items`, `delivery_addresses`, `shop_manager_links`, `user_bans` — `DROP POLICY ... USING(true)`, лишити тільки service-role-bypass (без політики).
-- (`profiles`, `suppliers`, `user_roles` уже зачищені у Фазі 1).
-
-**Клієнт переключити на `_public` view**: `Suppliers.tsx`, `SupplierProfile.tsx`, `RatingsTab.tsx`, `ProductDetail.tsx` (де читається продавець без PII).
-
-**Дев-перемикач**: переконатись, що на сервері `manage-*` функції не довіряють жодному "тестова роль" — лише реальній ролі з БД.
+Викликається з обох табів **обов'язково** перед `INSERT` у `promotions` (зараз у деяких гілках обходиться).
 
 ---
 
-## Технічні деталі (для довідки)
+## Дрібні правки
 
-```text
-auto-post (cron 5 хв)
-  ├─ processPendingPromotions()   ← НОВЕ: батчі від користувача
-  ├─ processUserAutoQueues()      ← вже є
-  └─ processQueueRotation()       ← вже є (round-robin постачальників)
-```
+- `Manager.tsx`: прибрати дублювання селектора з хедера (залишити лише компактне зведення-чіпси), щоб не плутав.
+- `auto-post`: коли в `promotions` є `media_images`/`media_video` — публікувати через `sendPhoto`/`sendVideo` Telegram API.
+- Міграція: додати у `promotions` колонки `media_images text[]`, `media_video text`.
+- `shop-assets` бакет уже public — RLS додати: `INSERT/DELETE` дозволено, якщо `path` починається з `promotions/{auth.uid()}/`.
 
-Нові файли:
-- `src/components/manager/PromotionPreviewDialog.tsx`
-- `src/components/manager/MyCampaignsTab.tsx`
-- `supabase/functions/manage-cart/index.ts`
-- `supabase/functions/manage-supplier/index.ts`
-- `supabase/functions/manage-shop-links/index.ts`
-- `supabase/functions/list-my-promotions/index.ts`
-- 1 SQL міграція (DROP USING(true) на 4 таблицях)
+## Файли
 
-Редаговані:
-- `supabase/functions/auto-post/index.ts` (+ `processPendingPromotions`)
-- `src/pages/Manager.tsx` (стікі-зведення, авто-вибір 1-магазину, 3-й таб, валідація)
-- `src/components/manager/PostingTab.tsx`, `AdvertisingTab.tsx` (виклик превʼю замість прямого submit)
-- `src/components/manager/ProductMultiSelector.tsx` (мобільні розміри)
-- `src/components/admin/ManualSupplierForm.tsx`, `AdminStoreManager.tsx`, `src/hooks/useCart.tsx`, `src/services/api.ts`, `Suppliers.tsx`, `SupplierProfile.tsx`, `RatingsTab.tsx`, `ProductDetail.tsx`
-- `supabase/config.toml` (4 нові функції з `verify_jwt = false`)
+**Нові**:
+- `src/components/manager/ShopPickerInline.tsx`
+- `src/components/manager/ShopPopularProducts.tsx`
+- `src/components/manager/PostMediaUploader.tsx`
+- 1 SQL міграція (колонки + storage policy)
 
-## Що НЕ входить
-- Платіжний провайдер (поки що мок як зараз).
-- HMAC сесій / refresh tokens — окремий план безпеки сесій.
-- Аналітика конверсії кампаній (CTR, ROI) — окремий план.
+**Редаговані**:
+- `src/pages/Manager.tsx` — спрощений хедер, проброс пропсів
+- `src/components/manager/PostingTab.tsx`, `AdvertisingTab.tsx` — інтеграція 4 кроків (shops → products → media → preview)
+- `src/components/manager/ProductMultiSelector.tsx` — рендер `ShopPopularProducts` зверху
+- `src/components/manager/PromotionPreviewDialog.tsx` — секція "як виглядатиме" + навігація по товарах
+- `supabase/functions/auto-post/index.ts` — підтримка `sendPhoto`/`sendVideo`
+
+## Поза скоупом
+- Окрема Instagram/TikTok публікація медіа (поки лише Telegram реально підтримує, інші — посилання у тексті).
+- Обрізка/редагування фото в браузері.
+- Аналітика переглядів відео.

@@ -40,8 +40,10 @@ import { cn } from "@/lib/utils";
 import { PaymentModal } from "./PaymentModal";
 import { AIPostPreview } from "./AIPostPreview";
 import { PlatformConditions } from "./PlatformConditions";
-import { ProductMultiSelector } from "./ProductMultiSelector";
 import { PromotionPreviewDialog } from "./PromotionPreviewDialog";
+import { ProductMultiSelector } from "./ProductMultiSelector";
+import { ShopPickerInline } from "./ShopPickerInline";
+import { PostMediaUploader } from "./PostMediaUploader";
 
 interface Product {
   id: string;
@@ -71,6 +73,16 @@ interface AdvertisingTabProps {
   supplierIds?: string[];
   selectedShopNames?: string[];
   availableShops?: ShopOption[];
+  myShops?: ShopOption[];
+  partnerShops?: ShopOption[];
+  selectedShopIds?: string[];
+  toggleShop?: (id: string) => void;
+  selectAllShops?: () => void;
+  selectMyShops?: () => void;
+  clearShops?: () => void;
+  isAdmin?: boolean;
+  effectiveRole?: string;
+  profileId?: string;
 }
 
 // All advertising platforms grouped
@@ -147,6 +159,16 @@ export function AdvertisingTab({
   supplierIds,
   selectedShopNames,
   availableShops,
+  myShops = [],
+  partnerShops = [],
+  selectedShopIds = [],
+  toggleShop = () => {},
+  selectAllShops = () => {},
+  selectMyShops = () => {},
+  clearShops = () => {},
+  isAdmin,
+  effectiveRole,
+  profileId,
 }: AdvertisingTabProps) {
   const supplierId = supplierIds && supplierIds.length === 1 ? supplierIds[0] : null;
   const selectedProduct = selectedProducts.length === 1 ? selectedProducts[0] : null;
@@ -313,6 +335,26 @@ export function AdvertisingTab({
 
   return (
     <div className="space-y-4">
+      {/* Step 1 — inline shop picker */}
+      {availableShops && availableShops.length > 0 && (
+        <Card>
+          <CardContent className="p-3">
+            <ShopPickerInline
+              availableShops={availableShops}
+              myShops={myShops}
+              partnerShops={partnerShops}
+              selectedShopIds={selectedShopIds}
+              toggleShop={toggleShop}
+              selectAllShops={selectAllShops}
+              selectMyShops={selectMyShops}
+              clearShops={clearShops}
+              isAdmin={isAdmin}
+              roleLabel={effectiveRole}
+            />
+          </CardContent>
+        </Card>
+      )}
+
       {/* Rating Bonus Info */}
       {(supplierIds && supplierIds.length > 0) && (
         <Card className="border-amber-500/30 bg-gradient-to-r from-amber-500/5 to-transparent">

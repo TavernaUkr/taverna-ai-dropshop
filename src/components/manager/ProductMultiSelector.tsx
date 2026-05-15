@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
+import { ShopPopularProducts } from "./ShopPopularProducts";
 import { cn } from "@/lib/utils";
 
 export interface Product {
@@ -151,6 +152,16 @@ export function ProductMultiSelector({
                 className="pl-10"
               />
             </div>
+
+            {/* Popular products mini-list per shop (when no search yet) */}
+            {!productSearch && availableShops && availableShops.length > 0 && (
+              <ShopPopularProducts
+                supplierIds={supplierIds || []}
+                availableShops={availableShops}
+                selectedProducts={selectedProducts}
+                onToggleProduct={toggleProduct}
+              />
+            )}
 
             {isSearching && (
               <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">

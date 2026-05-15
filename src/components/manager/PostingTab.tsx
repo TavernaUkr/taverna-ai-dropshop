@@ -43,6 +43,8 @@ import { cn } from "@/lib/utils";
 import { PaymentModal } from "./PaymentModal";
 import { AIPostPreview } from "./AIPostPreview";
 import { PromotionPreviewDialog } from "./PromotionPreviewDialog";
+import { ShopPickerInline } from "./ShopPickerInline";
+import { PostMediaUploader } from "./PostMediaUploader";
 
 import { ProductMultiSelector } from "./ProductMultiSelector";
 
@@ -74,6 +76,16 @@ interface PostingTabProps {
   supplierIds?: string[];
   selectedShopNames?: string[];
   availableShops?: ShopOption[];
+  myShops?: ShopOption[];
+  partnerShops?: ShopOption[];
+  selectedShopIds?: string[];
+  toggleShop?: (id: string) => void;
+  selectAllShops?: () => void;
+  selectMyShops?: () => void;
+  clearShops?: () => void;
+  isAdmin?: boolean;
+  effectiveRole?: string;
+  profileId?: string;
 }
 
 const POSTING_INTERVALS = {
@@ -116,6 +128,16 @@ export function PostingTab({
   supplierIds,
   selectedShopNames,
   availableShops,
+  myShops = [],
+  partnerShops = [],
+  selectedShopIds = [],
+  toggleShop = () => {},
+  selectAllShops = () => {},
+  selectMyShops = () => {},
+  clearShops = () => {},
+  isAdmin,
+  effectiveRole,
+  profileId,
 }: PostingTabProps) {
   const supplierId = supplierIds && supplierIds.length === 1 ? supplierIds[0] : null;
   const selectedProduct = selectedProducts.length === 1 ? selectedProducts[0] : null;
@@ -123,6 +145,7 @@ export function PostingTab({
   const hasSelection = useAllProducts || selectedProducts.length > 0;
   const selectedShopName = selectedShopNames?.length === 1 ? selectedShopNames[0] :
     (selectedShopNames && selectedShopNames.length > 1) ? `${selectedShopNames.length} магазинів` : null;
+  const hasShopSelection = (selectedShopIds?.length || 0) > 0;
   const [isAutoPosting, setIsAutoPosting] = useState(false);
   const [aiText, setAiText] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -134,6 +157,8 @@ export function PostingTab({
   const [showPreview, setShowPreview] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [postStatus, setPostStatus] = useState<PostStatus>("draft");
+  const [mediaImages, setMediaImages] = useState<string[]>([]);
+  const [mediaVideo, setMediaVideo] = useState<string | null>(null);
 
   const sampleProduct = selectedProduct || selectedProducts[0] || null;
 
@@ -302,6 +327,26 @@ export function PostingTab({
 
   return (
     <div className="space-y-4">
+      {/* Step 1 — inline shop picker */}
+      {availableShops && availableShops.length > 0 && (
+        <Card>
+          <CardContent className="p-3">
+            <ShopPickerInline
+              availableShops={availableShops}
+              myShops={myShops}
+              partnerShops={partnerShops}
+              selectedShopIds={selectedShopIds}
+              toggleShop={toggleShop}
+              selectAllShops={selectAllShops}
+              selectMyShops={selectMyShops}
+              clearShops={clearShops}
+              isAdmin={isAdmin}
+              roleLabel={effectiveRole}
+            />
+          </CardContent>
+        </Card>
+      )}
+
       {/* Rating Bonus Info */}
       {(supplierIds && supplierIds.length > 0) && (
         <Card className="border-amber-500/30 bg-gradient-to-r from-amber-500/5 to-transparent">
@@ -657,6 +702,14 @@ export function PostingTab({
           </CardContent>
         </Card>
       )}
+
+      {/* Media uploader (optional) */}
+      <PostMediaUploader
+        profileId={profileId}
+        images={mediaImages}
+        video={mediaVideo}
+        onChange={({ images, video }) => { setMediaImages(images); setMediaVideo(video); }}
+      />
 
       {/* Publish Button */}
       <Button

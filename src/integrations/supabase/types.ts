@@ -864,6 +864,8 @@ export type Database = {
           created_at: string
           end_date: string | null
           id: string
+          media_images: string[] | null
+          media_video: string | null
           orders: number | null
           platforms: string[] | null
           product_id: string | null
@@ -885,6 +887,8 @@ export type Database = {
           created_at?: string
           end_date?: string | null
           id?: string
+          media_images?: string[] | null
+          media_video?: string | null
           orders?: number | null
           platforms?: string[] | null
           product_id?: string | null
@@ -906,6 +910,8 @@ export type Database = {
           created_at?: string
           end_date?: string | null
           id?: string
+          media_images?: string[] | null
+          media_video?: string | null
           orders?: number | null
           platforms?: string[] | null
           product_id?: string | null
