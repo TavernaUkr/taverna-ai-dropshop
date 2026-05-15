@@ -41,6 +41,7 @@ import { PaymentModal } from "./PaymentModal";
 import { AIPostPreview } from "./AIPostPreview";
 import { PlatformConditions } from "./PlatformConditions";
 import { PromotionPreviewDialog } from "./PromotionPreviewDialog";
+import { ProductMultiSelector } from "./ProductMultiSelector";
 import { ShopPickerInline } from "./ShopPickerInline";
 import { PostMediaUploader } from "./PostMediaUploader";
 
