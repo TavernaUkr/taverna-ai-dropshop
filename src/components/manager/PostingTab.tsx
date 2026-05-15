@@ -135,6 +135,7 @@ export function PostingTab({
   const hasSelection = useAllProducts || selectedProducts.length > 0;
   const selectedShopName = selectedShopNames?.length === 1 ? selectedShopNames[0] :
     (selectedShopNames && selectedShopNames.length > 1) ? `${selectedShopNames.length} магазинів` : null;
+  const hasShopSelection = (selectedShopIds?.length || 0) > 0;
   const [isAutoPosting, setIsAutoPosting] = useState(false);
   const [aiText, setAiText] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -146,6 +147,8 @@ export function PostingTab({
   const [showPreview, setShowPreview] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [postStatus, setPostStatus] = useState<PostStatus>("draft");
+  const [mediaImages, setMediaImages] = useState<string[]>([]);
+  const [mediaVideo, setMediaVideo] = useState<string | null>(null);
 
   const sampleProduct = selectedProduct || selectedProducts[0] || null;
 
