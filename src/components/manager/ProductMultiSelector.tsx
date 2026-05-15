@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
+import { ShopPopularProducts } from "./ShopPopularProducts";
 import { cn } from "@/lib/utils";
 
 export interface Product {
