@@ -703,6 +703,14 @@ export function PostingTab({
         </Card>
       )}
 
+      {/* Media uploader (optional) */}
+      <PostMediaUploader
+        profileId={profileId}
+        images={mediaImages}
+        video={mediaVideo}
+        onChange={({ images, video }) => { setMediaImages(images); setMediaVideo(video); }}
+      />
+
       {/* Publish Button */}
       <Button
         className="w-full"
