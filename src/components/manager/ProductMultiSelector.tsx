@@ -153,6 +153,16 @@ export function ProductMultiSelector({
               />
             </div>
 
+            {/* Popular products mini-list per shop (when no search yet) */}
+            {!productSearch && availableShops && availableShops.length > 0 && (
+              <ShopPopularProducts
+                supplierIds={supplierIds || []}
+                availableShops={availableShops}
+                selectedProducts={selectedProducts}
+                onToggleProduct={toggleProduct}
+              />
+            )}
+
             {isSearching && (
               <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
                 <Loader2 className="h-4 w-4 animate-spin" />
