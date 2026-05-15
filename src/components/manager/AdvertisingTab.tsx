@@ -335,6 +335,26 @@ export function AdvertisingTab({
 
   return (
     <div className="space-y-4">
+      {/* Step 1 — inline shop picker */}
+      {availableShops && availableShops.length > 0 && (
+        <Card>
+          <CardContent className="p-3">
+            <ShopPickerInline
+              availableShops={availableShops}
+              myShops={myShops}
+              partnerShops={partnerShops}
+              selectedShopIds={selectedShopIds}
+              toggleShop={toggleShop}
+              selectAllShops={selectAllShops}
+              selectMyShops={selectMyShops}
+              clearShops={clearShops}
+              isAdmin={isAdmin}
+              roleLabel={effectiveRole}
+            />
+          </CardContent>
+        </Card>
+      )}
+
       {/* Rating Bonus Info */}
       {(supplierIds && supplierIds.length > 0) && (
         <Card className="border-amber-500/30 bg-gradient-to-r from-amber-500/5 to-transparent">
