@@ -43,6 +43,8 @@ import { cn } from "@/lib/utils";
 import { PaymentModal } from "./PaymentModal";
 import { AIPostPreview } from "./AIPostPreview";
 import { PromotionPreviewDialog } from "./PromotionPreviewDialog";
+import { ShopPickerInline } from "./ShopPickerInline";
+import { PostMediaUploader } from "./PostMediaUploader";
 
 import { ProductMultiSelector } from "./ProductMultiSelector";
 
@@ -74,6 +76,16 @@ interface PostingTabProps {
   supplierIds?: string[];
   selectedShopNames?: string[];
   availableShops?: ShopOption[];
+  myShops?: ShopOption[];
+  partnerShops?: ShopOption[];
+  selectedShopIds?: string[];
+  toggleShop?: (id: string) => void;
+  selectAllShops?: () => void;
+  selectMyShops?: () => void;
+  clearShops?: () => void;
+  isAdmin?: boolean;
+  effectiveRole?: string;
+  profileId?: string;
 }
 
 const POSTING_INTERVALS = {
