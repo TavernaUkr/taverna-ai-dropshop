@@ -694,6 +694,16 @@ export default function Manager() {
               supplierIds={supplierIds}
               selectedShopNames={selectedShopNames}
               availableShops={availableShops}
+              myShops={myShops}
+              partnerShops={partnerShops}
+              selectedShopIds={selectedShopIds}
+              toggleShop={toggleShop}
+              selectAllShops={selectAllShops}
+              selectMyShops={selectMyShops}
+              clearShops={clearShops}
+              isAdmin={isAdmin}
+              effectiveRole={effectiveRole}
+              profileId={profile?.id}
             />
           </TabsContent>
 
@@ -712,6 +722,16 @@ export default function Manager() {
               supplierIds={supplierIds}
               selectedShopNames={selectedShopNames}
               availableShops={availableShops}
+              myShops={myShops}
+              partnerShops={partnerShops}
+              selectedShopIds={selectedShopIds}
+              toggleShop={toggleShop}
+              selectAllShops={selectAllShops}
+              selectMyShops={selectMyShops}
+              clearShops={clearShops}
+              isAdmin={isAdmin}
+              effectiveRole={effectiveRole}
+              profileId={profile?.id}
             />
           </TabsContent>
 
