@@ -40,8 +40,9 @@ import { cn } from "@/lib/utils";
 import { PaymentModal } from "./PaymentModal";
 import { AIPostPreview } from "./AIPostPreview";
 import { PlatformConditions } from "./PlatformConditions";
-import { ProductMultiSelector } from "./ProductMultiSelector";
 import { PromotionPreviewDialog } from "./PromotionPreviewDialog";
+import { ShopPickerInline } from "./ShopPickerInline";
+import { PostMediaUploader } from "./PostMediaUploader";
 
 interface Product {
   id: string;
@@ -71,6 +72,16 @@ interface AdvertisingTabProps {
   supplierIds?: string[];
   selectedShopNames?: string[];
   availableShops?: ShopOption[];
+  myShops?: ShopOption[];
+  partnerShops?: ShopOption[];
+  selectedShopIds?: string[];
+  toggleShop?: (id: string) => void;
+  selectAllShops?: () => void;
+  selectMyShops?: () => void;
+  clearShops?: () => void;
+  isAdmin?: boolean;
+  effectiveRole?: string;
+  profileId?: string;
 }
 
 // All advertising platforms grouped
