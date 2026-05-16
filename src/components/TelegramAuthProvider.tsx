@@ -221,7 +221,7 @@ export function TelegramAuthProvider({ children }: TelegramAuthProviderProps) {
 
   const isAuthenticated = effectiveRole !== 'guest' && (canUseDevRoleSwitcher ? true : auth.isAuthenticated);
   const profile = effectiveRole === 'guest' ? null : (auth.profile || (canUseDevRoleSwitcher ? {
-    id: 'dev-test-user',
+    id: '38363307-c867-4dad-835d-e5bf0f301464',
     telegram_id: 123456789,
     first_name: 'Тест',
     last_name: 'Користувач',
