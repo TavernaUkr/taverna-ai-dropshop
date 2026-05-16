@@ -236,7 +236,7 @@ export function TelegramAuthProvider({ children }: TelegramAuthProviderProps) {
   const testAddresses = canUseDevRoleSwitcher && auth.addresses.length === 0 ? [
     {
       id: 'test-addr-1',
-      profile_id: 'dev-test-user',
+      profile_id: '38363307-c867-4dad-835d-e5bf0f301464',
       is_default: true,
       recipient_name: 'Тест Користувач',
       phone: '380501234567',
