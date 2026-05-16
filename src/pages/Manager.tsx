@@ -200,6 +200,9 @@ export default function Manager() {
   useEffect(() => {
     const fetchShops = async () => {
       if (!profile?.id) return;
+      // Skip DB calls that require a valid UUID profile.id in dev mode
+      const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const profileIdIsUuid = uuidRe.test(profile.id);
 
       try {
         if (isAdminOrMod) {
@@ -214,15 +217,19 @@ export default function Manager() {
 
           if (isAdmin) {
             // Split: admin's own shops (telegram_id match or via shop_manager_links)
-            const { data: adminOwnShops } = await supabase
-              .from("suppliers")
-              .select("id, shop_name, logo_url, is_active")
-              .eq("telegram_id", profile.telegram_id || 0);
+            const { data: adminOwnShops } = profile.telegram_id
+              ? await supabase
+                  .from("suppliers")
+                  .select("id, shop_name, logo_url, is_active")
+                  .eq("telegram_id", profile.telegram_id)
+              : { data: [] as any[] };
 
-            const { data: adminLinks } = await supabase
-              .from("shop_manager_links")
-              .select("supplier_id")
-              .eq("profile_id", profile.id);
+            const { data: adminLinks } = profileIdIsUuid
+              ? await supabase
+                  .from("shop_manager_links")
+                  .select("supplier_id")
+                  .eq("profile_id", profile.id)
+              : { data: [] as any[] };
 
             const adminLinkedIds = new Set(adminLinks?.map(l => l.supplier_id) || []);
             const adminOwnIds = new Set((adminOwnShops || []).map(s => s.id));
@@ -243,16 +250,20 @@ export default function Manager() {
           setSelectedShopIds(shops.map(s => s.id));
         } else {
           // Supplier: own shops via telegram_id
-          const { data: ownShops } = await supabase
-            .from("suppliers")
-            .select("id, shop_name, logo_url, is_active")
-            .eq("telegram_id", profile.telegram_id || 0);
+          const { data: ownShops } = profile.telegram_id
+            ? await supabase
+                .from("suppliers")
+                .select("id, shop_name, logo_url, is_active")
+                .eq("telegram_id", profile.telegram_id)
+            : { data: [] as any[] };
 
           // Manager: linked shops
-          const { data: links } = await supabase
-            .from("shop_manager_links")
-            .select("supplier_id")
-            .eq("profile_id", profile.id);
+          const { data: links } = profileIdIsUuid
+            ? await supabase
+                .from("shop_manager_links")
+                .select("supplier_id")
+                .eq("profile_id", profile.id)
+            : { data: [] as any[] };
 
           const linkedIds = links?.map(l => l.supplier_id) || [];
           let allShops = ownShops || [];
@@ -282,7 +293,7 @@ export default function Manager() {
       }
     };
     fetchShops();
-  }, [profile?.id, isAdminOrMod, isAdmin]);
+  }, [profile?.id, profile?.telegram_id, isAdminOrMod, isAdmin]);
 
   // Derive supplierIds for child components.
   // For non-admin/mod: always restrict to availableShops, even when "all" selected,
