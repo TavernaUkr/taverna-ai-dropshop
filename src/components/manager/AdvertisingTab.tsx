@@ -44,6 +44,8 @@ import { PromotionPreviewDialog } from "./PromotionPreviewDialog";
 import { ProductMultiSelector } from "./ProductMultiSelector";
 import { ShopPickerInline } from "./ShopPickerInline";
 import { PostMediaUploader } from "./PostMediaUploader";
+import { PromotionStepper, StepNav, type StepDef } from "./PromotionStepper";
+import { Store, Package, Layers } from "lucide-react";
 
 interface Product {
   id: string;
