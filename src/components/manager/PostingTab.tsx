@@ -293,6 +293,7 @@ export function PostingTab({
         setProductSearch("");
         setPostStatus("draft");
         setShowPreview(false);
+        setStep(1);
       }, 2000);
     } catch (err) {
       console.error("Publish error:", err);
