@@ -334,6 +334,7 @@ export function PostingTab({
     setAiText("");
     setProductSearch("");
     setPostStatus("draft");
+    setStep(1);
   };
 
   const selectedPlatformData = POSTING_PLATFORMS.find((p) => p.id === selectedPlatform);
