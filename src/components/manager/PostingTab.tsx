@@ -161,8 +161,24 @@ export function PostingTab({
   const [postStatus, setPostStatus] = useState<PostStatus>("draft");
   const [mediaImages, setMediaImages] = useState<string[]>([]);
   const [mediaVideo, setMediaVideo] = useState<string | null>(null);
+  const [step, setStep] = useState(1);
+
+  const POST_STEPS: StepDef[] = [
+    { id: 1, label: "Магазини", icon: Store },
+    { id: 2, label: "Товари", icon: Package },
+    { id: 3, label: "Формат", icon: Layers },
+    { id: 4, label: "Запуск", icon: Send },
+  ];
 
   const sampleProduct = selectedProduct || selectedProducts[0] || null;
+
+  const canProceed = (): boolean => {
+    if (step === 1) return (selectedShopIds?.length || 0) > 0;
+    if (step === 2) return hasSelection;
+    if (step === 3) return !showPaidPosting || !!selectedPlatform;
+    return true;
+  };
+
 
   const fetchAllProducts = async (): Promise<{ id: string; supplier_id: string | null }[]> => {
     let q = supabase.from("products").select("id, supplier_id").eq("in_stock", true);
