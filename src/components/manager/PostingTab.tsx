@@ -45,6 +45,8 @@ import { AIPostPreview } from "./AIPostPreview";
 import { PromotionPreviewDialog } from "./PromotionPreviewDialog";
 import { ShopPickerInline } from "./ShopPickerInline";
 import { PostMediaUploader } from "./PostMediaUploader";
+import { PromotionStepper, StepNav, type StepDef } from "./PromotionStepper";
+import { Store, Package, Layers } from "lucide-react";
 
 import { ProductMultiSelector } from "./ProductMultiSelector";
 
