@@ -44,6 +44,8 @@ import { PromotionPreviewDialog } from "./PromotionPreviewDialog";
 import { ProductMultiSelector } from "./ProductMultiSelector";
 import { ShopPickerInline } from "./ShopPickerInline";
 import { PostMediaUploader } from "./PostMediaUploader";
+import { PromotionStepper, StepNav, type StepDef } from "./PromotionStepper";
+import { Store, Package, Layers } from "lucide-react";
 
 interface Product {
   id: string;
@@ -188,6 +190,25 @@ export function AdvertisingTab({
   const [showPreview, setShowPreview] = useState(false);
   const [showConditions, setShowConditions] = useState(false);
   const [adStatus, setAdStatus] = useState<AdStatus>("draft");
+  const [mediaImages, setMediaImages] = useState<string[]>([]);
+  const [mediaVideo, setMediaVideo] = useState<string | null>(null);
+  const [step, setStep] = useState(1);
+  const hasShopSelection = (selectedShopIds?.length || 0) > 0;
+
+  const AD_STEPS: StepDef[] = [
+    { id: 1, label: "Магазини", icon: Store },
+    { id: 2, label: "Товари", icon: Package },
+    { id: 3, label: "Платформи", icon: Layers },
+    { id: 4, label: "Запуск", icon: Megaphone },
+  ];
+
+  const canProceed = (): boolean => {
+    if (step === 1) return hasShopSelection;
+    if (step === 2) return hasSelection;
+    if (step === 3) return selectedPlatforms.length > 0 && budget > 0;
+    return true;
+  };
+
 
   const togglePlatform = (platformId: string) => {
     const platform = AD_PLATFORMS.find((p) => p.id === platformId);
