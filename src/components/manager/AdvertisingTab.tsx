@@ -345,6 +345,7 @@ export function AdvertisingTab({
       setTimeout(() => {
         setAdStatus("active");
         toast.success("Рекламна кампанія активна!");
+        setStep(1);
       }, 2000);
     }, 3000);
   };
@@ -356,411 +357,511 @@ export function AdvertisingTab({
 
   return (
     <div className="space-y-4">
-      {/* Step 1 — inline shop picker (always rendered) */}
-      <Card className="border-primary/40 bg-gradient-to-br from-primary/5 to-transparent">
-        <CardContent className="p-3">
-          <ShopPickerInline
-            availableShops={availableShops || []}
-            myShops={myShops}
-            partnerShops={partnerShops}
-            selectedShopIds={selectedShopIds}
-            toggleShop={toggleShop}
-            selectAllShops={selectAllShops}
-            selectMyShops={selectMyShops}
-            clearShops={clearShops}
-            isAdmin={isAdmin}
-            roleLabel={effectiveRole}
-          />
-        </CardContent>
-      </Card>
+      {/* Wizard header: stepper + live context summary */}
+      <PromotionStepper steps={AD_STEPS} currentStep={step} />
 
-      {/* Rating Bonus Info */}
-      {(supplierIds && supplierIds.length > 0) && (
-        <Card className="border-amber-500/30 bg-gradient-to-r from-amber-500/5 to-transparent">
-          <CardContent className="p-3">
-            <div className="flex items-center gap-2">
-              <Trophy className="h-4 w-4 text-amber-500" />
-              <div className="flex-1">
-                <p className="text-xs font-medium text-foreground">Рейтингові знижки на рекламу</p>
-                <p className="text-xs text-muted-foreground">
-                  Чим вищий ваш рейтинг — тим менша націнка на рекламу. Легенда платформи: фіксовані 23%
-                </p>
-              </div>
-              <Badge variant="outline" className="text-xs bg-amber-500/10 text-amber-600 border-amber-500/30">
-                -{currentMarkup}%
-              </Badge>
-            </div>
-          </CardContent>
-        </Card>
+      {(hasShopSelection || hasSelection) && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          {hasShopSelection && (
+            <Badge variant="secondary" className="text-xs gap-1">
+              <Store className="h-3 w-3" />
+              {selectedShopName || `${selectedShopIds.length} магазинів`}
+            </Badge>
+          )}
+          {hasSelection && (
+            <Badge variant="secondary" className="text-xs gap-1">
+              <Package className="h-3 w-3" />
+              {useAllProducts ? "усі товари" : `${selectedProducts.length} товарів`}
+            </Badge>
+          )}
+          {selectedPlatforms.length > 0 && (
+            <Badge variant="secondary" className="text-xs gap-1">
+              <Layers className="h-3 w-3" />
+              {selectedPlatforms.length} платформ
+            </Badge>
+          )}
+        </div>
       )}
 
-      {/* Instructions */}
-      <Accordion type="single" collapsible className="bg-card rounded-lg border border-border">
-        <AccordionItem value="instructions" className="border-0">
-          <AccordionTrigger className="px-4 py-3 hover:no-underline">
-            <div className="flex items-center gap-2">
-              <Info className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium">Інструкція: Реклама</span>
-            </div>
-          </AccordionTrigger>
-          <AccordionContent className="px-4 pb-4">
-            <div className="space-y-3 text-sm text-muted-foreground">
-              <p>
-                <strong className="text-foreground">Реклама</strong> — платне просування ваших товарів на {AD_PLATFORMS.length} платформах з розширеним охопленням.
-              </p>
-              <div className="space-y-2">
-                <p className="font-medium text-foreground">💰 Тарифна сітка націнок:</p>
-                <ul className="list-disc pl-4 space-y-1">
-                  <li>До 500₴ — <strong>40%</strong> націнка</li>
-                  <li>500₴ – 2000₴ — <strong>33%</strong></li>
-                  <li>2000₴ – 10 000₴ — <strong>28%</strong></li>
-                  <li>10 000₴+ — <strong>23%</strong></li>
-                  <li>Знижка <strong>-3..8%</strong> за кілька платформ одразу</li>
-                  <li>Мінімальний бюджет: <strong>50₴</strong> (залежить від платформи)</li>
-                </ul>
-              </div>
-              <div className="p-3 bg-primary/10 rounded-lg">
-                <p className="font-medium text-foreground mb-1">🎯 Що входить:</p>
-                <ul className="space-y-1 text-xs">
-                  <li>• AI-генерація рекламного тексту (Gemini)</li>
-                  <li>• Автоматична модерація контенту</li>
-                  <li>• Таргетинг на вашу аудиторію</li>
-                  <li>• Детальна статистика та звіти</li>
-                </ul>
-              </div>
-              <div className="p-3 bg-amber-500/10 rounded-lg border border-amber-500/20">
-                <p className="font-medium text-foreground mb-1">🏆 Рейтингові бонуси:</p>
-                <ul className="space-y-1 text-xs">
-                  <li>• <strong>Топ-1 за місяць:</strong> знижена націнка 30% (замість 33%)</li>
-                  <li>• <strong>Топ-1 за рік:</strong> 28% на 1 міс / 1 безкоштовна реклама</li>
-                  <li>• <strong>💎 Легенда:</strong> фіксована 23% на все просування назавжди</li>
-                </ul>
-              </div>
-            </div>
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
-
-      {/* Auto-Ads Toggle */}
-      <Card className="border-primary/30 bg-gradient-to-r from-primary/5 to-transparent">
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                <Target className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="font-medium text-foreground">Авто-реклама</p>
-                <p className="text-sm text-muted-foreground">
-                  Безкоштовно від Taverna Group
-                </p>
-              </div>
-            </div>
-            <Switch checked={isAutoAds} onCheckedChange={setIsAutoAds} />
+      {/* ============ STEP 1 — Магазини ============ */}
+      {step === 1 && (
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-base font-semibold flex items-center gap-2">
+              <Store className="h-4 w-4 text-primary" />
+              Крок 1. Оберіть магазин(и)
+            </h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              Виберіть, з яких ваших магазинів рекламувати товари. Можна обрати кілька або всі одразу.
+            </p>
           </div>
-          {isAutoAds && (
-            <div className="mt-3 p-3 bg-muted rounded-lg space-y-2">
-              <p className="text-xs text-muted-foreground">
-                ✅ Товари{selectedShopName ? ` магазину "${selectedShopName}"` : ""} автоматично рекламуються на всіх платформах Taverna по черзі
-              </p>
-              <div className="flex items-center gap-2">
-                <Clock className="h-3 w-3 text-muted-foreground" />
-                <span className="text-xs text-muted-foreground">
-                  Наступна реклама через ~{Math.floor(Math.random() * 20) + 10} хв
-                </span>
+
+          <Card className="border-primary/40 bg-gradient-to-br from-primary/5 to-transparent">
+            <CardContent className="p-3">
+              <ShopPickerInline
+                availableShops={availableShops || []}
+                myShops={myShops}
+                partnerShops={partnerShops}
+                selectedShopIds={selectedShopIds}
+                toggleShop={toggleShop}
+                selectAllShops={selectAllShops}
+                selectMyShops={selectMyShops}
+                clearShops={clearShops}
+                isAdmin={isAdmin}
+                roleLabel={effectiveRole}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Rating Bonus Info */}
+          {(supplierIds && supplierIds.length > 0) && (
+            <Card className="border-amber-500/30 bg-gradient-to-r from-amber-500/5 to-transparent">
+              <CardContent className="p-3">
+                <div className="flex items-center gap-2">
+                  <Trophy className="h-4 w-4 text-amber-500" />
+                  <div className="flex-1">
+                    <p className="text-xs font-medium text-foreground">Рейтингові знижки на рекламу</p>
+                    <p className="text-xs text-muted-foreground">
+                      Чим вищий ваш рейтинг — тим менша націнка на рекламу. Легенда платформи: фіксовані 23%
+                    </p>
+                  </div>
+                  <Badge variant="outline" className="text-xs bg-amber-500/10 text-amber-600 border-amber-500/30">
+                    -{currentMarkup}%
+                  </Badge>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Instructions */}
+          <Accordion type="single" collapsible className="bg-card rounded-lg border border-border">
+            <AccordionItem value="instructions" className="border-0">
+              <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                <div className="flex items-center gap-2">
+                  <Info className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium">Інструкція: Реклама</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-4 pb-4">
+                <div className="space-y-3 text-sm text-muted-foreground">
+                  <p>
+                    <strong className="text-foreground">Реклама</strong> — платне просування ваших товарів на {AD_PLATFORMS.length} платформах з розширеним охопленням.
+                  </p>
+                  <div className="space-y-2">
+                    <p className="font-medium text-foreground">💰 Тарифна сітка націнок:</p>
+                    <ul className="list-disc pl-4 space-y-1">
+                      <li>До 500₴ — <strong>40%</strong> націнка</li>
+                      <li>500₴ – 2000₴ — <strong>33%</strong></li>
+                      <li>2000₴ – 10 000₴ — <strong>28%</strong></li>
+                      <li>10 000₴+ — <strong>23%</strong></li>
+                      <li>Знижка <strong>-3..8%</strong> за кілька платформ одразу</li>
+                      <li>Мінімальний бюджет: <strong>50₴</strong> (залежить від платформи)</li>
+                    </ul>
+                  </div>
+                  <div className="p-3 bg-primary/10 rounded-lg">
+                    <p className="font-medium text-foreground mb-1">🎯 Що входить:</p>
+                    <ul className="space-y-1 text-xs">
+                      <li>• AI-генерація рекламного тексту (Gemini)</li>
+                      <li>• Автоматична модерація контенту</li>
+                      <li>• Таргетинг на вашу аудиторію</li>
+                      <li>• Детальна статистика та звіти</li>
+                    </ul>
+                  </div>
+                  <div className="p-3 bg-amber-500/10 rounded-lg border border-amber-500/20">
+                    <p className="font-medium text-foreground mb-1">🏆 Рейтингові бонуси:</p>
+                    <ul className="space-y-1 text-xs">
+                      <li>• <strong>Топ-1 за місяць:</strong> знижена націнка 30% (замість 33%)</li>
+                      <li>• <strong>Топ-1 за рік:</strong> 28% на 1 міс / 1 безкоштовна реклама</li>
+                      <li>• <strong>💎 Легенда:</strong> фіксована 23% на все просування назавжди</li>
+                    </ul>
+                  </div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </div>
+      )}
+
+      {/* ============ STEP 2 — Товари ============ */}
+      {step === 2 && (
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-base font-semibold flex items-center gap-2">
+              <Package className="h-4 w-4 text-primary" />
+              Крок 2. Оберіть товари
+            </h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              Знайдіть товари або скористайтесь популярними з обраних магазинів. Можна увімкнути режим «Усі товари».
+            </p>
+          </div>
+
+          <ProductMultiSelector
+            products={products}
+            isSearching={isSearching}
+            productSearch={productSearch}
+            setProductSearch={setProductSearch}
+            setProducts={setProducts}
+            selectedProducts={selectedProducts}
+            setSelectedProducts={setSelectedProducts}
+            useAllProducts={useAllProducts}
+            setUseAllProducts={setUseAllProducts}
+            supplierIds={supplierIds}
+            availableShops={availableShops}
+            selectedShopNames={selectedShopNames}
+          />
+        </div>
+      )}
+
+      {/* ============ STEP 3 — Платформи і бюджет ============ */}
+      {step === 3 && (
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-base font-semibold flex items-center gap-2">
+              <Layers className="h-4 w-4 text-primary" />
+              Крок 3. Платформи і бюджет
+            </h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              Оберіть платформи для реклами та вкажіть бюджет. Кілька платформ — знижка на націнку.
+            </p>
+          </div>
+
+          {/* Auto-Ads Toggle */}
+          <Card className="border-primary/30 bg-gradient-to-r from-primary/5 to-transparent">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+                    <Target className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-foreground">Авто-реклама</p>
+                    <p className="text-sm text-muted-foreground">
+                      Безкоштовно від Taverna Group
+                    </p>
+                  </div>
+                </div>
+                <Switch checked={isAutoAds} onCheckedChange={setIsAutoAds} />
               </div>
+              {isAutoAds && (
+                <div className="mt-3 p-3 bg-muted rounded-lg space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    ✅ Товари{selectedShopName ? ` магазину "${selectedShopName}"` : ""} автоматично рекламуються на всіх платформах Taverna по черзі
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-3 w-3 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">
+                      Наступна реклама через ~{Math.floor(Math.random() * 20) + 10} хв
+                    </span>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Platform Selection — grouped by category */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label>Оберіть платформи для реклами ({selectedPlatforms.length})</Label>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowConditions(!showConditions)}
+                disabled={selectedPlatforms.length === 0}
+              >
+                <Info className="h-4 w-4 mr-1" />
+                Умови
+              </Button>
+            </div>
+
+            {categories.map((cat) => {
+              const catPlatforms = AD_PLATFORMS.filter(p => p.category === cat);
+              if (catPlatforms.length === 0) return null;
+              return (
+                <div key={cat} className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground">{CATEGORY_LABELS[cat]}</p>
+                  <div className="grid grid-cols-1 gap-2">
+                    {catPlatforms.map((platform) => (
+                      <button
+                        key={platform.id}
+                        onClick={() => togglePlatform(platform.id)}
+                        className={cn(
+                          "flex items-center gap-3 p-3 rounded-lg border-2 transition-all text-left",
+                          selectedPlatforms.includes(platform.id)
+                            ? "border-primary bg-primary/10"
+                            : "border-border hover:border-primary/50"
+                        )}
+                      >
+                        <span className="text-2xl">{platform.icon}</span>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-medium text-sm">{platform.name}</span>
+                            <Badge variant="outline" className="text-xs">
+                              від {platform.minBudget} ₴
+                            </Badge>
+                            <Badge variant="secondary" className="text-xs">
+                              +{currentMarkup}%
+                            </Badge>
+                            {platform.apiStatus === "connected" ? (
+                              <Badge variant="outline" className="text-xs bg-success/10 text-success border-success/30">
+                                <CheckCircle2 className="h-3 w-3 mr-1" />
+                                API
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-xs bg-warning/10 text-warning border-warning/30">
+                                <Clock className="h-3 w-3 mr-1" />
+                                Скоро
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <Users className="h-3 w-3" />
+                              {platform.reach}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Eye className="h-3 w-3" />
+                              ~{platform.cpm} ₴/1000
+                            </span>
+                          </div>
+                        </div>
+                        {selectedPlatforms.includes(platform.id) && (
+                          <Check className="h-5 w-5 text-primary" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Platform Conditions */}
+          {showConditions && selectedPlatforms.length > 0 && (
+            <PlatformConditions selectedPlatforms={selectedPlatforms} />
+          )}
+
+          {/* Budget */}
+          {selectedPlatforms.length > 0 && (
+            <div className="space-y-2">
+              <Label>Бюджет на кожну платформу (₴)</Label>
+              <Input
+                type="number"
+                value={budget}
+                onChange={(e) => setBudget(Number(e.target.value))}
+                min={50}
+                step={50}
+              />
+              <p className="text-xs text-muted-foreground">
+                Мінімальний бюджет для обраних платформ: {Math.max(...selectedPlatforms.map(id =>
+                  AD_PLATFORMS.find(p => p.id === id)?.minBudget || 50
+                ))} ₴
+              </p>
             </div>
           )}
-        </CardContent>
-      </Card>
 
-      {/* Multi product selector */}
-      <ProductMultiSelector
-        products={products}
-        isSearching={isSearching}
-        productSearch={productSearch}
-        setProductSearch={setProductSearch}
-        setProducts={setProducts}
-        selectedProducts={selectedProducts}
-        setSelectedProducts={setSelectedProducts}
-        useAllProducts={useAllProducts}
-        setUseAllProducts={setUseAllProducts}
-        supplierIds={supplierIds}
-        availableShops={availableShops}
-        selectedShopNames={selectedShopNames}
-      />
-
-      {/* Platform Selection — grouped by category */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <Label>Оберіть платформи для реклами ({selectedPlatforms.length})</Label>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowConditions(!showConditions)}
-            disabled={selectedPlatforms.length === 0}
-          >
-            <Info className="h-4 w-4 mr-1" />
-            Умови
-          </Button>
-        </div>
-
-        {categories.map((cat) => {
-          const catPlatforms = AD_PLATFORMS.filter(p => p.category === cat);
-          if (catPlatforms.length === 0) return null;
-          return (
-            <div key={cat} className="space-y-2">
-              <p className="text-xs font-medium text-muted-foreground">{CATEGORY_LABELS[cat]}</p>
-              <div className="grid grid-cols-1 gap-2">
-                {catPlatforms.map((platform) => (
-                  <button
-                    key={platform.id}
-                    onClick={() => togglePlatform(platform.id)}
-                    className={cn(
-                      "flex items-center gap-3 p-3 rounded-lg border-2 transition-all text-left",
-                      selectedPlatforms.includes(platform.id)
-                        ? "border-primary bg-primary/10"
-                        : "border-border hover:border-primary/50"
-                    )}
-                  >
-                    <span className="text-2xl">{platform.icon}</span>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-medium text-sm">{platform.name}</span>
-                        <Badge variant="outline" className="text-xs">
-                          від {platform.minBudget} ₴
-                        </Badge>
-                        <Badge variant="secondary" className="text-xs">
-                          +{currentMarkup}%
-                        </Badge>
-                        {platform.apiStatus === "connected" ? (
-                          <Badge variant="outline" className="text-xs bg-success/10 text-success border-success/30">
-                            <CheckCircle2 className="h-3 w-3 mr-1" />
-                            API
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-xs bg-warning/10 text-warning border-warning/30">
-                            <Clock className="h-3 w-3 mr-1" />
-                            Скоро
-                          </Badge>
-                        )}
+          {/* Cost Summary */}
+          {selectedPlatforms.length > 0 && (
+            <Card className="border-success/30 bg-success/5">
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">Загальна вартість:</span>
+                  <span className="text-xl font-bold text-success">{totalCost} ₴</span>
+                </div>
+                <div className="text-xs text-muted-foreground space-y-1">
+                  {selectedPlatforms.map((platformId) => {
+                    const platform = AD_PLATFORMS.find((p) => p.id === platformId);
+                    if (!platform) return null;
+                    const platformCost = Math.max(budget, platform.minBudget);
+                    const withMarkup = Math.round(platformCost * (1 + currentMarkup / 100));
+                    return (
+                      <div key={platformId} className="flex justify-between">
+                        <span>{platform.icon} {platform.name}</span>
+                        <span>{withMarkup} ₴ (+{currentMarkup}%)</span>
                       </div>
-                      <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <Users className="h-3 w-3" />
-                          {platform.reach}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Eye className="h-3 w-3" />
-                          ~{platform.cpm} ₴/1000
-                        </span>
-                      </div>
-                    </div>
-                    {selectedPlatforms.includes(platform.id) && (
-                      <Check className="h-5 w-5 text-primary" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Platform Conditions */}
-      {showConditions && selectedPlatforms.length > 0 && (
-        <PlatformConditions selectedPlatforms={selectedPlatforms} />
-      )}
-
-      {/* Budget */}
-      {selectedPlatforms.length > 0 && (
-        <div className="space-y-2">
-          <Label>Бюджет на кожну платформу (₴)</Label>
-          <Input
-            type="number"
-            value={budget}
-            onChange={(e) => setBudget(Number(e.target.value))}
-            min={50}
-            step={50}
-          />
-          <p className="text-xs text-muted-foreground">
-            Мінімальний бюджет для обраних платформ: {Math.max(...selectedPlatforms.map(id => 
-              AD_PLATFORMS.find(p => p.id === id)?.minBudget || 50
-            ))} ₴
-          </p>
-        </div>
-      )}
-
-      {/* AI Prompt Hint */}
-      <div className="space-y-2">
-        <Label className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-primary" />
-          Як ви бачите цю рекламу? (для AI Gemini)
-        </Label>
-        <Input
-          value={aiPromptHint}
-          onChange={(e) => setAiPromptHint(e.target.value)}
-          placeholder="Наприклад: зробити акцент на знижці, або використати гумор..."
-        />
-      </div>
-
-      {/* AI Text Generation */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <Label>Рекламний текст</Label>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowPreview(!showPreview)}
-              disabled={!aiText}
-            >
-              <Eye className="h-4 w-4 mr-1" />
-              Перегляд
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleGenerateDescription}
-              disabled={!sampleProduct || isGenerating}
-            >
-              {isGenerating ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <Sparkles className="h-4 w-4 mr-2" />
-              )}
-              Згенерувати AI
-            </Button>
-          </div>
-        </div>
-        <Textarea
-          value={aiText}
-          onChange={(e) => setAiText(e.target.value)}
-          placeholder="AI згенерує оптимальний рекламний текст для обраних платформ..."
-          rows={5}
-        />
-      </div>
-
-      {/* AI Post Preview */}
-      {showPreview && (
-        <AIPostPreview
-          product={sampleProduct}
-          postText={aiText}
-          platform={(selectedPlatforms[0] || "telegram") as any}
-        />
-      )}
-
-      {/* Ad Status */}
-      {adStatus !== "draft" && (
-        <Card className={cn(
-          "border",
-          adStatus === "pending_review" && "border-warning/50 bg-warning/5",
-          adStatus === "approved" && "border-success/50 bg-success/5",
-          adStatus === "active" && "border-success/50 bg-success/5",
-          adStatus === "rejected" && "border-destructive/50 bg-destructive/5",
-          adStatus === "completed" && "border-muted bg-muted/50"
-        )}>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              {adStatus === "pending_review" && <Clock className="h-5 w-5 text-warning animate-pulse" />}
-              {adStatus === "approved" && <ShieldCheck className="h-5 w-5 text-success" />}
-              {adStatus === "active" && <TrendingUp className="h-5 w-5 text-success animate-pulse" />}
-              {adStatus === "rejected" && <AlertCircle className="h-5 w-5 text-destructive" />}
-              {adStatus === "completed" && <CheckCircle2 className="h-5 w-5 text-muted-foreground" />}
-              <div className="flex-1">
-                <p className="font-medium text-sm">
-                  {adStatus === "pending_review" && "Модерація рекламного контенту..."}
-                  {adStatus === "approved" && "Рекламу схвалено!"}
-                  {adStatus === "active" && "Рекламна кампанія активна"}
-                  {adStatus === "rejected" && "Рекламу відхилено"}
-                  {adStatus === "completed" && "Кампанію завершено"}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {adStatus === "pending_review" && "Перевірка на відповідність правилам платформ"}
-                  {adStatus === "approved" && "Запуск кампанії розпочнеться найближчим часом"}
-                  {adStatus === "active" && "Відстежуйте статистику в розділі 'Статистика'"}
-                  {adStatus === "rejected" && "Будь ласка, перевірте вміст та спробуйте знову"}
-                  {adStatus === "completed" && "Переглянути звіт можна в розділі 'Статистика'"}
-                </p>
-              </div>
-            </div>
-            {adStatus === "active" && (
-              <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-                <div className="p-2 bg-muted rounded">
-                  <p className="text-lg font-bold">1,247</p>
-                  <p className="text-xs text-muted-foreground">Перегляди</p>
+                    );
+                  })}
                 </div>
-                <div className="p-2 bg-muted rounded">
-                  <p className="text-lg font-bold">156</p>
-                  <p className="text-xs text-muted-foreground">Кліки</p>
-                </div>
-                <div className="p-2 bg-muted rounded">
-                  <p className="text-lg font-bold">12.5%</p>
-                  <p className="text-xs text-muted-foreground">CTR</p>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Cost Summary */}
-      {selectedPlatforms.length > 0 && (
-        <Card className="border-success/30 bg-success/5">
-          <CardContent className="p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="font-medium">Загальна вартість:</span>
-              <span className="text-xl font-bold text-success">{totalCost} ₴</span>
-            </div>
-            <div className="text-xs text-muted-foreground space-y-1">
-              {selectedPlatforms.map((platformId) => {
-                const platform = AD_PLATFORMS.find((p) => p.id === platformId);
-                if (!platform) return null;
-                const platformCost = Math.max(budget, platform.minBudget);
-                const withMarkup = Math.round(platformCost * (1 + currentMarkup / 100));
-                return (
-                  <div key={platformId} className="flex justify-between">
-                    <span>{platform.icon} {platform.name}</span>
-                    <span>{withMarkup} ₴ (+{currentMarkup}%)</span>
+                {selectedPlatforms.length >= 2 && (
+                  <div className="pt-2 border-t border-border">
+                    <p className="text-xs text-success flex items-center gap-1">
+                      <Gift className="h-3 w-3" />
+                      Знижка за {selectedPlatforms.length} платформ: -{getMultiPlatformDiscount(selectedPlatforms.length, budget)}% від націнки
+                    </p>
                   </div>
-                );
-              })}
-            </div>
-            {selectedPlatforms.length >= 2 && (
-              <div className="pt-2 border-t border-border">
-                <p className="text-xs text-success flex items-center gap-1">
-                  <Gift className="h-3 w-3" />
-                  Знижка за {selectedPlatforms.length} платформ: -{getMultiPlatformDiscount(selectedPlatforms.length, budget)}% від націнки
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </div>
       )}
 
-      {/* Submit Button */}
-      <Button
-        className="w-full"
-        size="lg"
-        onClick={handleSubmitAd}
-        disabled={
-          !hasSelection || 
-          selectedPlatforms.length === 0 || 
-          !aiText || 
-          adStatus === "pending_review" || 
-          adStatus === "active"
+      {/* ============ STEP 4 — Контент і запуск ============ */}
+      {step === 4 && (
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-base font-semibold flex items-center gap-2">
+              <Megaphone className="h-4 w-4 text-primary" />
+              Крок 4. Контент і запуск
+            </h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              Згенеруйте чи напишіть рекламний текст, додайте фото/відео, перегляньте та оплатіть запуск кампанії.
+            </p>
+          </div>
+
+          {/* AI Prompt Hint */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" />
+              Як ви бачите цю рекламу? (для AI Gemini)
+            </Label>
+            <Input
+              value={aiPromptHint}
+              onChange={(e) => setAiPromptHint(e.target.value)}
+              placeholder="Наприклад: зробити акцент на знижці, або використати гумор..."
+            />
+          </div>
+
+          {/* AI Text Generation */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label>Рекламний текст</Label>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowPreview(!showPreview)}
+                  disabled={!aiText}
+                >
+                  <Eye className="h-4 w-4 mr-1" />
+                  Перегляд
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleGenerateDescription}
+                  disabled={!sampleProduct || isGenerating}
+                >
+                  {isGenerating ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <Sparkles className="h-4 w-4 mr-2" />
+                  )}
+                  Згенерувати AI
+                </Button>
+              </div>
+            </div>
+            <Textarea
+              value={aiText}
+              onChange={(e) => setAiText(e.target.value)}
+              placeholder="AI згенерує оптимальний рекламний текст для обраних платформ..."
+              rows={5}
+            />
+          </div>
+
+          {/* AI Post Preview */}
+          {showPreview && (
+            <AIPostPreview
+              product={sampleProduct}
+              postText={aiText}
+              platform={(selectedPlatforms[0] || "telegram") as any}
+            />
+          )}
+
+          {/* Media uploader (optional) */}
+          <PostMediaUploader
+            profileId={profileId}
+            images={mediaImages}
+            video={mediaVideo}
+            onChange={({ images, video }) => { setMediaImages(images); setMediaVideo(video); }}
+          />
+
+          {/* Ad Status */}
+          {adStatus !== "draft" && (
+            <Card className={cn(
+              "border",
+              adStatus === "pending_review" && "border-warning/50 bg-warning/5",
+              adStatus === "approved" && "border-success/50 bg-success/5",
+              adStatus === "active" && "border-success/50 bg-success/5",
+              adStatus === "rejected" && "border-destructive/50 bg-destructive/5",
+              adStatus === "completed" && "border-muted bg-muted/50"
+            )}>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  {adStatus === "pending_review" && <Clock className="h-5 w-5 text-warning animate-pulse" />}
+                  {adStatus === "approved" && <ShieldCheck className="h-5 w-5 text-success" />}
+                  {adStatus === "active" && <TrendingUp className="h-5 w-5 text-success animate-pulse" />}
+                  {adStatus === "rejected" && <AlertCircle className="h-5 w-5 text-destructive" />}
+                  {adStatus === "completed" && <CheckCircle2 className="h-5 w-5 text-muted-foreground" />}
+                  <div className="flex-1">
+                    <p className="font-medium text-sm">
+                      {adStatus === "pending_review" && "Модерація рекламного контенту..."}
+                      {adStatus === "approved" && "Рекламу схвалено!"}
+                      {adStatus === "active" && "Рекламна кампанія активна"}
+                      {adStatus === "rejected" && "Рекламу відхилено"}
+                      {adStatus === "completed" && "Кампанію завершено"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {adStatus === "pending_review" && "Перевірка на відповідність правилам платформ"}
+                      {adStatus === "approved" && "Запуск кампанії розпочнеться найближчим часом"}
+                      {adStatus === "active" && "Відстежуйте статистику в розділі 'Статистика'"}
+                      {adStatus === "rejected" && "Будь ласка, перевірте вміст та спробуйте знову"}
+                      {adStatus === "completed" && "Переглянути звіт можна в розділі 'Статистика'"}
+                    </p>
+                  </div>
+                </div>
+                {adStatus === "active" && (
+                  <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                    <div className="p-2 bg-muted rounded">
+                      <p className="text-lg font-bold">1,247</p>
+                      <p className="text-xs text-muted-foreground">Перегляди</p>
+                    </div>
+                    <div className="p-2 bg-muted rounded">
+                      <p className="text-lg font-bold">156</p>
+                      <p className="text-xs text-muted-foreground">Кліки</p>
+                    </div>
+                    <div className="p-2 bg-muted rounded">
+                      <p className="text-lg font-bold">12.5%</p>
+                      <p className="text-xs text-muted-foreground">CTR</p>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
+
+      {/* Wizard navigation */}
+      <StepNav
+        step={step}
+        totalSteps={4}
+        canProceed={canProceed()}
+        onBack={() => setStep((s) => Math.max(1, s - 1))}
+        onNext={() => setStep((s) => Math.min(4, s + 1))}
+        finalSlot={
+          <Button
+            className="w-full"
+            size="lg"
+            onClick={handleSubmitAd}
+            disabled={
+              !hasSelection ||
+              selectedPlatforms.length === 0 ||
+              !aiText ||
+              adStatus === "pending_review" ||
+              adStatus === "active"
+            }
+          >
+            {adStatus === "pending_review" ? (
+              <Loader2 className="h-5 w-5 animate-spin mr-2" />
+            ) : (
+              <Megaphone className="h-5 w-5 mr-2" />
+            )}
+            {adStatus === "pending_review"
+              ? "Модерація..."
+              : `Оплатити ${totalCost} ₴ та запустити рекламу`}
+          </Button>
         }
-      >
-        {adStatus === "pending_review" ? (
-          <Loader2 className="h-5 w-5 animate-spin mr-2" />
-        ) : (
-          <Megaphone className="h-5 w-5 mr-2" />
-        )}
-        {adStatus === "pending_review" 
-          ? "Модерація..." 
-          : `Оплатити ${totalCost} ₴ та запустити рекламу`
-        }
-      </Button>
+      />
 
       {/* Payment Modal */}
       <PaymentModal
