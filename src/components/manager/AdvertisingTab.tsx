@@ -345,6 +345,7 @@ export function AdvertisingTab({
       setTimeout(() => {
         setAdStatus("active");
         toast.success("Рекламна кампанія активна!");
+        setStep(1);
       }, 2000);
     }, 3000);
   };
