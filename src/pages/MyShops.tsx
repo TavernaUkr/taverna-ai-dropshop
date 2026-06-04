@@ -385,6 +385,47 @@ export default function MyShops() {
           ))
         )}
       </div>
+
+      {/* Promotion channel chooser */}
+      <Dialog open={!!promoShopId} onOpenChange={(open) => !open && setPromoShopId(null)}>
+        <DialogContent className="sm:max-w-[380px] mx-4">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Megaphone className="h-5 w-5 text-primary" />
+              Оберіть напрямок
+            </DialogTitle>
+            <DialogDescription>
+              Магазин уже вибрано — далі оберіть товари для просування.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-3 pt-2">
+            <button
+              onClick={() => openPromotion("posting")}
+              className="flex flex-col items-center gap-2 rounded-xl border border-border bg-card p-4 hover:border-primary hover:bg-primary/5 transition-all"
+            >
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                <Send className="h-6 w-6 text-primary" />
+              </div>
+              <span className="font-semibold text-sm text-foreground">Постинг</span>
+              <span className="text-[11px] text-muted-foreground text-center leading-tight">
+                Публікація на платформах
+              </span>
+            </button>
+            <button
+              onClick={() => openPromotion("advertising")}
+              className="flex flex-col items-center gap-2 rounded-xl border border-border bg-card p-4 hover:border-primary hover:bg-primary/5 transition-all"
+            >
+              <div className="w-12 h-12 rounded-full bg-warning/10 flex items-center justify-center">
+                <Megaphone className="h-6 w-6 text-warning" />
+              </div>
+              <span className="font-semibold text-sm text-foreground">Реклама</span>
+              <span className="text-[11px] text-muted-foreground text-center leading-tight">
+                Платні кампанії з бюджетом
+              </span>
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
