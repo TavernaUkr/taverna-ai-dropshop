@@ -2,12 +2,19 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Store, Plus, Package, Settings, 
-  Loader2, Star, ShoppingCart, MessageSquare,
+  Loader2, Star, ShoppingCart, MessageSquare, Megaphone, Send,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useTelegramAuthContext } from "@/components/TelegramAuthProvider";
 import { toast } from "sonner";
@@ -38,10 +45,18 @@ export default function MyShops() {
   const { effectiveRole, profile } = useTelegramAuthContext();
   const [shops, setShops] = useState<ShopInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [promoShopId, setPromoShopId] = useState<string | null>(null);
 
   const isSupplier = effectiveRole === "supplier";
   const isShopManager = effectiveRole === "shop_manager";
   const isAdmin = effectiveRole === "admin";
+
+  const openPromotion = (tab: "posting" | "advertising") => {
+    if (!promoShopId) return;
+    hapticSelection();
+    navigate(`/manager?shop=${promoShopId}&tab=${tab}&step=2`);
+    setPromoShopId(null);
+  };
 
   useEffect(() => {
     fetchShops();
@@ -152,6 +167,33 @@ export default function MyShops() {
                 });
               }
             }
+          }
+        }
+      }
+
+      // DEV FALLBACK: In Lovable dev environment, if no managed shops found for
+      // shop_manager test role, fetch a couple active suppliers as mock "manager"
+      // shops so promotion buttons can be tested.
+      if (allShops.length === 0 && isLovableDevEnvironment() && isShopManager) {
+        const { data: devShops } = await supabase
+          .from("suppliers")
+          .select("id, shop_name, logo_url, is_active")
+          .eq("is_active", true)
+          .limit(2);
+
+        if (devShops) {
+          for (const shop of devShops) {
+            const { count: productCount } = await supabase
+              .from("products")
+              .select("*", { count: "exact", head: true })
+              .eq("supplier_id", shop.id);
+
+            allShops.push({
+              ...shop,
+              product_count: productCount || 0,
+              review_count: 0,
+              role: "manager",
+            });
           }
         }
       }
@@ -297,6 +339,20 @@ export default function MyShops() {
                   )}
                 </div>
 
+                {/* Promotion button — owners & managers */}
+                <Button
+                  size="sm"
+                  variant="premium"
+                  className="w-full h-9 mb-2"
+                  onClick={() => {
+                    hapticSelection();
+                    setPromoShopId(shop.id);
+                  }}
+                >
+                  <Megaphone className="h-3.5 w-3.5 mr-1.5" />
+                  Просування
+                </Button>
+
                 {/* Action buttons */}
                 <div className="flex gap-2">
                   <Button
@@ -329,6 +385,47 @@ export default function MyShops() {
           ))
         )}
       </div>
+
+      {/* Promotion channel chooser */}
+      <Dialog open={!!promoShopId} onOpenChange={(open) => !open && setPromoShopId(null)}>
+        <DialogContent className="sm:max-w-[380px] mx-4">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Megaphone className="h-5 w-5 text-primary" />
+              Оберіть напрямок
+            </DialogTitle>
+            <DialogDescription>
+              Магазин уже вибрано — далі оберіть товари для просування.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-3 pt-2">
+            <button
+              onClick={() => openPromotion("posting")}
+              className="flex flex-col items-center gap-2 rounded-xl border border-border bg-card p-4 hover:border-primary hover:bg-primary/5 transition-all"
+            >
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                <Send className="h-6 w-6 text-primary" />
+              </div>
+              <span className="font-semibold text-sm text-foreground">Постинг</span>
+              <span className="text-[11px] text-muted-foreground text-center leading-tight">
+                Публікація на платформах
+              </span>
+            </button>
+            <button
+              onClick={() => openPromotion("advertising")}
+              className="flex flex-col items-center gap-2 rounded-xl border border-border bg-card p-4 hover:border-primary hover:bg-primary/5 transition-all"
+            >
+              <div className="w-12 h-12 rounded-full bg-warning/10 flex items-center justify-center">
+                <Megaphone className="h-6 w-6 text-warning" />
+              </div>
+              <span className="font-semibold text-sm text-foreground">Реклама</span>
+              <span className="text-[11px] text-muted-foreground text-center leading-tight">
+                Платні кампанії з бюджетом
+              </span>
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

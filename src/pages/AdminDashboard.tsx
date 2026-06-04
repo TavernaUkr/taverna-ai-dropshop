@@ -30,6 +30,7 @@ import { AdminStoreOrders } from '@/components/admin/AdminStoreOrders';
 import { OrdersManager } from '@/components/admin/OrdersManager';
 import { AIOrderReports } from '@/components/admin/AIOrderReports';
 import { AdminRolesManager } from '@/components/admin/AdminRolesManager';
+import { CommandCenter } from '@/components/admin/CommandCenter';
 
 interface SupplierApplication {
   id: string;
@@ -63,7 +64,7 @@ interface OrderStats {
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const { isLoading: authLoading, rolesLoading, isAuthenticated, effectiveRole, sessionToken } = useTelegramAuthContext();
-  const [activeTab, setActiveTab] = useState('orders');
+  const [activeTab, setActiveTab] = useState('overview');
   const [applications, setApplications] = useState<SupplierApplication[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
@@ -257,6 +258,9 @@ export default function AdminDashboard() {
         <Tabs value={activeTab} onValueChange={(v) => { hapticSelection(); setActiveTab(v); }}>
           <ScrollArea className="w-full pb-2">
             <TabsList className="w-max flex gap-1 mb-4">
+              <TabsTrigger value="overview" className="text-xs px-3 gap-1">
+                <Crown className="h-3.5 w-3.5" /> Огляд
+              </TabsTrigger>
               <TabsTrigger value="orders" className="text-xs px-3 gap-1">
                 <ShoppingCart className="h-3.5 w-3.5" /> Замовлення
               </TabsTrigger>
@@ -279,10 +283,21 @@ export default function AdminDashboard() {
                 <Brain className="h-3.5 w-3.5" /> Аналітика
               </TabsTrigger>
               <TabsTrigger value="roles" className="text-xs px-3 gap-1">
-                <UserCog className="h-3.5 w-3.5" /> Ролі
+                <UserCog className="h-3.5 w-3.5" /> Користувачі
               </TabsTrigger>
             </TabsList>
           </ScrollArea>
+
+          {/* === ОГЛЯД === */}
+          <TabsContent value="overview">
+            <CommandCenter
+              stats={orderStats}
+              applicationsCount={applications.length}
+              onNavigate={(tab) => { hapticSelection(); setActiveTab(tab); }}
+            />
+          </TabsContent>
+
+
 
           {/* === ЗАМОВЛЕННЯ === */}
           <TabsContent value="orders">

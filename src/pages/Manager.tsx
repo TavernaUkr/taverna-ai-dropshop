@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
   Megaphone,
@@ -121,8 +121,15 @@ const platforms = [
 
 export default function Manager() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const deepLinkShopId = searchParams.get("shop");
+  const deepLinkTab = searchParams.get("tab");
+  const deepLinkStep = searchParams.get("step");
+  const initialStep = deepLinkStep ? parseInt(deepLinkStep, 10) || undefined : undefined;
   const { profile, effectiveRole } = useTelegramAuthContext();
-  const [activeTab, setActiveTab] = useState("posting");
+  const [activeTab, setActiveTab] = useState(
+    deepLinkTab === "advertising" ? "advertising" : "posting"
+  );
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
   const [useAllProducts, setUseAllProducts] = useState(false);
@@ -294,6 +301,14 @@ export default function Manager() {
     };
     fetchShops();
   }, [profile?.id, profile?.telegram_id, isAdminOrMod, isAdmin]);
+
+  // Deep-link: pre-select a single shop when navigated from "Керування магазинами"
+  useEffect(() => {
+    if (!deepLinkShopId) return;
+    if (availableShops.some((s) => s.id === deepLinkShopId)) {
+      setSelectedShopIds([deepLinkShopId]);
+    }
+  }, [deepLinkShopId, availableShops]);
 
   // Derive supplierIds for child components.
   // For non-admin/mod: always restrict to availableShops, even when "all" selected,
@@ -715,6 +730,7 @@ export default function Manager() {
               isAdmin={isAdmin}
               effectiveRole={effectiveRole}
               profileId={profile?.id}
+              initialStep={initialStep}
             />
           </TabsContent>
 
@@ -743,6 +759,7 @@ export default function Manager() {
               isAdmin={isAdmin}
               effectiveRole={effectiveRole}
               profileId={profile?.id}
+              initialStep={initialStep}
             />
           </TabsContent>
 
