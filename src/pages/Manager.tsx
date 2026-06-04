@@ -730,6 +730,7 @@ export default function Manager() {
               isAdmin={isAdmin}
               effectiveRole={effectiveRole}
               profileId={profile?.id}
+              initialStep={initialStep}
             />
           </TabsContent>
 
@@ -758,6 +759,7 @@ export default function Manager() {
               isAdmin={isAdmin}
               effectiveRole={effectiveRole}
               profileId={profile?.id}
+              initialStep={initialStep}
             />
           </TabsContent>
 
