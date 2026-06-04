@@ -258,6 +258,9 @@ export default function AdminDashboard() {
         <Tabs value={activeTab} onValueChange={(v) => { hapticSelection(); setActiveTab(v); }}>
           <ScrollArea className="w-full pb-2">
             <TabsList className="w-max flex gap-1 mb-4">
+              <TabsTrigger value="overview" className="text-xs px-3 gap-1">
+                <Crown className="h-3.5 w-3.5" /> Огляд
+              </TabsTrigger>
               <TabsTrigger value="orders" className="text-xs px-3 gap-1">
                 <ShoppingCart className="h-3.5 w-3.5" /> Замовлення
               </TabsTrigger>
