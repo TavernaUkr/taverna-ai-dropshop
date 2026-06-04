@@ -85,6 +85,7 @@ interface AdvertisingTabProps {
   isAdmin?: boolean;
   effectiveRole?: string;
   profileId?: string;
+  initialStep?: number;
 }
 
 // All advertising platforms grouped
@@ -171,6 +172,7 @@ export function AdvertisingTab({
   isAdmin,
   effectiveRole,
   profileId,
+  initialStep,
 }: AdvertisingTabProps) {
   const supplierId = supplierIds && supplierIds.length === 1 ? supplierIds[0] : null;
   const selectedProduct = selectedProducts.length === 1 ? selectedProducts[0] : null;
@@ -192,7 +194,7 @@ export function AdvertisingTab({
   const [adStatus, setAdStatus] = useState<AdStatus>("draft");
   const [mediaImages, setMediaImages] = useState<string[]>([]);
   const [mediaVideo, setMediaVideo] = useState<string | null>(null);
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(initialStep ?? 1);
   const hasShopSelection = (selectedShopIds?.length || 0) > 0;
 
   const AD_STEPS: StepDef[] = [
