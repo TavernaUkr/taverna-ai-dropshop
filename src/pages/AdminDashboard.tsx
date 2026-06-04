@@ -64,7 +64,7 @@ interface OrderStats {
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const { isLoading: authLoading, rolesLoading, isAuthenticated, effectiveRole, sessionToken } = useTelegramAuthContext();
-  const [activeTab, setActiveTab] = useState('orders');
+  const [activeTab, setActiveTab] = useState('overview');
   const [applications, setApplications] = useState<SupplierApplication[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
