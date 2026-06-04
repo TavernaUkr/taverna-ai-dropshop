@@ -121,8 +121,15 @@ const platforms = [
 
 export default function Manager() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const deepLinkShopId = searchParams.get("shop");
+  const deepLinkTab = searchParams.get("tab");
+  const deepLinkStep = searchParams.get("step");
+  const initialStep = deepLinkStep ? parseInt(deepLinkStep, 10) || undefined : undefined;
   const { profile, effectiveRole } = useTelegramAuthContext();
-  const [activeTab, setActiveTab] = useState("posting");
+  const [activeTab, setActiveTab] = useState(
+    deepLinkTab === "advertising" ? "advertising" : "posting"
+  );
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
   const [useAllProducts, setUseAllProducts] = useState(false);
