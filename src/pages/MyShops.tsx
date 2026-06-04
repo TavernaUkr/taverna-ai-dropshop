@@ -339,6 +339,20 @@ export default function MyShops() {
                   )}
                 </div>
 
+                {/* Promotion button — owners & managers */}
+                <Button
+                  size="sm"
+                  variant="premium"
+                  className="w-full h-9 mb-2"
+                  onClick={() => {
+                    hapticSelection();
+                    setPromoShopId(shop.id);
+                  }}
+                >
+                  <Megaphone className="h-3.5 w-3.5 mr-1.5" />
+                  Просування
+                </Button>
+
                 {/* Action buttons */}
                 <div className="flex gap-2">
                   <Button
