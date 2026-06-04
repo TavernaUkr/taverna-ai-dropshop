@@ -30,6 +30,7 @@ import { AdminStoreOrders } from '@/components/admin/AdminStoreOrders';
 import { OrdersManager } from '@/components/admin/OrdersManager';
 import { AIOrderReports } from '@/components/admin/AIOrderReports';
 import { AdminRolesManager } from '@/components/admin/AdminRolesManager';
+import { CommandCenter } from '@/components/admin/CommandCenter';
 
 interface SupplierApplication {
   id: string;
