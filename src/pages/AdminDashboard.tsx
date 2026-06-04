@@ -283,10 +283,21 @@ export default function AdminDashboard() {
                 <Brain className="h-3.5 w-3.5" /> Аналітика
               </TabsTrigger>
               <TabsTrigger value="roles" className="text-xs px-3 gap-1">
-                <UserCog className="h-3.5 w-3.5" /> Ролі
+                <UserCog className="h-3.5 w-3.5" /> Користувачі
               </TabsTrigger>
             </TabsList>
           </ScrollArea>
+
+          {/* === ОГЛЯД === */}
+          <TabsContent value="overview">
+            <CommandCenter
+              stats={orderStats}
+              applicationsCount={applications.length}
+              onNavigate={(tab) => { hapticSelection(); setActiveTab(tab); }}
+            />
+          </TabsContent>
+
+
 
           {/* === ЗАМОВЛЕННЯ === */}
           <TabsContent value="orders">
