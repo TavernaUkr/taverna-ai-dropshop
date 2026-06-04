@@ -88,6 +88,7 @@ interface PostingTabProps {
   isAdmin?: boolean;
   effectiveRole?: string;
   profileId?: string;
+  initialStep?: number;
 }
 
 const POSTING_INTERVALS = {
@@ -140,6 +141,7 @@ export function PostingTab({
   isAdmin,
   effectiveRole,
   profileId,
+  initialStep,
 }: PostingTabProps) {
   const supplierId = supplierIds && supplierIds.length === 1 ? supplierIds[0] : null;
   const selectedProduct = selectedProducts.length === 1 ? selectedProducts[0] : null;
@@ -161,7 +163,7 @@ export function PostingTab({
   const [postStatus, setPostStatus] = useState<PostStatus>("draft");
   const [mediaImages, setMediaImages] = useState<string[]>([]);
   const [mediaVideo, setMediaVideo] = useState<string | null>(null);
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(initialStep ?? 1);
 
   const POST_STEPS: StepDef[] = [
     { id: 1, label: "Магазини", icon: Store },
