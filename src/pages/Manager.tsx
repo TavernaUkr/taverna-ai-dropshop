@@ -302,6 +302,14 @@ export default function Manager() {
     fetchShops();
   }, [profile?.id, profile?.telegram_id, isAdminOrMod, isAdmin]);
 
+  // Deep-link: pre-select a single shop when navigated from "Керування магазинами"
+  useEffect(() => {
+    if (!deepLinkShopId) return;
+    if (availableShops.some((s) => s.id === deepLinkShopId)) {
+      setSelectedShopIds([deepLinkShopId]);
+    }
+  }, [deepLinkShopId, availableShops]);
+
   // Derive supplierIds for child components.
   // For non-admin/mod: always restrict to availableShops, even when "all" selected,
   // so a supplier never accidentally promotes another shop's products.
