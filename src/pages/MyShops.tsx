@@ -45,10 +45,18 @@ export default function MyShops() {
   const { effectiveRole, profile } = useTelegramAuthContext();
   const [shops, setShops] = useState<ShopInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [promoShopId, setPromoShopId] = useState<string | null>(null);
 
   const isSupplier = effectiveRole === "supplier";
   const isShopManager = effectiveRole === "shop_manager";
   const isAdmin = effectiveRole === "admin";
+
+  const openPromotion = (tab: "posting" | "advertising") => {
+    if (!promoShopId) return;
+    hapticSelection();
+    navigate(`/manager?shop=${promoShopId}&tab=${tab}&step=2`);
+    setPromoShopId(null);
+  };
 
   useEffect(() => {
     fetchShops();
