@@ -171,6 +171,33 @@ export default function MyShops() {
         }
       }
 
+      // DEV FALLBACK: In Lovable dev environment, if no managed shops found for
+      // shop_manager test role, fetch a couple active suppliers as mock "manager"
+      // shops so promotion buttons can be tested.
+      if (allShops.length === 0 && isLovableDevEnvironment() && isShopManager) {
+        const { data: devShops } = await supabase
+          .from("suppliers")
+          .select("id, shop_name, logo_url, is_active")
+          .eq("is_active", true)
+          .limit(2);
+
+        if (devShops) {
+          for (const shop of devShops) {
+            const { count: productCount } = await supabase
+              .from("products")
+              .select("*", { count: "exact", head: true })
+              .eq("supplier_id", shop.id);
+
+            allShops.push({
+              ...shop,
+              product_count: productCount || 0,
+              review_count: 0,
+              role: "manager",
+            });
+          }
+        }
+      }
+
       setShops(allShops);
     } catch (err) {
       console.error("Error fetching shops:", err);
