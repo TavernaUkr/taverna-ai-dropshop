@@ -30,6 +30,7 @@ import { hapticSelection } from '@/lib/haptics';
 import { DisputesManager } from '@/components/moderator/DisputesManager';
 import { IndividualBonusManager } from '@/components/moderator/IndividualBonusManager';
 import { TechSupportQueue } from '@/components/moderator/TechSupportQueue';
+import { PaymentsManager } from '@/components/admin/PaymentsManager';
 
 interface Report {
   id: string;
