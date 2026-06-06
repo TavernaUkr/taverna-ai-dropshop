@@ -451,6 +451,11 @@ export default function ModeratorPanel() {
           <TabsContent value="disputes">
             <DisputesManager />
           </TabsContent>
+          {/* Payments Tab */}
+          <TabsContent value="payments">
+            <PaymentsManager mode="moderator" />
+          </TabsContent>
+
 
           {/* Tech Support Tab */}
           <TabsContent value="support">
