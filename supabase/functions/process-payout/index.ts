@@ -326,3 +326,42 @@ Deno.serve(async (req) => {
     });
   }
 });
+
+async function recalcEligibility(supabase: any, orderId: string) {
+  const { data: order } = await supabase
+    .from('orders')
+    .select('id, received_at')
+    .eq('id', orderId)
+    .single();
+  if (!order?.received_at) return;
+
+  const { data: splits } = await supabase
+    .from('order_splits')
+    .select('id, supplier_id')
+    .eq('order_id', orderId);
+
+  const { data: items } = await supabase
+    .from('order_items')
+    .select('product_id, products(supplier_id, is_returnable, return_window_days)')
+    .eq('order_id', orderId);
+
+  for (const split of splits || []) {
+    const supplierItems = (items || []).filter((it: any) => it.products?.supplier_id === split.supplier_id);
+    let maxWindow = 0;
+    let anyReturnable = false;
+    for (const it of supplierItems) {
+      if (it.products?.is_returnable) {
+        anyReturnable = true;
+        maxWindow = Math.max(maxWindow, it.products?.return_window_days ?? 14);
+      }
+    }
+    const eligible = new Date(order.received_at);
+    eligible.setDate(eligible.getDate() + (anyReturnable ? maxWindow : 0));
+
+    await supabase.from('order_splits').update({
+      eligible_payout_at: eligible.toISOString(),
+      is_returnable: anyReturnable,
+    }).eq('id', split.id);
+  }
+}
+
