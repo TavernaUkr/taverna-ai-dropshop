@@ -265,6 +265,9 @@ export default function AdminDashboard() {
               <TabsTrigger value="orders" className="text-xs px-3 gap-1">
                 <ShoppingCart className="h-3.5 w-3.5" /> Замовлення
               </TabsTrigger>
+              <TabsTrigger value="payments" className="text-xs px-3 gap-1">
+                <Wallet className="h-3.5 w-3.5" /> Оплати
+              </TabsTrigger>
               <TabsTrigger value="stores" className="text-xs px-3 gap-1">
                 <Store className="h-3.5 w-3.5" /> Магазини
               </TabsTrigger>
