@@ -336,6 +336,10 @@ export default function ModeratorPanel() {
                   </Badge>
                 )}
               </TabsTrigger>
+              <TabsTrigger value="payments" className="gap-1 text-xs px-3">
+                <Wallet className="h-4 w-4" />
+                Оплати
+              </TabsTrigger>
               <TabsTrigger value="bonuses" className="gap-1 text-xs px-3">
                 <Gift className="h-4 w-4" />
                 Бонуси
