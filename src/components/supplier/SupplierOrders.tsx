@@ -22,6 +22,13 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { hapticSelection } from "@/lib/haptics";
 import { MOCK_ORDERS, MockOrder } from "@/data/mockOrders";
+import { useTelegramAuthContext } from "@/components/TelegramAuthProvider";
+
+const payStageStyle: Record<string, { label: string; cls: string }> = {
+  created: { label: "Оплата: створено", cls: "bg-yellow-100 text-yellow-700" },
+  processing: { label: "Оплата: в обробці", cls: "bg-blue-100 text-blue-700" },
+  paid: { label: "Оплачено ✓", cls: "bg-green-100 text-green-700" },
+};
 
 interface SupplierOrdersProps {
   supplierId: string;
