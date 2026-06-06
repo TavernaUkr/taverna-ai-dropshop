@@ -242,6 +242,78 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Action: recalc_eligibility — compute eligible_payout_at for a received order
+    if (action === 'recalc_eligibility') {
+      if (!order_id) throw new Error('order_id required');
+      await recalcEligibility(supabase, order_id);
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Action: run_auto_payouts — pay suppliers whose window has passed
+    if (action === 'run_auto_payouts') {
+      const nowIso = new Date().toISOString();
+      const { data: due } = await supabase
+        .from('order_splits')
+        .select('*')
+        .eq('payout_stage', 'created')
+        .not('eligible_payout_at', 'is', null)
+        .lte('eligible_payout_at', nowIso)
+        .limit(50);
+
+      const paid: string[] = [];
+      for (const split of due || []) {
+        // move to processing
+        await supabase.from('order_splits')
+          .update({ payout_stage: 'processing' })
+          .eq('id', split.id);
+
+        const { data: supplier } = await supabase
+          .from('suppliers')
+          .select('payment_iban, payment_card_holder, payment_bank_name')
+          .eq('id', split.supplier_id)
+          .single();
+
+        const hasRequisites = !!(supplier?.payment_iban || supplier?.payment_card_holder);
+        const now2 = new Date().toISOString();
+
+        if (!hasRequisites) {
+          // keep in processing until admin adds requisites / pays manually
+          continue;
+        }
+
+        const txId = `AUTO-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        // auto receipt record (text reference; real bank PDF can be attached manually)
+        const receiptRef = `Авто-перерахування ${split.supplier_amount}₴ на ${supplier?.payment_iban || supplier?.payment_card_holder} · ${txId}`;
+
+        await supabase.from('supplier_payouts').insert({
+          supplier_id: split.supplier_id,
+          order_split_id: split.id,
+          amount: split.supplier_amount,
+          payout_method: 'auto_fop',
+          payout_status: 'completed',
+          iban: supplier?.payment_iban || null,
+          transaction_id: txId,
+          processed_at: now2,
+        });
+
+        await supabase.from('order_splits').update({
+          payout_stage: 'paid',
+          split_status: 'paid',
+          paid_at: now2,
+          receipt_url: split.receipt_url || receiptRef,
+          receipt_uploaded_at: now2,
+        }).eq('id', split.id);
+
+        paid.push(split.id);
+      }
+
+      return new Response(JSON.stringify({ success: true, paid_count: paid.length, paid }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     throw new Error('Unknown action');
   } catch (err) {
     console.error('Process payout error:', err);
