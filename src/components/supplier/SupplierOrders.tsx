@@ -65,10 +65,27 @@ export function SupplierOrders({ supplierId, mode = "active" }: SupplierOrdersPr
   const [ttnInput, setTtnInput] = useState("");
   const [isSavingTtn, setIsSavingTtn] = useState(false);
   const [useMockData, setUseMockData] = useState(false);
+  const { sessionToken } = useTelegramAuthContext();
+  const [paymentMap, setPaymentMap] = useState<Record<string, string>>({});
   const [customerRating, setCustomerRating] = useState(0);
   const [showCustomerRating, setShowCustomerRating] = useState(false);
   const [supplierAvgRating, setSupplierAvgRating] = useState<number | null>(null);
   const [supplierReviewCount, setSupplierReviewCount] = useState(0);
+
+  useEffect(() => {
+    const loadPayments = async () => {
+      if (!sessionToken || !supplierId || supplierId === "demo") return;
+      try {
+        const { data } = await supabase.functions.invoke("manage-payments", {
+          body: { action: "supplier_list", session_token: sessionToken, supplier_id: supplierId },
+        });
+        const map: Record<string, string> = {};
+        (data?.splits || []).forEach((s: any) => { if (s.order_id) map[s.order_id] = s.payout_stage; });
+        setPaymentMap(map);
+      } catch { /* non-critical */ }
+    };
+    loadPayments();
+  }, [sessionToken, supplierId]);
 
   useEffect(() => {
     if (supplierId) {
