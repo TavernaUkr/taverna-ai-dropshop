@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Users, Check, X, Loader2, DollarSign, ShoppingCart, Package,
   Eye, ChevronDown, ChevronUp, Shield, UserCog, AlertTriangle, RefreshCw,
-  Crown, Tag, Gift, Brain, MessageSquare, Trophy, Store, Megaphone,
+  Crown, Tag, Gift, Brain, MessageSquare, Trophy, Store, Megaphone, Wallet,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
