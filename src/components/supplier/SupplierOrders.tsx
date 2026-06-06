@@ -460,6 +460,13 @@ export function SupplierOrders({ supplierId, mode = "active" }: SupplierOrdersPr
                         </div>
                       </div>
                     </div>
+                    {paymentMap[order.id] && (
+                      <div className="mb-2">
+                        <span className={cn("inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold", payStageStyle[paymentMap[order.id]]?.cls)}>
+                          {payStageStyle[paymentMap[order.id]]?.label}
+                        </span>
+                      </div>
+                    )}
                     <div className="flex items-center justify-between text-sm text-muted-foreground mb-2">
                       <span>{order.customer_name || order.delivery_address.recipient_name}</span>
                       <span className="font-bold text-foreground">{order.total?.toLocaleString()} ₴</span>
