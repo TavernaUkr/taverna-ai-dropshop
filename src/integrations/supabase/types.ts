@@ -442,12 +442,19 @@ export type Database = {
       order_splits: {
         Row: {
           created_at: string
+          eligible_payout_at: string | null
           id: string
+          is_returnable: boolean | null
           markup_percentage: number
           order_id: string
+          paid_at: string | null
           payment_method: string
+          payout_stage: string
+          payout_type: string | null
           platform_commission: number
           product_total: number
+          receipt_uploaded_at: string | null
+          receipt_url: string | null
           split_status: string
           supplier_amount: number
           supplier_id: string
@@ -455,12 +462,19 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          eligible_payout_at?: string | null
           id?: string
+          is_returnable?: boolean | null
           markup_percentage?: number
           order_id: string
+          paid_at?: string | null
           payment_method?: string
+          payout_stage?: string
+          payout_type?: string | null
           platform_commission?: number
           product_total?: number
+          receipt_uploaded_at?: string | null
+          receipt_url?: string | null
           split_status?: string
           supplier_amount?: number
           supplier_id: string
@@ -468,12 +482,19 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          eligible_payout_at?: string | null
           id?: string
+          is_returnable?: boolean | null
           markup_percentage?: number
           order_id?: string
+          paid_at?: string | null
           payment_method?: string
+          payout_stage?: string
+          payout_type?: string | null
           platform_commission?: number
           product_total?: number
+          receipt_uploaded_at?: string | null
+          receipt_url?: string | null
           split_status?: string
           supplier_amount?: number
           supplier_id?: string
@@ -516,9 +537,11 @@ export type Database = {
           payment_method: string | null
           payment_status: string | null
           profile_id: string | null
+          received_at: string | null
           status: string | null
           subtotal: number
           total: number
+          tracking_status: string | null
           updated_at: string
         }
         Insert: {
@@ -533,9 +556,11 @@ export type Database = {
           payment_method?: string | null
           payment_status?: string | null
           profile_id?: string | null
+          received_at?: string | null
           status?: string | null
           subtotal: number
           total: number
+          tracking_status?: string | null
           updated_at?: string
         }
         Update: {
@@ -550,9 +575,11 @@ export type Database = {
           payment_method?: string | null
           payment_status?: string | null
           profile_id?: string | null
+          received_at?: string | null
           status?: string | null
           subtotal?: number
           total?: number
+          tracking_status?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -597,11 +624,14 @@ export type Database = {
           images: string[] | null
           in_stock: boolean | null
           is_boosted: boolean | null
+          is_returnable: boolean
           model: string | null
           name: string
           original_description: string | null
           original_price: number | null
           price: number
+          return_window_days: number
+          returnability_source: string
           sizes: string[] | null
           source_url: string | null
           stock_quantity: number | null
@@ -628,11 +658,14 @@ export type Database = {
           images?: string[] | null
           in_stock?: boolean | null
           is_boosted?: boolean | null
+          is_returnable?: boolean
           model?: string | null
           name: string
           original_description?: string | null
           original_price?: number | null
           price: number
+          return_window_days?: number
+          returnability_source?: string
           sizes?: string[] | null
           source_url?: string | null
           stock_quantity?: number | null
@@ -659,11 +692,14 @@ export type Database = {
           images?: string[] | null
           in_stock?: boolean | null
           is_boosted?: boolean | null
+          is_returnable?: boolean
           model?: string | null
           name?: string
           original_description?: string | null
           original_price?: number | null
           price?: number
+          return_window_days?: number
+          returnability_source?: string
           sizes?: string[] | null
           source_url?: string | null
           stock_quantity?: number | null
