@@ -57,6 +57,7 @@ Deno.serve(async (req) => {
       const splits = [];
 
       for (const [supplierId, totals] of Object.entries(supplierTotals)) {
+        const isPrepaid = paymentMethod === 'prepaid' || paymentMethod === 'card';
         const splitData = {
           order_id,
           supplier_id: supplierId,
@@ -66,6 +67,8 @@ Deno.serve(async (req) => {
           markup_percentage: 33,
           payment_method: paymentMethod,
           split_status: 'pending',
+          payout_stage: 'created',
+          payout_type: isPrepaid ? 'full_prepaid' : 'partial_markup',
         };
 
         const { data: split, error: splitErr } = await supabase
