@@ -16,6 +16,7 @@ import {
   Gift,
   Headphones,
   Users,
+  Wallet,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,6 +31,7 @@ import { hapticSelection } from '@/lib/haptics';
 import { DisputesManager } from '@/components/moderator/DisputesManager';
 import { IndividualBonusManager } from '@/components/moderator/IndividualBonusManager';
 import { TechSupportQueue } from '@/components/moderator/TechSupportQueue';
+import { PaymentsManager } from '@/components/admin/PaymentsManager';
 
 interface Report {
   id: string;
@@ -334,6 +336,10 @@ export default function ModeratorPanel() {
                   </Badge>
                 )}
               </TabsTrigger>
+              <TabsTrigger value="payments" className="gap-1 text-xs px-3">
+                <Wallet className="h-4 w-4" />
+                Оплати
+              </TabsTrigger>
               <TabsTrigger value="bonuses" className="gap-1 text-xs px-3">
                 <Gift className="h-4 w-4" />
                 Бонуси
@@ -445,6 +451,11 @@ export default function ModeratorPanel() {
           <TabsContent value="disputes">
             <DisputesManager />
           </TabsContent>
+          {/* Payments Tab */}
+          <TabsContent value="payments">
+            <PaymentsManager mode="moderator" />
+          </TabsContent>
+
 
           {/* Tech Support Tab */}
           <TabsContent value="support">

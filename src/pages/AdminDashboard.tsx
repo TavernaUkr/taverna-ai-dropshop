@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Users, Check, X, Loader2, DollarSign, ShoppingCart, Package,
   Eye, ChevronDown, ChevronUp, Shield, UserCog, AlertTriangle, RefreshCw,
-  Crown, Tag, Gift, Brain, MessageSquare, Trophy, Store, Megaphone,
+  Crown, Tag, Gift, Brain, MessageSquare, Trophy, Store, Megaphone, Wallet,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -31,6 +31,7 @@ import { OrdersManager } from '@/components/admin/OrdersManager';
 import { AIOrderReports } from '@/components/admin/AIOrderReports';
 import { AdminRolesManager } from '@/components/admin/AdminRolesManager';
 import { CommandCenter } from '@/components/admin/CommandCenter';
+import { PaymentsManager } from '@/components/admin/PaymentsManager';
 
 interface SupplierApplication {
   id: string;
@@ -264,6 +265,9 @@ export default function AdminDashboard() {
               <TabsTrigger value="orders" className="text-xs px-3 gap-1">
                 <ShoppingCart className="h-3.5 w-3.5" /> Замовлення
               </TabsTrigger>
+              <TabsTrigger value="payments" className="text-xs px-3 gap-1">
+                <Wallet className="h-3.5 w-3.5" /> Оплати
+              </TabsTrigger>
               <TabsTrigger value="stores" className="text-xs px-3 gap-1">
                 <Store className="h-3.5 w-3.5" /> Магазини
               </TabsTrigger>
@@ -328,6 +332,11 @@ export default function AdminDashboard() {
                 <AdminStoreOrders />
               )}
             </div>
+          </TabsContent>
+
+          {/* === ОПЛАТИ === */}
+          <TabsContent value="payments">
+            <PaymentsManager mode="admin" />
           </TabsContent>
 
           {/* === МАГАЗИНИ === */}

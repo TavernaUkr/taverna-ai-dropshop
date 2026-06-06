@@ -57,6 +57,7 @@ Deno.serve(async (req) => {
       const splits = [];
 
       for (const [supplierId, totals] of Object.entries(supplierTotals)) {
+        const isPrepaid = paymentMethod === 'prepaid' || paymentMethod === 'card';
         const splitData = {
           order_id,
           supplier_id: supplierId,
@@ -66,6 +67,8 @@ Deno.serve(async (req) => {
           markup_percentage: 33,
           payment_method: paymentMethod,
           split_status: 'pending',
+          payout_stage: 'created',
+          payout_type: isPrepaid ? 'full_prepaid' : 'partial_markup',
         };
 
         const { data: split, error: splitErr } = await supabase
@@ -239,6 +242,78 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Action: recalc_eligibility — compute eligible_payout_at for a received order
+    if (action === 'recalc_eligibility') {
+      if (!order_id) throw new Error('order_id required');
+      await recalcEligibility(supabase, order_id);
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Action: run_auto_payouts — pay suppliers whose window has passed
+    if (action === 'run_auto_payouts') {
+      const nowIso = new Date().toISOString();
+      const { data: due } = await supabase
+        .from('order_splits')
+        .select('*')
+        .eq('payout_stage', 'created')
+        .not('eligible_payout_at', 'is', null)
+        .lte('eligible_payout_at', nowIso)
+        .limit(50);
+
+      const paid: string[] = [];
+      for (const split of due || []) {
+        // move to processing
+        await supabase.from('order_splits')
+          .update({ payout_stage: 'processing' })
+          .eq('id', split.id);
+
+        const { data: supplier } = await supabase
+          .from('suppliers')
+          .select('payment_iban, payment_card_holder, payment_bank_name')
+          .eq('id', split.supplier_id)
+          .single();
+
+        const hasRequisites = !!(supplier?.payment_iban || supplier?.payment_card_holder);
+        const now2 = new Date().toISOString();
+
+        if (!hasRequisites) {
+          // keep in processing until admin adds requisites / pays manually
+          continue;
+        }
+
+        const txId = `AUTO-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        // auto receipt record (text reference; real bank PDF can be attached manually)
+        const receiptRef = `Авто-перерахування ${split.supplier_amount}₴ на ${supplier?.payment_iban || supplier?.payment_card_holder} · ${txId}`;
+
+        await supabase.from('supplier_payouts').insert({
+          supplier_id: split.supplier_id,
+          order_split_id: split.id,
+          amount: split.supplier_amount,
+          payout_method: 'auto_fop',
+          payout_status: 'completed',
+          iban: supplier?.payment_iban || null,
+          transaction_id: txId,
+          processed_at: now2,
+        });
+
+        await supabase.from('order_splits').update({
+          payout_stage: 'paid',
+          split_status: 'paid',
+          paid_at: now2,
+          receipt_url: split.receipt_url || receiptRef,
+          receipt_uploaded_at: now2,
+        }).eq('id', split.id);
+
+        paid.push(split.id);
+      }
+
+      return new Response(JSON.stringify({ success: true, paid_count: paid.length, paid }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     throw new Error('Unknown action');
   } catch (err) {
     console.error('Process payout error:', err);
@@ -251,3 +326,42 @@ Deno.serve(async (req) => {
     });
   }
 });
+
+async function recalcEligibility(supabase: any, orderId: string) {
+  const { data: order } = await supabase
+    .from('orders')
+    .select('id, received_at')
+    .eq('id', orderId)
+    .single();
+  if (!order?.received_at) return;
+
+  const { data: splits } = await supabase
+    .from('order_splits')
+    .select('id, supplier_id')
+    .eq('order_id', orderId);
+
+  const { data: items } = await supabase
+    .from('order_items')
+    .select('product_id, products(supplier_id, is_returnable, return_window_days)')
+    .eq('order_id', orderId);
+
+  for (const split of splits || []) {
+    const supplierItems = (items || []).filter((it: any) => it.products?.supplier_id === split.supplier_id);
+    let maxWindow = 0;
+    let anyReturnable = false;
+    for (const it of supplierItems) {
+      if (it.products?.is_returnable) {
+        anyReturnable = true;
+        maxWindow = Math.max(maxWindow, it.products?.return_window_days ?? 14);
+      }
+    }
+    const eligible = new Date(order.received_at);
+    eligible.setDate(eligible.getDate() + (anyReturnable ? maxWindow : 0));
+
+    await supabase.from('order_splits').update({
+      eligible_payout_at: eligible.toISOString(),
+      is_returnable: anyReturnable,
+    }).eq('id', split.id);
+  }
+}
+

@@ -22,6 +22,13 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { hapticSelection } from "@/lib/haptics";
 import { MOCK_ORDERS, MockOrder } from "@/data/mockOrders";
+import { useTelegramAuthContext } from "@/components/TelegramAuthProvider";
+
+const payStageStyle: Record<string, { label: string; cls: string }> = {
+  created: { label: "Оплата: створено", cls: "bg-yellow-100 text-yellow-700" },
+  processing: { label: "Оплата: в обробці", cls: "bg-blue-100 text-blue-700" },
+  paid: { label: "Оплачено ✓", cls: "bg-green-100 text-green-700" },
+};
 
 interface SupplierOrdersProps {
   supplierId: string;
@@ -58,10 +65,27 @@ export function SupplierOrders({ supplierId, mode = "active" }: SupplierOrdersPr
   const [ttnInput, setTtnInput] = useState("");
   const [isSavingTtn, setIsSavingTtn] = useState(false);
   const [useMockData, setUseMockData] = useState(false);
+  const { sessionToken } = useTelegramAuthContext();
+  const [paymentMap, setPaymentMap] = useState<Record<string, string>>({});
   const [customerRating, setCustomerRating] = useState(0);
   const [showCustomerRating, setShowCustomerRating] = useState(false);
   const [supplierAvgRating, setSupplierAvgRating] = useState<number | null>(null);
   const [supplierReviewCount, setSupplierReviewCount] = useState(0);
+
+  useEffect(() => {
+    const loadPayments = async () => {
+      if (!sessionToken || !supplierId || supplierId === "demo") return;
+      try {
+        const { data } = await supabase.functions.invoke("manage-payments", {
+          body: { action: "supplier_list", session_token: sessionToken, supplier_id: supplierId },
+        });
+        const map: Record<string, string> = {};
+        (data?.splits || []).forEach((s: any) => { if (s.order_id) map[s.order_id] = s.payout_stage; });
+        setPaymentMap(map);
+      } catch { /* non-critical */ }
+    };
+    loadPayments();
+  }, [sessionToken, supplierId]);
 
   useEffect(() => {
     if (supplierId) {
@@ -436,6 +460,13 @@ export function SupplierOrders({ supplierId, mode = "active" }: SupplierOrdersPr
                         </div>
                       </div>
                     </div>
+                    {paymentMap[order.id] && (
+                      <div className="mb-2">
+                        <span className={cn("inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold", payStageStyle[paymentMap[order.id]]?.cls)}>
+                          {payStageStyle[paymentMap[order.id]]?.label}
+                        </span>
+                      </div>
+                    )}
                     <div className="flex items-center justify-between text-sm text-muted-foreground mb-2">
                       <span>{order.customer_name || order.delivery_address.recipient_name}</span>
                       <span className="font-bold text-foreground">{order.total?.toLocaleString()} ₴</span>
