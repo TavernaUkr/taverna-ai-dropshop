@@ -334,6 +334,11 @@ export default function AdminDashboard() {
             </div>
           </TabsContent>
 
+          {/* === ОПЛАТИ === */}
+          <TabsContent value="payments">
+            <PaymentsManager mode="admin" />
+          </TabsContent>
+
           {/* === МАГАЗИНИ === */}
           <TabsContent value="stores">
             <div className="space-y-3">
