@@ -575,6 +575,15 @@ export default function StoreManagement() {
           </TabsList>
         )}
 
+        {/* === BALANCE TAB === */}
+        <TabsContent value="balance" className="p-4 pb-24">
+          {supplierId ? (
+            <SupplierBalanceCard supplierId={supplierId} />
+          ) : (
+            <p className="text-center text-sm text-muted-foreground py-8">Завантаження…</p>
+          )}
+        </TabsContent>
+
         {/* === SHOP TAB === */}
         <TabsContent value="shop" className="p-4 pb-24 space-y-5">
           {/* Shop Info */}
