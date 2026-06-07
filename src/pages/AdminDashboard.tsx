@@ -32,6 +32,7 @@ import { AIOrderReports } from '@/components/admin/AIOrderReports';
 import { AdminRolesManager } from '@/components/admin/AdminRolesManager';
 import { CommandCenter } from '@/components/admin/CommandCenter';
 import { PaymentsManager } from '@/components/admin/PaymentsManager';
+import { ShopBalancesPanel } from '@/components/admin/ShopBalancesPanel';
 
 interface SupplierApplication {
   id: string;
