@@ -55,11 +55,11 @@ serve(async (req) => {
       // create order
       const { data: order } = await supabase.from("orders").insert({
         order_number: `TEST-${now}-${i}`,
-        status: "received",
+        status: "delivered",
         subtotal: retail,
         total: retail,
-        payment_method: isCod ? "cod" : "prepaid",
-        payment_status: isCod ? "cash_on_delivery" : "paid",
+        payment_method: isCod ? "cash_on_delivery" : "card",
+        payment_status: isCod ? "pending" : "paid",
         received_at: new Date(now - 20 * 24 * 3600 * 1000).toISOString(), // received 20 days ago → eligible
         tracking_status: "received",
         notes: "[TEST] generated for payment testing",
