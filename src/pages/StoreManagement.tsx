@@ -555,10 +555,14 @@ export default function StoreManagement() {
             </TabsTrigger>
           </TabsList>
         ) : (
-          <TabsList className="w-full grid grid-cols-3 mx-4 mt-3" style={{ width: "calc(100% - 2rem)" }}>
+          <TabsList className="w-full grid grid-cols-4 mx-4 mt-3" style={{ width: "calc(100% - 2rem)" }}>
             <TabsTrigger value="shop" className="text-xs gap-1">
               <Store className="h-3.5 w-3.5" />
               Магазин
+            </TabsTrigger>
+            <TabsTrigger value="balance" className="text-xs gap-1">
+              <Wallet className="h-3.5 w-3.5" />
+              Баланс
             </TabsTrigger>
             <TabsTrigger value="reviews" className="text-xs gap-1">
               <Star className="h-3.5 w-3.5" />
