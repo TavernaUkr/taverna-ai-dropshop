@@ -4,7 +4,7 @@ import {
   ArrowLeft, Store, Star, MessageSquare, Image, FileText, 
   Truck, RotateCcw, Settings, Loader2, Camera, Plus, X, Trash2,
   Clock, AlertTriangle, ChevronRight, Package, Upload,
-  Bot, UserCog, Reply, MapPin, Shield, Info, Edit3
+  Bot, UserCog, Reply, MapPin, Shield, Info, Edit3, Wallet
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
