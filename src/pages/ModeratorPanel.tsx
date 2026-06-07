@@ -32,6 +32,7 @@ import { DisputesManager } from '@/components/moderator/DisputesManager';
 import { IndividualBonusManager } from '@/components/moderator/IndividualBonusManager';
 import { TechSupportQueue } from '@/components/moderator/TechSupportQueue';
 import { PaymentsManager } from '@/components/admin/PaymentsManager';
+import { ShopBalancesPanel } from '@/components/admin/ShopBalancesPanel';
 
 interface Report {
   id: string;
