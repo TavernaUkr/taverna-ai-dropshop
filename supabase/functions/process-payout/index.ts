@@ -251,8 +251,32 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Action: run_auto_payouts — pay suppliers whose window has passed
+    // Action: run_auto_payouts — drive the balance ledger:
+    // 1) accrue eligible splits onto shop balances, 2) execute auto-withdrawals.
     if (action === 'run_auto_payouts') {
+      const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+      const base = `${Deno.env.get('SUPABASE_URL')}/functions/v1/bank-gateway`;
+      const callGateway = async (gwAction: string) => {
+        try {
+          const r = await fetch(base, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-internal-key': serviceKey },
+            body: JSON.stringify({ action: gwAction }),
+          });
+          return await r.json();
+        } catch (e) {
+          return { error: e instanceof Error ? e.message : 'gateway call failed' };
+        }
+      };
+      const accruals = await callGateway('run_accruals');
+      const withdrawals = await callGateway('run_auto_withdrawals');
+      return new Response(JSON.stringify({ success: true, accruals, withdrawals }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Action: legacy_auto_payouts — old direct-payout path (kept for manual use)
+    if (action === 'legacy_auto_payouts') {
       const nowIso = new Date().toISOString();
       const { data: due } = await supabase
         .from('order_splits')

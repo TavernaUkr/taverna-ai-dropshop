@@ -4,7 +4,7 @@ import {
   ArrowLeft, Store, Star, MessageSquare, Image, FileText, 
   Truck, RotateCcw, Settings, Loader2, Camera, Plus, X, Trash2,
   Clock, AlertTriangle, ChevronRight, Package, Upload,
-  Bot, UserCog, Reply, MapPin, Shield, Info, Edit3
+  Bot, UserCog, Reply, MapPin, Shield, Info, Edit3, Wallet
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
+import { SupplierBalanceCard } from "@/components/supplier/SupplierBalanceCard";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { triggerHapticFeedback, hapticSelection } from "@/lib/haptics";
@@ -555,10 +556,14 @@ export default function StoreManagement() {
             </TabsTrigger>
           </TabsList>
         ) : (
-          <TabsList className="w-full grid grid-cols-3 mx-4 mt-3" style={{ width: "calc(100% - 2rem)" }}>
+          <TabsList className="w-full grid grid-cols-4 mx-4 mt-3" style={{ width: "calc(100% - 2rem)" }}>
             <TabsTrigger value="shop" className="text-xs gap-1">
               <Store className="h-3.5 w-3.5" />
               Магазин
+            </TabsTrigger>
+            <TabsTrigger value="balance" className="text-xs gap-1">
+              <Wallet className="h-3.5 w-3.5" />
+              Баланс
             </TabsTrigger>
             <TabsTrigger value="reviews" className="text-xs gap-1">
               <Star className="h-3.5 w-3.5" />
@@ -570,6 +575,15 @@ export default function StoreManagement() {
             </TabsTrigger>
           </TabsList>
         )}
+
+        {/* === BALANCE TAB === */}
+        <TabsContent value="balance" className="p-4 pb-24">
+          {supplierId ? (
+            <SupplierBalanceCard supplierId={supplierId} />
+          ) : (
+            <p className="text-center text-sm text-muted-foreground py-8">Завантаження…</p>
+          )}
+        </TabsContent>
 
         {/* === SHOP TAB === */}
         <TabsContent value="shop" className="p-4 pb-24 space-y-5">

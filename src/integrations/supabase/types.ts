@@ -148,6 +148,70 @@ export type Database = {
           },
         ]
       }
+      balance_movements: {
+        Row: {
+          amount: number
+          balance_after: number | null
+          created_at: string
+          description: string | null
+          external_tx_id: string | null
+          id: string
+          order_split_id: string | null
+          provider: string
+          status: string
+          supplier_id: string
+          type: string
+        }
+        Insert: {
+          amount: number
+          balance_after?: number | null
+          created_at?: string
+          description?: string | null
+          external_tx_id?: string | null
+          id?: string
+          order_split_id?: string | null
+          provider?: string
+          status?: string
+          supplier_id: string
+          type: string
+        }
+        Update: {
+          amount?: number
+          balance_after?: number | null
+          created_at?: string
+          description?: string | null
+          external_tx_id?: string | null
+          id?: string
+          order_split_id?: string | null
+          provider?: string
+          status?: string
+          supplier_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "balance_movements_order_split_id_fkey"
+            columns: ["order_split_id"]
+            isOneToOne: false
+            referencedRelation: "order_splits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "balance_movements_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "balance_movements_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cart_items: {
         Row: {
           color: string | null
@@ -441,6 +505,7 @@ export type Database = {
       }
       order_splits: {
         Row: {
+          balance_movement_id: string | null
           created_at: string
           eligible_payout_at: string | null
           id: string
@@ -461,6 +526,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          balance_movement_id?: string | null
           created_at?: string
           eligible_payout_at?: string | null
           id?: string
@@ -481,6 +547,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          balance_movement_id?: string | null
           created_at?: string
           eligible_payout_at?: string | null
           id?: string
@@ -501,6 +568,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "order_splits_balance_movement_id_fkey"
+            columns: ["balance_movement_id"]
+            isOneToOne: false
+            referencedRelation: "balance_movements"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "order_splits_order_id_fkey"
             columns: ["order_id"]
@@ -602,6 +676,72 @@ export type Database = {
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "profiles_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payout_methods: {
+        Row: {
+          auto_charge: boolean
+          auto_withdraw: boolean
+          card_token: string | null
+          created_at: string
+          holder: string | null
+          iban: string | null
+          id: string
+          is_default: boolean
+          masked_pan: string | null
+          min_withdraw: number
+          provider: string
+          supplier_id: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          auto_charge?: boolean
+          auto_withdraw?: boolean
+          card_token?: string | null
+          created_at?: string
+          holder?: string | null
+          iban?: string | null
+          id?: string
+          is_default?: boolean
+          masked_pan?: string | null
+          min_withdraw?: number
+          provider?: string
+          supplier_id: string
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          auto_charge?: boolean
+          auto_withdraw?: boolean
+          card_token?: string | null
+          created_at?: string
+          holder?: string | null
+          iban?: string | null
+          id?: string
+          is_default?: boolean
+          masked_pan?: string | null
+          min_withdraw?: number
+          provider?: string
+          supplier_id?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payout_methods_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payout_methods_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers_public"
             referencedColumns: ["id"]
           },
         ]
@@ -1187,6 +1327,54 @@ export type Database = {
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "profiles_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shop_balances: {
+        Row: {
+          available: number
+          created_at: string
+          currency: string
+          id: string
+          lifetime_paid: number
+          pending: number
+          supplier_id: string
+          updated_at: string
+        }
+        Insert: {
+          available?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          lifetime_paid?: number
+          pending?: number
+          supplier_id: string
+          updated_at?: string
+        }
+        Update: {
+          available?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          lifetime_paid?: number
+          pending?: number
+          supplier_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shop_balances_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: true
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shop_balances_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: true
+            referencedRelation: "suppliers_public"
             referencedColumns: ["id"]
           },
         ]

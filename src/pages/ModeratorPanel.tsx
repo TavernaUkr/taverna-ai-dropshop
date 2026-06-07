@@ -32,6 +32,7 @@ import { DisputesManager } from '@/components/moderator/DisputesManager';
 import { IndividualBonusManager } from '@/components/moderator/IndividualBonusManager';
 import { TechSupportQueue } from '@/components/moderator/TechSupportQueue';
 import { PaymentsManager } from '@/components/admin/PaymentsManager';
+import { ShopBalancesPanel } from '@/components/admin/ShopBalancesPanel';
 
 interface Report {
   id: string;
@@ -453,7 +454,14 @@ export default function ModeratorPanel() {
           </TabsContent>
           {/* Payments Tab */}
           <TabsContent value="payments">
-            <PaymentsManager mode="moderator" />
+            <Tabs defaultValue="balances" className="w-full">
+              <TabsList className="w-full grid grid-cols-2 mb-4">
+                <TabsTrigger value="balances">Баланси</TabsTrigger>
+                <TabsTrigger value="splits">Виплати</TabsTrigger>
+              </TabsList>
+              <TabsContent value="balances"><ShopBalancesPanel mode="moderator" /></TabsContent>
+              <TabsContent value="splits"><PaymentsManager mode="moderator" /></TabsContent>
+            </Tabs>
           </TabsContent>
 
 
