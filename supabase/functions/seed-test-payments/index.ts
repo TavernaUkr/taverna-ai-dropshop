@@ -74,7 +74,7 @@ serve(async (req) => {
         supplier_amount: supplierAmount,
         platform_commission: commission,
         markup_percentage: 33,
-        payment_method: isCod ? "cod" : "prepaid",
+        payment_method: isCod ? "cash_on_delivery" : "card",
         split_status: "test",
         payout_stage: "created",
         payout_type: isCod ? "partial_markup" : "full_prepaid",
