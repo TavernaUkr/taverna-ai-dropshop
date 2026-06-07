@@ -336,7 +336,14 @@ export default function AdminDashboard() {
 
           {/* === ОПЛАТИ === */}
           <TabsContent value="payments">
-            <PaymentsManager mode="admin" />
+            <Tabs defaultValue="balances" className="w-full">
+              <TabsList className="w-full grid grid-cols-2 mb-4">
+                <TabsTrigger value="balances">Баланси магазинів</TabsTrigger>
+                <TabsTrigger value="splits">Виплати за замовлення</TabsTrigger>
+              </TabsList>
+              <TabsContent value="balances"><ShopBalancesPanel mode="admin" /></TabsContent>
+              <TabsContent value="splits"><PaymentsManager mode="admin" /></TabsContent>
+            </Tabs>
           </TabsContent>
 
           {/* === МАГАЗИНИ === */}
