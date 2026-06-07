@@ -198,6 +198,36 @@ serve(async (req) => {
       return json({ balance: bal, method: method || null, providers: { monobank: providerMode("monobank"), liqpay: providerMode("liqpay") } });
     }
 
+    // ---------------- list_balances (staff: all shops) ----------------
+    if (action === "list_balances") {
+      if (!isStaff) return json({ error: "Forbidden" }, 403);
+      const { data: suppliers } = await supabase.from("suppliers")
+        .select("id, shop_name, is_active").order("shop_name");
+      const { data: balances } = await supabase.from("shop_balances").select("*");
+      const { data: methods } = await supabase.from("payout_methods").select("*").eq("is_default", true);
+      const balMap: Record<string, any> = {};
+      (balances || []).forEach((b: any) => { balMap[b.supplier_id] = b; });
+      const methodMap: Record<string, any> = {};
+      (methods || []).forEach((m: any) => { methodMap[m.supplier_id] = m; });
+      const rows = (suppliers || []).map((s: any) => ({
+        supplier_id: s.id,
+        shop_name: s.shop_name,
+        is_active: s.is_active,
+        available: Number(balMap[s.id]?.available || 0),
+        lifetime_paid: Number(balMap[s.id]?.lifetime_paid || 0),
+        currency: balMap[s.id]?.currency || "UAH",
+        method: methodMap[s.id]
+          ? {
+              type: methodMap[s.id].type, provider: methodMap[s.id].provider,
+              masked_pan: methodMap[s.id].masked_pan, iban: isAdmin ? methodMap[s.id].iban : null,
+              auto_withdraw: methodMap[s.id].auto_withdraw, auto_charge: methodMap[s.id].auto_charge,
+              min_withdraw: methodMap[s.id].min_withdraw,
+            }
+          : null,
+      }));
+      return json({ rows, role: isAdmin ? "admin" : "moderator", providers: { monobank: providerMode("monobank"), liqpay: providerMode("liqpay") } });
+    }
+
     // ---------------- list_movements ----------------
     if (action === "list_movements") {
       const { supplier_id } = body;
