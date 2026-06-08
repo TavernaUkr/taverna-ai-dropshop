@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Store, Plus, Package, Settings, 
-  Loader2, Star, ShoppingCart, MessageSquare, Megaphone, Send,
+  Loader2, Star, ShoppingCart, MessageSquare, Megaphone, Send, Wallet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
