@@ -28,6 +28,7 @@ import SupplierStoreOrders from "./pages/SupplierStoreOrders";
 import OrdersHistoryPage from "./pages/OrdersHistoryPage";
 import SupplierStoreOrdersHistory from "./pages/SupplierStoreOrdersHistory";
 import MyShops from "./pages/MyShops";
+import SupplierBalance from "./pages/SupplierBalance";
 import SupportChat from "./components/SupportChat";
 import NotFound from "./pages/NotFound";
 
