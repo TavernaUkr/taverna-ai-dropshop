@@ -178,12 +178,14 @@ serve(async (req) => {
 
     // resolve caller for user actions
     let profileId: string | null = null;
+    let telegramId: number | null = null;
     let roles: string[] = [];
     if (!isInternal) {
       if (!body.session_token) return json({ error: "session_token required" }, 401);
       const session = await validateSession(supabase, body.session_token);
       if (!session) return json({ error: "Invalid session" }, 401);
       profileId = session.profile.id;
+      telegramId = session.profile.telegram_id ?? null;
       roles = await getRoles(supabase, profileId);
     }
     const isAdmin = roles.includes("admin");
