@@ -42,12 +42,22 @@ async function getRoles(supabase: any, profileId: string): Promise<string[]> {
   const { data } = await supabase.from("user_roles").select("role").eq("user_id", profileId);
   return (data || []).map((r: any) => r.role);
 }
-async function canManageSupplier(supabase: any, profileId: string, supplierId: string): Promise<boolean> {
-  const { data: sup } = await supabase.from("suppliers").select("profile_id").eq("id", supplierId).single();
-  if (sup?.profile_id === profileId) return true;
+async function canManageSupplier(
+  supabase: any,
+  profileId: string,
+  supplierId: string,
+  telegramId: number | null,
+): Promise<boolean> {
+  // Suppliers are linked to their owner via telegram_id (no profile_id column).
+  if (telegramId != null) {
+    const { data: sup } = await supabase
+      .from("suppliers").select("telegram_id").eq("id", supplierId).maybeSingle();
+    if (sup && Number(sup.telegram_id) === Number(telegramId)) return true;
+  }
+  // Managers are linked via shop_manager_links.
   const { data: link } = await supabase
     .from("shop_manager_links").select("id")
-    .eq("supplier_id", supplierId).eq("manager_profile_id", profileId).maybeSingle();
+    .eq("supplier_id", supplierId).eq("profile_id", profileId).maybeSingle();
   return !!link;
 }
 
