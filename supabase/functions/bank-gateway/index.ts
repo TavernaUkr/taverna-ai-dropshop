@@ -61,6 +61,77 @@ async function canManageSupplier(
   return !!link;
 }
 
+// Returns all supplier (shop) ids the caller owns (by telegram_id) or manages.
+async function getCallerShopIds(
+  supabase: any,
+  profileId: string | null,
+  telegramId: number | null,
+): Promise<string[]> {
+  const ids = new Set<string>();
+  if (telegramId != null) {
+    const { data } = await supabase.from("suppliers").select("id").eq("telegram_id", telegramId);
+    (data || []).forEach((s: any) => ids.add(s.id));
+  }
+  if (profileId) {
+    const { data } = await supabase.from("shop_manager_links").select("supplier_id").eq("profile_id", profileId);
+    (data || []).forEach((l: any) => ids.add(l.supplier_id));
+  }
+  return [...ids];
+}
+
+// ---- stats helpers (earnings breakdown by period + products sold) ----
+type StatPeriod = "day" | "week" | "month" | "year";
+const pad2 = (n: number) => String(n).padStart(2, "0");
+const dayKey = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+const monthKey = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
+const yearKey = (d: Date) => `${d.getFullYear()}`;
+function weekKey(d: Date): string {
+  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const day = (t.getUTCDay() + 6) % 7;
+  t.setUTCDate(t.getUTCDate() - day + 3);
+  const firstThu = new Date(Date.UTC(t.getUTCFullYear(), 0, 4));
+  const week = 1 + Math.round((((t.getTime() - firstThu.getTime()) / 86400000) - 3 + ((firstThu.getUTCDay() + 6) % 7)) / 7);
+  return `${t.getUTCFullYear()}-W${pad2(week)}`;
+}
+function keyForPeriod(period: StatPeriod, dateStr: string): string {
+  const d = new Date(dateStr);
+  return period === "day" ? dayKey(d) : period === "week" ? weekKey(d) : period === "month" ? monthKey(d) : yearKey(d);
+}
+function makeBuckets(period: StatPeriod): { key: string; label: string }[] {
+  const now = new Date();
+  const arr: { key: string; label: string }[] = [];
+  if (period === "day") {
+    for (let i = 13; i >= 0; i--) { const d = new Date(now); d.setDate(now.getDate() - i); arr.push({ key: dayKey(d), label: `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}` }); }
+  } else if (period === "week") {
+    for (let i = 11; i >= 0; i--) { const d = new Date(now); d.setDate(now.getDate() - i * 7); const k = weekKey(d); arr.push({ key: k, label: `${k.split("-W")[1]} тиж` }); }
+  } else if (period === "month") {
+    const names = ["Січ", "Лют", "Бер", "Кві", "Тра", "Чер", "Лип", "Сер", "Вер", "Жов", "Лис", "Гру"];
+    for (let i = 11; i >= 0; i--) { const d = new Date(now.getFullYear(), now.getMonth() - i, 1); arr.push({ key: monthKey(d), label: `${names[d.getMonth()]} ${d.getFullYear()}` }); }
+  } else {
+    for (let i = 4; i >= 0; i--) { const y = now.getFullYear() - i; arr.push({ key: String(y), label: String(y) }); }
+  }
+  return arr;
+}
+function buildStats(splits: any[], items: any[]) {
+  const periods: StatPeriod[] = ["day", "week", "month", "year"];
+  const series: Record<string, any[]> = {};
+  for (const period of periods) {
+    const buckets = makeBuckets(period);
+    const map: Record<string, any> = {};
+    buckets.forEach((b) => { map[b.key] = { label: b.label, turnover: 0, earned: 0, productsSold: 0, amount: 0 }; });
+    for (const s of splits) {
+      const k = keyForPeriod(period, s.created_at);
+      if (map[k]) { map[k].turnover += Number(s.product_total || 0); map[k].earned += Number(s.supplier_amount || 0); }
+    }
+    for (const it of items) {
+      const k = keyForPeriod(period, it.created_at);
+      if (map[k]) { map[k].productsSold += Number(it.quantity || 0); map[k].amount += Number(it.total || 0); }
+    }
+    series[period] = buckets.map((b) => ({ ...map[b.key] }));
+  }
+  return series;
+}
+
 // ---- ledger core ----
 async function applyMovement(
   supabase: any,
@@ -417,6 +488,93 @@ serve(async (req) => {
         external_tx_id: result.tx_id, description: `Списання націнки з картки (${result.mode})`,
       });
       return json({ success: true, tx_id: result.tx_id, mode: result.mode, balance_after: mv.balance_after });
+    }
+
+    // ---------------- list_my_shops (supplier/manager: own shops + balances) ----------------
+    if (action === "list_my_shops") {
+      if (!profileId) return json({ error: "Forbidden" }, 403);
+      let ids = await getCallerShopIds(supabase, profileId, telegramId);
+      // staff with no owned shops can still oversee everything
+      if (ids.length === 0 && isStaff) {
+        const { data } = await supabase.from("suppliers").select("id").eq("is_active", true);
+        ids = (data || []).map((s: any) => s.id);
+      }
+      if (ids.length === 0) return json({ rows: [], providers: { monobank: providerMode("monobank"), liqpay: providerMode("liqpay") } });
+
+      const { data: suppliers } = await supabase.from("suppliers").select("id, shop_name, logo_url, is_active").in("id", ids);
+      const { data: balances } = await supabase.from("shop_balances").select("*").in("supplier_id", ids);
+      const { data: methods } = await supabase.from("payout_methods").select("supplier_id, masked_pan, auto_withdraw, auto_charge").eq("is_default", true).in("supplier_id", ids);
+      const balMap: Record<string, any> = {};
+      (balances || []).forEach((b: any) => { balMap[b.supplier_id] = b; });
+      const methodMap: Record<string, any> = {};
+      (methods || []).forEach((m: any) => { methodMap[m.supplier_id] = m; });
+      const rows = (suppliers || []).map((s: any) => ({
+        supplier_id: s.id,
+        shop_name: s.shop_name,
+        logo_url: s.logo_url,
+        is_active: s.is_active,
+        available: Number(balMap[s.id]?.available || 0),
+        pending: Number(balMap[s.id]?.pending || 0),
+        lifetime_paid: Number(balMap[s.id]?.lifetime_paid || 0),
+        method: methodMap[s.id] || null,
+      }));
+      return json({ rows, providers: { monobank: providerMode("monobank"), liqpay: providerMode("liqpay") } });
+    }
+
+    // ---------------- get_stats (earnings + products sold, with period breakdown) ----------------
+    if (action === "get_stats") {
+      if (!profileId) return json({ error: "Forbidden" }, 403);
+      let supplierIds: string[] = [];
+      if (body.supplier_id) {
+        if (!isStaff && !(await canManageSupplier(supabase, profileId, body.supplier_id, telegramId)))
+          return json({ error: "Forbidden" }, 403);
+        supplierIds = [body.supplier_id];
+      } else {
+        supplierIds = await getCallerShopIds(supabase, profileId, telegramId);
+        if (supplierIds.length === 0 && isStaff) {
+          const { data } = await supabase.from("suppliers").select("id").eq("is_active", true);
+          supplierIds = (data || []).map((s: any) => s.id);
+        }
+      }
+
+      const emptyTotals = { turnover: 0, earned: 0, processing: 0, productsSold: 0, productsAmount: 0, ordersCount: 0 };
+      if (supplierIds.length === 0) {
+        return json({ totals: emptyTotals, series: buildStats([], []) });
+      }
+
+      const { data: splits } = await supabase.from("order_splits")
+        .select("supplier_id, order_id, product_total, supplier_amount, platform_commission, payout_stage, split_status, payment_method, created_at")
+        .in("supplier_id", supplierIds);
+      const { data: prods } = await supabase.from("products").select("id").in("supplier_id", supplierIds);
+      const prodIds = (prods || []).map((p: any) => p.id);
+      let items: any[] = [];
+      if (prodIds.length) {
+        const { data } = await supabase.from("order_items")
+          .select("product_id, quantity, total, created_at").in("product_id", prodIds);
+        items = data || [];
+      }
+
+      const allSplits = splits || [];
+      const totals = { ...emptyTotals };
+      const orderSet = new Set<string>();
+      for (const s of allSplits) {
+        totals.turnover += Number(s.product_total || 0);
+        if (s.payout_stage === "paid") totals.earned += Number(s.supplier_amount || 0);
+        else totals.processing += Number(s.supplier_amount || 0);
+        if (s.order_id) orderSet.add(s.order_id);
+      }
+      totals.ordersCount = orderSet.size;
+      for (const it of items) {
+        totals.productsSold += Number(it.quantity || 0);
+        totals.productsAmount += Number(it.total || 0);
+      }
+      const round = (n: number) => Math.round(n * 100) / 100;
+      totals.turnover = round(totals.turnover);
+      totals.earned = round(totals.earned);
+      totals.processing = round(totals.processing);
+      totals.productsAmount = round(totals.productsAmount);
+
+      return json({ totals, series: buildStats(allSplits, items) });
     }
 
     return json({ error: "Unknown action" }, 400);

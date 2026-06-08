@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Store, Plus, Package, Settings, 
-  Loader2, Star, ShoppingCart, MessageSquare, Megaphone, Send,
+  Loader2, Star, ShoppingCart, MessageSquare, Megaphone, Send, Wallet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -338,6 +338,20 @@ export default function MyShops() {
                     </Button>
                   )}
                 </div>
+
+                {/* Balance button — owners & managers */}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full h-9 mb-2 border-amber-500/40 text-amber-600 hover:bg-amber-500/10 hover:text-amber-600"
+                  onClick={() => {
+                    hapticSelection();
+                    navigate(`/supplier-balance/${shop.id}`);
+                  }}
+                >
+                  <Wallet className="h-3.5 w-3.5 mr-1.5" />
+                  Баланс магазину
+                </Button>
 
                 {/* Promotion button — owners & managers */}
                 <Button

@@ -28,6 +28,7 @@ import SupplierStoreOrders from "./pages/SupplierStoreOrders";
 import OrdersHistoryPage from "./pages/OrdersHistoryPage";
 import SupplierStoreOrdersHistory from "./pages/SupplierStoreOrdersHistory";
 import MyShops from "./pages/MyShops";
+import SupplierBalance from "./pages/SupplierBalance";
 import SupportChat from "./components/SupportChat";
 import NotFound from "./pages/NotFound";
 
@@ -117,6 +118,8 @@ function AnimatedRoutes() {
             <Route path="/store-orders" element={<SupplierStoreOrders />} />
             <Route path="/store-orders/:supplierId" element={<SupplierStoreOrders />} />
             <Route path="/my-shops" element={<MyShops />} />
+            <Route path="/supplier-balance" element={<SupplierBalance />} />
+            <Route path="/supplier-balance/:supplierId" element={<SupplierBalance />} />
             <Route path="/orders-history" element={<OrdersHistoryPage />} />
             <Route path="/store-orders-history" element={<SupplierStoreOrdersHistory />} />
             <Route path="/store-orders-history/:supplierId" element={<SupplierStoreOrdersHistory />} />
