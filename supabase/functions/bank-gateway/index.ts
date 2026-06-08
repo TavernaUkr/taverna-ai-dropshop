@@ -196,7 +196,7 @@ serve(async (req) => {
     if (action === "get_balance") {
       const { supplier_id } = body;
       if (!supplier_id) return json({ error: "supplier_id required" }, 400);
-      if (!isStaff && !(profileId && await canManageSupplier(supabase, profileId, supplier_id)))
+      if (!isStaff && !(profileId && await canManageSupplier(supabase, profileId, supplier_id, telegramId)))
         return json({ error: "Forbidden" }, 403);
 
       let { data: bal } = await supabase.from("shop_balances").select("*").eq("supplier_id", supplier_id).maybeSingle();
@@ -244,7 +244,7 @@ serve(async (req) => {
     if (action === "list_movements") {
       const { supplier_id } = body;
       if (!supplier_id) return json({ error: "supplier_id required" }, 400);
-      if (!isStaff && !(profileId && await canManageSupplier(supabase, profileId, supplier_id)))
+      if (!isStaff && !(profileId && await canManageSupplier(supabase, profileId, supplier_id, telegramId)))
         return json({ error: "Forbidden" }, 403);
       const { data } = await supabase.from("balance_movements")
         .select("*").eq("supplier_id", supplier_id).order("created_at", { ascending: false }).limit(200);
@@ -255,7 +255,7 @@ serve(async (req) => {
     if (action === "set_payout_method") {
       const { supplier_id, auto_withdraw, auto_charge, min_withdraw, iban, holder } = body;
       if (!supplier_id) return json({ error: "supplier_id required" }, 400);
-      if (!isStaff && !(profileId && await canManageSupplier(supabase, profileId, supplier_id)))
+      if (!isStaff && !(profileId && await canManageSupplier(supabase, profileId, supplier_id, telegramId)))
         return json({ error: "Forbidden" }, 403);
 
       const { data: existing } = await supabase.from("payout_methods")
@@ -280,7 +280,7 @@ serve(async (req) => {
     if (action === "bind_card") {
       const { supplier_id, card_number, holder, provider = "liqpay" } = body;
       if (!supplier_id || !card_number) return json({ error: "supplier_id and card_number required" }, 400);
-      if (!isStaff && !(profileId && await canManageSupplier(supabase, profileId, supplier_id)))
+      if (!isStaff && !(profileId && await canManageSupplier(supabase, profileId, supplier_id, telegramId)))
         return json({ error: "Forbidden" }, 403);
 
       const digits = String(card_number).replace(/\D/g, "");
@@ -338,7 +338,7 @@ serve(async (req) => {
       const { supplier_id } = body;
       if (!supplier_id) return json({ error: "supplier_id required" }, 400);
       if (action === "admin_payout" && !isAdmin && !isInternal) return json({ error: "Forbidden: admin required" }, 403);
-      if (action === "request_withdrawal" && !isStaff && !(profileId && await canManageSupplier(supabase, profileId, supplier_id)))
+      if (action === "request_withdrawal" && !isStaff && !(profileId && await canManageSupplier(supabase, profileId, supplier_id, telegramId)))
         return json({ error: "Forbidden" }, 403);
 
       const { data: bal } = await supabase.from("shop_balances").select("*").eq("supplier_id", supplier_id).maybeSingle();
