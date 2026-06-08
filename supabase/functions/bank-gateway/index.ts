@@ -490,6 +490,93 @@ serve(async (req) => {
       return json({ success: true, tx_id: result.tx_id, mode: result.mode, balance_after: mv.balance_after });
     }
 
+    // ---------------- list_my_shops (supplier/manager: own shops + balances) ----------------
+    if (action === "list_my_shops") {
+      if (!profileId) return json({ error: "Forbidden" }, 403);
+      let ids = await getCallerShopIds(supabase, profileId, telegramId);
+      // staff with no owned shops can still oversee everything
+      if (ids.length === 0 && isStaff) {
+        const { data } = await supabase.from("suppliers").select("id").eq("is_active", true);
+        ids = (data || []).map((s: any) => s.id);
+      }
+      if (ids.length === 0) return json({ rows: [], providers: { monobank: providerMode("monobank"), liqpay: providerMode("liqpay") } });
+
+      const { data: suppliers } = await supabase.from("suppliers").select("id, shop_name, logo_url, is_active").in("id", ids);
+      const { data: balances } = await supabase.from("shop_balances").select("*").in("supplier_id", ids);
+      const { data: methods } = await supabase.from("payout_methods").select("supplier_id, masked_pan, auto_withdraw, auto_charge").eq("is_default", true).in("supplier_id", ids);
+      const balMap: Record<string, any> = {};
+      (balances || []).forEach((b: any) => { balMap[b.supplier_id] = b; });
+      const methodMap: Record<string, any> = {};
+      (methods || []).forEach((m: any) => { methodMap[m.supplier_id] = m; });
+      const rows = (suppliers || []).map((s: any) => ({
+        supplier_id: s.id,
+        shop_name: s.shop_name,
+        logo_url: s.logo_url,
+        is_active: s.is_active,
+        available: Number(balMap[s.id]?.available || 0),
+        pending: Number(balMap[s.id]?.pending || 0),
+        lifetime_paid: Number(balMap[s.id]?.lifetime_paid || 0),
+        method: methodMap[s.id] || null,
+      }));
+      return json({ rows, providers: { monobank: providerMode("monobank"), liqpay: providerMode("liqpay") } });
+    }
+
+    // ---------------- get_stats (earnings + products sold, with period breakdown) ----------------
+    if (action === "get_stats") {
+      if (!profileId) return json({ error: "Forbidden" }, 403);
+      let supplierIds: string[] = [];
+      if (body.supplier_id) {
+        if (!isStaff && !(await canManageSupplier(supabase, profileId, body.supplier_id, telegramId)))
+          return json({ error: "Forbidden" }, 403);
+        supplierIds = [body.supplier_id];
+      } else {
+        supplierIds = await getCallerShopIds(supabase, profileId, telegramId);
+        if (supplierIds.length === 0 && isStaff) {
+          const { data } = await supabase.from("suppliers").select("id").eq("is_active", true);
+          supplierIds = (data || []).map((s: any) => s.id);
+        }
+      }
+
+      const emptyTotals = { turnover: 0, earned: 0, processing: 0, productsSold: 0, productsAmount: 0, ordersCount: 0 };
+      if (supplierIds.length === 0) {
+        return json({ totals: emptyTotals, series: buildStats([], []) });
+      }
+
+      const { data: splits } = await supabase.from("order_splits")
+        .select("supplier_id, order_id, product_total, supplier_amount, platform_commission, payout_stage, split_status, payment_method, created_at")
+        .in("supplier_id", supplierIds);
+      const { data: prods } = await supabase.from("products").select("id").in("supplier_id", supplierIds);
+      const prodIds = (prods || []).map((p: any) => p.id);
+      let items: any[] = [];
+      if (prodIds.length) {
+        const { data } = await supabase.from("order_items")
+          .select("product_id, quantity, total, created_at").in("product_id", prodIds);
+        items = data || [];
+      }
+
+      const allSplits = splits || [];
+      const totals = { ...emptyTotals };
+      const orderSet = new Set<string>();
+      for (const s of allSplits) {
+        totals.turnover += Number(s.product_total || 0);
+        if (s.payout_stage === "paid") totals.earned += Number(s.supplier_amount || 0);
+        else totals.processing += Number(s.supplier_amount || 0);
+        if (s.order_id) orderSet.add(s.order_id);
+      }
+      totals.ordersCount = orderSet.size;
+      for (const it of items) {
+        totals.productsSold += Number(it.quantity || 0);
+        totals.productsAmount += Number(it.total || 0);
+      }
+      const round = (n: number) => Math.round(n * 100) / 100;
+      totals.turnover = round(totals.turnover);
+      totals.earned = round(totals.earned);
+      totals.processing = round(totals.processing);
+      totals.productsAmount = round(totals.productsAmount);
+
+      return json({ totals, series: buildStats(allSplits, items) });
+    }
+
     return json({ error: "Unknown action" }, 400);
   } catch (err: any) {
     console.error("bank-gateway error:", err);
