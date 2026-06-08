@@ -339,6 +339,20 @@ export default function MyShops() {
                   )}
                 </div>
 
+                {/* Balance button — owners & managers */}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full h-9 mb-2 border-amber-500/40 text-amber-600 hover:bg-amber-500/10 hover:text-amber-600"
+                  onClick={() => {
+                    hapticSelection();
+                    navigate(`/supplier-balance/${shop.id}`);
+                  }}
+                >
+                  <Wallet className="h-3.5 w-3.5 mr-1.5" />
+                  Баланс магазину
+                </Button>
+
                 {/* Promotion button — owners & managers */}
                 <Button
                   size="sm"
