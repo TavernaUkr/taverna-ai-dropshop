@@ -20,6 +20,7 @@ import {
   Megaphone,
   Archive,
   Star,
+  Wallet,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
