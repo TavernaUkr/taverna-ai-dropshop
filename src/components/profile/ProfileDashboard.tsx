@@ -301,6 +301,28 @@ export const ProfileDashboard = () => {
         </button>
       )}
 
+      {/* Supplier Balance Button - For Suppliers and Shop Managers */}
+      {isAuthenticated && (isSupplier || isShopManager) && (
+        <button
+          onClick={() => {
+            hapticSelection();
+            navigate("/supplier-balance");
+          }}
+          className="w-full flex items-center gap-4 p-4 rounded-xl border transition-all bg-gradient-to-r from-amber-500/10 to-yellow-500/10 border-amber-500/30 hover:border-amber-500"
+        >
+          <div className="w-12 h-12 rounded-full flex items-center justify-center bg-gradient-to-br from-amber-500/20 to-yellow-500/20">
+            <Wallet className="h-6 w-6 text-amber-500" />
+          </div>
+          <div className="flex-1 text-left">
+            <h4 className="font-semibold text-foreground">Рахунок постачальника</h4>
+            <p className="text-xs text-muted-foreground">
+              Баланс, виплати, статистика по магазинах
+            </p>
+          </div>
+          <ChevronRight className="h-5 w-5 text-amber-500" />
+        </button>
+      )}
+
       {/* Promotion Panel Button - For Suppliers (not Admin/Moderator, they already have it above) */}
       {isAuthenticated && isOnlySupplier && !isAdmin && !isModerator && (
         <button
