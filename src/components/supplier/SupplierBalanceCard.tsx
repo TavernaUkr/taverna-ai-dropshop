@@ -20,6 +20,8 @@ import { cn } from "@/lib/utils";
 
 interface Props {
   supplierId: string;
+  /** Force read-only (managers). When omitted, derived from server access level. */
+  readOnly?: boolean;
 }
 
 const TYPE_META: Record<string, { label: string; positive: boolean }> = {
@@ -31,13 +33,14 @@ const TYPE_META: Record<string, { label: string; positive: boolean }> = {
   penalty: { label: "Штраф", positive: false },
 };
 
-export function SupplierBalanceCard({ supplierId }: Props) {
+export function SupplierBalanceCard({ supplierId, readOnly: readOnlyProp }: Props) {
   const { sessionToken } = useTelegramAuthContext();
   const [loading, setLoading] = useState(true);
   const [balance, setBalance] = useState<any>(null);
   const [method, setMethod] = useState<any>(null);
   const [providers, setProviders] = useState<{ monobank: string; liqpay: string }>({ monobank: "sandbox", liqpay: "sandbox" });
   const [movements, setMovements] = useState<any[]>([]);
+  const [canManageServer, setCanManageServer] = useState(true);
   const [busy, setBusy] = useState(false);
   const [cardOpen, setCardOpen] = useState(false);
   const [cardNumber, setCardNumber] = useState("");
@@ -54,6 +57,7 @@ export function SupplierBalanceCard({ supplierId }: Props) {
       if (bal.data?.error) throw new Error(bal.data.error);
       setBalance(bal.data?.balance || null);
       setMethod(bal.data?.method || null);
+      setCanManageServer(bal.data?.canManage !== false);
       setProviders(bal.data?.providers || { monobank: "sandbox", liqpay: "sandbox" });
       setMovements(mv.data?.movements || []);
     } catch (e: any) {
@@ -95,7 +99,9 @@ export function SupplierBalanceCard({ supplierId }: Props) {
     callAction("set_payout_method", { [field]: value }, "Налаштування збережено");
 
   const available = Number(balance?.available || 0);
+  const pending = Number(balance?.pending || 0);
   const lifetimePaid = Number(balance?.lifetime_paid || 0);
+  const readOnly = readOnlyProp ?? !canManageServer;
 
   if (loading) {
     return <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
@@ -120,17 +126,28 @@ export function SupplierBalanceCard({ supplierId }: Props) {
               <RefreshCw className={cn("h-4 w-4", busy && "animate-spin")} />
             </Button>
           </div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-4">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
             <Banknote className="h-3.5 w-3.5" />
             Всього виплачено: <span className="font-semibold text-foreground">{lifetimePaid.toLocaleString("uk-UA")} ₴</span>
           </div>
-          <Button className="w-full" onClick={withdraw} disabled={busy || available <= 0}>
-            <ArrowDownToLine className="h-4 w-4" /> Вивести {available > 0 ? `${available.toLocaleString("uk-UA")} ₴` : ""}
-          </Button>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-4">
+            <RefreshCw className="h-3.5 w-3.5" />
+            В обробці: <span className="font-semibold text-foreground">{pending.toLocaleString("uk-UA")} ₴</span>
+          </div>
+          {readOnly ? (
+            <div className="rounded-lg bg-muted p-3 text-xs text-muted-foreground text-center">
+              Режим перегляду — виплатами керує власник магазину
+            </div>
+          ) : (
+            <Button className="w-full" onClick={withdraw} disabled={busy || available <= 0}>
+              <ArrowDownToLine className="h-4 w-4" /> Вивести {available > 0 ? `${available.toLocaleString("uk-UA")} ₴` : ""}
+            </Button>
+          )}
         </CardContent>
       </Card>
 
-      {/* Payout method */}
+      {/* Payout method — hidden for read-only (managers) */}
+      {!readOnly && (
       <Card>
         <CardContent className="p-5 space-y-4">
           <div className="flex items-center justify-between">
@@ -196,6 +213,9 @@ export function SupplierBalanceCard({ supplierId }: Props) {
           </div>
         </CardContent>
       </Card>
+      )}
+
+
 
       {/* Movements */}
       <Card>

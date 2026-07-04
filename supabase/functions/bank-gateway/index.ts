@@ -61,6 +61,31 @@ async function canManageSupplier(
   return !!link;
 }
 
+// Resolve the caller's access level for a shop.
+// "staff" = admin/moderator, "owner" = shop owner (full control),
+// "manager" = linked manager (read-only), null = no access.
+async function getShopAccess(
+  supabase: any,
+  profileId: string | null,
+  supplierId: string,
+  telegramId: number | null,
+  isStaff: boolean,
+): Promise<"staff" | "owner" | "manager" | null> {
+  if (isStaff) return "staff";
+  if (telegramId != null) {
+    const { data: sup } = await supabase
+      .from("suppliers").select("telegram_id").eq("id", supplierId).maybeSingle();
+    if (sup && Number(sup.telegram_id) === Number(telegramId)) return "owner";
+  }
+  if (profileId) {
+    const { data: link } = await supabase
+      .from("shop_manager_links").select("id")
+      .eq("supplier_id", supplierId).eq("profile_id", profileId).maybeSingle();
+    if (link) return "manager";
+  }
+  return null;
+}
+
 // Returns all supplier (shop) ids the caller owns (by telegram_id) or manages.
 async function getCallerShopIds(
   supabase: any,
@@ -267,8 +292,8 @@ serve(async (req) => {
     if (action === "get_balance") {
       const { supplier_id } = body;
       if (!supplier_id) return json({ error: "supplier_id required" }, 400);
-      if (!isStaff && !(profileId && await canManageSupplier(supabase, profileId, supplier_id, telegramId)))
-        return json({ error: "Forbidden" }, 403);
+      const access = await getShopAccess(supabase, profileId, supplier_id, telegramId, isStaff);
+      if (!access) return json({ error: "Forbidden" }, 403);
 
       let { data: bal } = await supabase.from("shop_balances").select("*").eq("supplier_id", supplier_id).maybeSingle();
       if (!bal) {
@@ -278,8 +303,11 @@ serve(async (req) => {
       const { data: method } = await supabase.from("payout_methods")
         .select("id, provider, type, masked_pan, holder, iban, is_default, auto_withdraw, auto_charge, min_withdraw")
         .eq("supplier_id", supplier_id).eq("is_default", true).maybeSingle();
-      return json({ balance: bal, method: method || null, providers: { monobank: providerMode("monobank"), liqpay: providerMode("liqpay") } });
+      // managers get read-only view (owner controls payouts/cards)
+      const canManage = access === "owner" || access === "staff";
+      return json({ balance: bal, method: method || null, access, canManage, providers: { monobank: providerMode("monobank"), liqpay: providerMode("liqpay") } });
     }
+
 
     // ---------------- list_balances (staff: all shops) ----------------
     if (action === "list_balances") {
@@ -326,8 +354,11 @@ serve(async (req) => {
     if (action === "set_payout_method") {
       const { supplier_id, auto_withdraw, auto_charge, min_withdraw, iban, holder } = body;
       if (!supplier_id) return json({ error: "supplier_id required" }, 400);
-      if (!isStaff && !(profileId && await canManageSupplier(supabase, profileId, supplier_id, telegramId)))
-        return json({ error: "Forbidden" }, 403);
+      {
+        const access = await getShopAccess(supabase, profileId, supplier_id, telegramId, isStaff);
+        if (access !== "owner" && access !== "staff")
+          return json({ error: "Forbidden: read-only (керує власник магазину)" }, 403);
+      }
 
       const { data: existing } = await supabase.from("payout_methods")
         .select("id").eq("supplier_id", supplier_id).eq("is_default", true).maybeSingle();
@@ -351,8 +382,11 @@ serve(async (req) => {
     if (action === "bind_card") {
       const { supplier_id, card_number, holder, provider = "liqpay" } = body;
       if (!supplier_id || !card_number) return json({ error: "supplier_id and card_number required" }, 400);
-      if (!isStaff && !(profileId && await canManageSupplier(supabase, profileId, supplier_id, telegramId)))
-        return json({ error: "Forbidden" }, 403);
+      {
+        const access = await getShopAccess(supabase, profileId, supplier_id, telegramId, isStaff);
+        if (access !== "owner" && access !== "staff")
+          return json({ error: "Forbidden: read-only (керує власник магазину)" }, 403);
+      }
 
       const digits = String(card_number).replace(/\D/g, "");
       if (digits.length < 12) return json({ error: "Invalid card number" }, 400);
@@ -409,8 +443,11 @@ serve(async (req) => {
       const { supplier_id } = body;
       if (!supplier_id) return json({ error: "supplier_id required" }, 400);
       if (action === "admin_payout" && !isAdmin && !isInternal) return json({ error: "Forbidden: admin required" }, 403);
-      if (action === "request_withdrawal" && !isStaff && !(profileId && await canManageSupplier(supabase, profileId, supplier_id, telegramId)))
-        return json({ error: "Forbidden" }, 403);
+      if (action === "request_withdrawal") {
+        const access = await getShopAccess(supabase, profileId, supplier_id, telegramId, isStaff);
+        if (access !== "owner" && access !== "staff")
+          return json({ error: "Forbidden: read-only (керує власник магазину)" }, 403);
+      }
 
       const { data: bal } = await supabase.from("shop_balances").select("*").eq("supplier_id", supplier_id).maybeSingle();
       const { data: method } = await supabase.from("payout_methods")
@@ -501,6 +538,13 @@ serve(async (req) => {
       }
       if (ids.length === 0) return json({ rows: [], providers: { monobank: providerMode("monobank"), liqpay: providerMode("liqpay") } });
 
+      // determine owner vs manager per shop
+      const ownedSet = new Set<string>();
+      if (telegramId != null) {
+        const { data: owned } = await supabase.from("suppliers").select("id").eq("telegram_id", telegramId);
+        (owned || []).forEach((s: any) => ownedSet.add(s.id));
+      }
+
       const { data: suppliers } = await supabase.from("suppliers").select("id, shop_name, logo_url, is_active").in("id", ids);
       const { data: balances } = await supabase.from("shop_balances").select("*").in("supplier_id", ids);
       const { data: methods } = await supabase.from("payout_methods").select("supplier_id, masked_pan, auto_withdraw, auto_charge").eq("is_default", true).in("supplier_id", ids);
@@ -508,16 +552,21 @@ serve(async (req) => {
       (balances || []).forEach((b: any) => { balMap[b.supplier_id] = b; });
       const methodMap: Record<string, any> = {};
       (methods || []).forEach((m: any) => { methodMap[m.supplier_id] = m; });
-      const rows = (suppliers || []).map((s: any) => ({
-        supplier_id: s.id,
-        shop_name: s.shop_name,
-        logo_url: s.logo_url,
-        is_active: s.is_active,
-        available: Number(balMap[s.id]?.available || 0),
-        pending: Number(balMap[s.id]?.pending || 0),
-        lifetime_paid: Number(balMap[s.id]?.lifetime_paid || 0),
-        method: methodMap[s.id] || null,
-      }));
+      const rows = (suppliers || []).map((s: any) => {
+        const role = isStaff ? "staff" : ownedSet.has(s.id) ? "owner" : "manager";
+        return {
+          supplier_id: s.id,
+          shop_name: s.shop_name,
+          logo_url: s.logo_url,
+          is_active: s.is_active,
+          role,
+          canManage: role === "owner" || role === "staff",
+          available: Number(balMap[s.id]?.available || 0),
+          pending: Number(balMap[s.id]?.pending || 0),
+          lifetime_paid: Number(balMap[s.id]?.lifetime_paid || 0),
+          method: methodMap[s.id] || null,
+        };
+      });
       return json({ rows, providers: { monobank: providerMode("monobank"), liqpay: providerMode("liqpay") } });
     }
 
@@ -575,6 +624,105 @@ serve(async (req) => {
       totals.productsAmount = round(totals.productsAmount);
 
       return json({ totals, series: buildStats(allSplits, items) });
+    }
+
+    // ---------------- group_earnings (admin-only: Taverna Group treasury) ----------------
+    if (action === "group_earnings") {
+      if (!isAdmin && !isInternal) return json({ error: "Forbidden: admin required" }, 403);
+
+      // all shops
+      const { data: suppliers } = await supabase.from("suppliers")
+        .select("id, shop_name, logo_url, is_active, telegram_id").order("shop_name");
+      const supIds = (suppliers || []).map((s: any) => s.id);
+
+      // which shops does the admin own/manage
+      const adminOwned = new Set<string>();
+      if (telegramId != null) {
+        (suppliers || []).forEach((s: any) => { if (Number(s.telegram_id) === Number(telegramId)) adminOwned.add(s.id); });
+      }
+      if (profileId) {
+        const { data: links } = await supabase.from("shop_manager_links").select("supplier_id").eq("profile_id", profileId);
+        (links || []).forEach((l: any) => adminOwned.add(l.supplier_id));
+      }
+
+      // splits across all shops
+      const { data: splits } = supIds.length
+        ? await supabase.from("order_splits")
+            .select("supplier_id, order_id, product_total, supplier_amount, platform_commission, payout_stage, split_status, payment_method, created_at")
+            .in("supplier_id", supIds)
+        : { data: [] };
+      const allSplits = splits || [];
+
+      // per-shop aggregation
+      const perShop: Record<string, any> = {};
+      (suppliers || []).forEach((s: any) => {
+        perShop[s.id] = {
+          supplier_id: s.id, shop_name: s.shop_name, logo_url: s.logo_url, is_active: s.is_active,
+          is_mine: adminOwned.has(s.id),
+          orders: new Set<string>(), turnover: 0, earned: 0,
+          created: 0, processing: 0, paid: 0,
+        };
+      });
+      const group = { turnover: 0, earned: 0, created: 0, processing: 0, paidToSuppliers: 0, orders: new Set<string>(), splitCount: allSplits.length };
+      for (const s of allSplits) {
+        const p = perShop[s.supplier_id];
+        if (!p) continue;
+        const turnover = Number(s.product_total || 0);
+        const commission = Number(s.platform_commission || 0);
+        const supplierAmt = Number(s.supplier_amount || 0);
+        p.turnover += turnover; p.earned += commission;
+        group.turnover += turnover; group.earned += commission;
+        if (s.order_id) { p.orders.add(s.order_id); group.orders.add(s.order_id); }
+        const stage = s.payout_stage || "created";
+        if (stage === "paid") { p.paid += supplierAmt; group.paidToSuppliers += supplierAmt; }
+        else if (stage === "processing") { p.processing += supplierAmt; group.processing += supplierAmt; }
+        else { p.created += supplierAmt; group.created += supplierAmt; }
+      }
+      const round = (n: number) => Math.round(n * 100) / 100;
+      const shops = Object.values(perShop).map((p: any) => ({
+        supplier_id: p.supplier_id, shop_name: p.shop_name, logo_url: p.logo_url,
+        is_active: p.is_active, is_mine: p.is_mine,
+        ordersCount: p.orders.size,
+        turnover: round(p.turnover), earned: round(p.earned),
+        created: round(p.created), processing: round(p.processing), paid: round(p.paid),
+      })).sort((a: any, b: any) => b.turnover - a.turnover);
+
+      // treasury ledger (last movements across all shops)
+      const shopNameMap: Record<string, string> = {};
+      (suppliers || []).forEach((s: any) => { shopNameMap[s.id] = s.shop_name; });
+      const { data: moves } = await supabase.from("balance_movements")
+        .select("id, supplier_id, type, amount, status, provider, external_tx_id, description, created_at")
+        .order("created_at", { ascending: false }).limit(100);
+      const ledger = (moves || []).map((m: any) => ({ ...m, shop_name: shopNameMap[m.supplier_id] || "—" }));
+
+      // MonoBank ФОП sub-accounts (sandbox demo until MONOBANK_TOKEN is set)
+      const monoMode = providerMode("monobank");
+      const subAccounts = monoMode === "live"
+        ? [] // real accounts fetched from MonoBank API when integrated
+        : [
+            { id: "fop-main", name: "ФОП — основний рахунок", iban: "UA••••0001", balance: round(group.earned - group.paidToSuppliers), currency: "UAH", type: "Основний" },
+            { id: "fop-markup", name: "Націнка Taverna", iban: "UA••••0002", balance: round(group.earned), currency: "UAH", type: "Дохід" },
+            { id: "fop-payouts", name: "Виплати постачальникам", iban: "UA••••0003", balance: round(group.paidToSuppliers), currency: "UAH", type: "Витрати" },
+            { id: "fop-reserve", name: "Резерв / податки", iban: "UA••••0004", balance: round(group.earned * 0.05), currency: "UAH", type: "Резерв" },
+          ];
+
+      return json({
+        group: {
+          turnover: round(group.turnover),
+          earned: round(group.earned),
+          created: round(group.created),
+          processing: round(group.processing),
+          paidToSuppliers: round(group.paidToSuppliers),
+          ordersCount: group.orders.size,
+          shopsCount: (suppliers || []).length,
+          myShopsCount: adminOwned.size,
+        },
+        shops,
+        ledger,
+        subAccounts,
+        providers: { monobank: monoMode, liqpay: providerMode("liqpay") },
+        series: buildStats(allSplits, []),
+      });
     }
 
     return json({ error: "Unknown action" }, 400);
