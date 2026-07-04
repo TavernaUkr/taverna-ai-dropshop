@@ -538,6 +538,13 @@ serve(async (req) => {
       }
       if (ids.length === 0) return json({ rows: [], providers: { monobank: providerMode("monobank"), liqpay: providerMode("liqpay") } });
 
+      // determine owner vs manager per shop
+      const ownedSet = new Set<string>();
+      if (telegramId != null) {
+        const { data: owned } = await supabase.from("suppliers").select("id").eq("telegram_id", telegramId);
+        (owned || []).forEach((s: any) => ownedSet.add(s.id));
+      }
+
       const { data: suppliers } = await supabase.from("suppliers").select("id, shop_name, logo_url, is_active").in("id", ids);
       const { data: balances } = await supabase.from("shop_balances").select("*").in("supplier_id", ids);
       const { data: methods } = await supabase.from("payout_methods").select("supplier_id, masked_pan, auto_withdraw, auto_charge").eq("is_default", true).in("supplier_id", ids);
@@ -545,16 +552,21 @@ serve(async (req) => {
       (balances || []).forEach((b: any) => { balMap[b.supplier_id] = b; });
       const methodMap: Record<string, any> = {};
       (methods || []).forEach((m: any) => { methodMap[m.supplier_id] = m; });
-      const rows = (suppliers || []).map((s: any) => ({
-        supplier_id: s.id,
-        shop_name: s.shop_name,
-        logo_url: s.logo_url,
-        is_active: s.is_active,
-        available: Number(balMap[s.id]?.available || 0),
-        pending: Number(balMap[s.id]?.pending || 0),
-        lifetime_paid: Number(balMap[s.id]?.lifetime_paid || 0),
-        method: methodMap[s.id] || null,
-      }));
+      const rows = (suppliers || []).map((s: any) => {
+        const role = isStaff ? "staff" : ownedSet.has(s.id) ? "owner" : "manager";
+        return {
+          supplier_id: s.id,
+          shop_name: s.shop_name,
+          logo_url: s.logo_url,
+          is_active: s.is_active,
+          role,
+          canManage: role === "owner" || role === "staff",
+          available: Number(balMap[s.id]?.available || 0),
+          pending: Number(balMap[s.id]?.pending || 0),
+          lifetime_paid: Number(balMap[s.id]?.lifetime_paid || 0),
+          method: methodMap[s.id] || null,
+        };
+      });
       return json({ rows, providers: { monobank: providerMode("monobank"), liqpay: providerMode("liqpay") } });
     }
 
