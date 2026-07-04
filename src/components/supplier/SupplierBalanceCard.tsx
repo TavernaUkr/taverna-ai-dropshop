@@ -126,13 +126,23 @@ export function SupplierBalanceCard({ supplierId, readOnly: readOnlyProp }: Prop
               <RefreshCw className={cn("h-4 w-4", busy && "animate-spin")} />
             </Button>
           </div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-4">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
             <Banknote className="h-3.5 w-3.5" />
             Всього виплачено: <span className="font-semibold text-foreground">{lifetimePaid.toLocaleString("uk-UA")} ₴</span>
           </div>
-          <Button className="w-full" onClick={withdraw} disabled={busy || available <= 0}>
-            <ArrowDownToLine className="h-4 w-4" /> Вивести {available > 0 ? `${available.toLocaleString("uk-UA")} ₴` : ""}
-          </Button>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-4">
+            <RefreshCw className="h-3.5 w-3.5" />
+            В обробці: <span className="font-semibold text-foreground">{pending.toLocaleString("uk-UA")} ₴</span>
+          </div>
+          {readOnly ? (
+            <div className="rounded-lg bg-muted p-3 text-xs text-muted-foreground text-center">
+              Режим перегляду — виплатами керує власник магазину
+            </div>
+          ) : (
+            <Button className="w-full" onClick={withdraw} disabled={busy || available <= 0}>
+              <ArrowDownToLine className="h-4 w-4" /> Вивести {available > 0 ? `${available.toLocaleString("uk-UA")} ₴` : ""}
+            </Button>
+          )}
         </CardContent>
       </Card>
 
