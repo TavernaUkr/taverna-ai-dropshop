@@ -20,6 +20,8 @@ import { cn } from "@/lib/utils";
 
 interface Props {
   supplierId: string;
+  /** Force read-only (managers). When omitted, derived from server access level. */
+  readOnly?: boolean;
 }
 
 const TYPE_META: Record<string, { label: string; positive: boolean }> = {
