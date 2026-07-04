@@ -292,8 +292,8 @@ serve(async (req) => {
     if (action === "get_balance") {
       const { supplier_id } = body;
       if (!supplier_id) return json({ error: "supplier_id required" }, 400);
-      if (!isStaff && !(profileId && await canManageSupplier(supabase, profileId, supplier_id, telegramId)))
-        return json({ error: "Forbidden" }, 403);
+      const access = await getShopAccess(supabase, profileId, supplier_id, telegramId, isStaff);
+      if (!access) return json({ error: "Forbidden" }, 403);
 
       let { data: bal } = await supabase.from("shop_balances").select("*").eq("supplier_id", supplier_id).maybeSingle();
       if (!bal) {
@@ -303,8 +303,11 @@ serve(async (req) => {
       const { data: method } = await supabase.from("payout_methods")
         .select("id, provider, type, masked_pan, holder, iban, is_default, auto_withdraw, auto_charge, min_withdraw")
         .eq("supplier_id", supplier_id).eq("is_default", true).maybeSingle();
-      return json({ balance: bal, method: method || null, providers: { monobank: providerMode("monobank"), liqpay: providerMode("liqpay") } });
+      // managers get read-only view (owner controls payouts/cards)
+      const canManage = access === "owner" || access === "staff";
+      return json({ balance: bal, method: method || null, access, canManage, providers: { monobank: providerMode("monobank"), liqpay: providerMode("liqpay") } });
     }
+
 
     // ---------------- list_balances (staff: all shops) ----------------
     if (action === "list_balances") {
