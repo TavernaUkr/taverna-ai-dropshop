@@ -213,6 +213,9 @@ export function SupplierBalanceCard({ supplierId, readOnly: readOnlyProp }: Prop
           </div>
         </CardContent>
       </Card>
+      )}
+
+
 
       {/* Movements */}
       <Card>
