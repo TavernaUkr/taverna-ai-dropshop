@@ -382,8 +382,11 @@ serve(async (req) => {
     if (action === "bind_card") {
       const { supplier_id, card_number, holder, provider = "liqpay" } = body;
       if (!supplier_id || !card_number) return json({ error: "supplier_id and card_number required" }, 400);
-      if (!isStaff && !(profileId && await canManageSupplier(supabase, profileId, supplier_id, telegramId)))
-        return json({ error: "Forbidden" }, 403);
+      {
+        const access = await getShopAccess(supabase, profileId, supplier_id, telegramId, isStaff);
+        if (access !== "owner" && access !== "staff")
+          return json({ error: "Forbidden: read-only (керує власник магазину)" }, 403);
+      }
 
       const digits = String(card_number).replace(/\D/g, "");
       if (digits.length < 12) return json({ error: "Invalid card number" }, 400);
