@@ -57,6 +57,7 @@ export function SupplierBalanceCard({ supplierId, readOnly: readOnlyProp }: Prop
       if (bal.data?.error) throw new Error(bal.data.error);
       setBalance(bal.data?.balance || null);
       setMethod(bal.data?.method || null);
+      setCanManageServer(bal.data?.canManage !== false);
       setProviders(bal.data?.providers || { monobank: "sandbox", liqpay: "sandbox" });
       setMovements(mv.data?.movements || []);
     } catch (e: any) {
