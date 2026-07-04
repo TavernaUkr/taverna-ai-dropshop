@@ -99,7 +99,9 @@ export function SupplierBalanceCard({ supplierId, readOnly: readOnlyProp }: Prop
     callAction("set_payout_method", { [field]: value }, "Налаштування збережено");
 
   const available = Number(balance?.available || 0);
+  const pending = Number(balance?.pending || 0);
   const lifetimePaid = Number(balance?.lifetime_paid || 0);
+  const readOnly = readOnlyProp ?? !canManageServer;
 
   if (loading) {
     return <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
