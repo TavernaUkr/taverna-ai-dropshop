@@ -33,13 +33,14 @@ const TYPE_META: Record<string, { label: string; positive: boolean }> = {
   penalty: { label: "Штраф", positive: false },
 };
 
-export function SupplierBalanceCard({ supplierId }: Props) {
+export function SupplierBalanceCard({ supplierId, readOnly: readOnlyProp }: Props) {
   const { sessionToken } = useTelegramAuthContext();
   const [loading, setLoading] = useState(true);
   const [balance, setBalance] = useState<any>(null);
   const [method, setMethod] = useState<any>(null);
   const [providers, setProviders] = useState<{ monobank: string; liqpay: string }>({ monobank: "sandbox", liqpay: "sandbox" });
   const [movements, setMovements] = useState<any[]>([]);
+  const [canManageServer, setCanManageServer] = useState(true);
   const [busy, setBusy] = useState(false);
   const [cardOpen, setCardOpen] = useState(false);
   const [cardNumber, setCardNumber] = useState("");
