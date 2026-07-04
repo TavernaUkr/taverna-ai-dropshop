@@ -725,7 +725,7 @@ serve(async (req) => {
       });
     }
 
-
+    return json({ error: "Unknown action" }, 400);
   } catch (err: any) {
     console.error("bank-gateway error:", err);
     return json({ error: err.message || "Internal error" }, 500);
