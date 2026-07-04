@@ -61,6 +61,31 @@ async function canManageSupplier(
   return !!link;
 }
 
+// Resolve the caller's access level for a shop.
+// "staff" = admin/moderator, "owner" = shop owner (full control),
+// "manager" = linked manager (read-only), null = no access.
+async function getShopAccess(
+  supabase: any,
+  profileId: string | null,
+  supplierId: string,
+  telegramId: number | null,
+  isStaff: boolean,
+): Promise<"staff" | "owner" | "manager" | null> {
+  if (isStaff) return "staff";
+  if (telegramId != null) {
+    const { data: sup } = await supabase
+      .from("suppliers").select("telegram_id").eq("id", supplierId).maybeSingle();
+    if (sup && Number(sup.telegram_id) === Number(telegramId)) return "owner";
+  }
+  if (profileId) {
+    const { data: link } = await supabase
+      .from("shop_manager_links").select("id")
+      .eq("supplier_id", supplierId).eq("profile_id", profileId).maybeSingle();
+    if (link) return "manager";
+  }
+  return null;
+}
+
 // Returns all supplier (shop) ids the caller owns (by telegram_id) or manages.
 async function getCallerShopIds(
   supabase: any,
