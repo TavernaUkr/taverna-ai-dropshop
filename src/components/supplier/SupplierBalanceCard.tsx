@@ -148,7 +148,7 @@ export function SupplierBalanceCard({ supplierId, readOnly: readOnlyProp }: Prop
 
       {/* Payout method — hidden for read-only (managers) */}
       {!readOnly && (
-      <Card>ic
+      <Card>
         <CardContent className="p-5 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
