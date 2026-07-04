@@ -24,6 +24,8 @@ interface ShopRow {
   shop_name: string;
   logo_url: string | null;
   is_active: boolean;
+  role?: "owner" | "manager" | "staff";
+  canManage?: boolean;
   available: number;
   pending: number;
   lifetime_paid: number;
