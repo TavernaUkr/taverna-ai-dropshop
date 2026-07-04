@@ -626,7 +626,106 @@ serve(async (req) => {
       return json({ totals, series: buildStats(allSplits, items) });
     }
 
-    return json({ error: "Unknown action" }, 400);
+    // ---------------- group_earnings (admin-only: Taverna Group treasury) ----------------
+    if (action === "group_earnings") {
+      if (!isAdmin && !isInternal) return json({ error: "Forbidden: admin required" }, 403);
+
+      // all shops
+      const { data: suppliers } = await supabase.from("suppliers")
+        .select("id, shop_name, logo_url, is_active, telegram_id").order("shop_name");
+      const supIds = (suppliers || []).map((s: any) => s.id);
+
+      // which shops does the admin own/manage
+      const adminOwned = new Set<string>();
+      if (telegramId != null) {
+        (suppliers || []).forEach((s: any) => { if (Number(s.telegram_id) === Number(telegramId)) adminOwned.add(s.id); });
+      }
+      if (profileId) {
+        const { data: links } = await supabase.from("shop_manager_links").select("supplier_id").eq("profile_id", profileId);
+        (links || []).forEach((l: any) => adminOwned.add(l.supplier_id));
+      }
+
+      // splits across all shops
+      const { data: splits } = supIds.length
+        ? await supabase.from("order_splits")
+            .select("supplier_id, order_id, product_total, supplier_amount, platform_commission, payout_stage, split_status, payment_method, created_at")
+            .in("supplier_id", supIds)
+        : { data: [] };
+      const allSplits = splits || [];
+
+      // per-shop aggregation
+      const perShop: Record<string, any> = {};
+      (suppliers || []).forEach((s: any) => {
+        perShop[s.id] = {
+          supplier_id: s.id, shop_name: s.shop_name, logo_url: s.logo_url, is_active: s.is_active,
+          is_mine: adminOwned.has(s.id),
+          orders: new Set<string>(), turnover: 0, earned: 0,
+          created: 0, processing: 0, paid: 0,
+        };
+      });
+      const group = { turnover: 0, earned: 0, created: 0, processing: 0, paidToSuppliers: 0, orders: new Set<string>(), splitCount: allSplits.length };
+      for (const s of allSplits) {
+        const p = perShop[s.supplier_id];
+        if (!p) continue;
+        const turnover = Number(s.product_total || 0);
+        const commission = Number(s.platform_commission || 0);
+        const supplierAmt = Number(s.supplier_amount || 0);
+        p.turnover += turnover; p.earned += commission;
+        group.turnover += turnover; group.earned += commission;
+        if (s.order_id) { p.orders.add(s.order_id); group.orders.add(s.order_id); }
+        const stage = s.payout_stage || "created";
+        if (stage === "paid") { p.paid += supplierAmt; group.paidToSuppliers += supplierAmt; }
+        else if (stage === "processing") { p.processing += supplierAmt; group.processing += supplierAmt; }
+        else { p.created += supplierAmt; group.created += supplierAmt; }
+      }
+      const round = (n: number) => Math.round(n * 100) / 100;
+      const shops = Object.values(perShop).map((p: any) => ({
+        supplier_id: p.supplier_id, shop_name: p.shop_name, logo_url: p.logo_url,
+        is_active: p.is_active, is_mine: p.is_mine,
+        ordersCount: p.orders.size,
+        turnover: round(p.turnover), earned: round(p.earned),
+        created: round(p.created), processing: round(p.processing), paid: round(p.paid),
+      })).sort((a: any, b: any) => b.turnover - a.turnover);
+
+      // treasury ledger (last movements across all shops)
+      const shopNameMap: Record<string, string> = {};
+      (suppliers || []).forEach((s: any) => { shopNameMap[s.id] = s.shop_name; });
+      const { data: moves } = await supabase.from("balance_movements")
+        .select("id, supplier_id, type, amount, status, provider, external_tx_id, description, created_at")
+        .order("created_at", { ascending: false }).limit(100);
+      const ledger = (moves || []).map((m: any) => ({ ...m, shop_name: shopNameMap[m.supplier_id] || "—" }));
+
+      // MonoBank ФОП sub-accounts (sandbox demo until MONOBANK_TOKEN is set)
+      const monoMode = providerMode("monobank");
+      const subAccounts = monoMode === "live"
+        ? [] // real accounts fetched from MonoBank API when integrated
+        : [
+            { id: "fop-main", name: "ФОП — основний рахунок", iban: "UA••••0001", balance: round(group.earned - group.paidToSuppliers), currency: "UAH", type: "Основний" },
+            { id: "fop-markup", name: "Націнка Taverna", iban: "UA••••0002", balance: round(group.earned), currency: "UAH", type: "Дохід" },
+            { id: "fop-payouts", name: "Виплати постачальникам", iban: "UA••••0003", balance: round(group.paidToSuppliers), currency: "UAH", type: "Витрати" },
+            { id: "fop-reserve", name: "Резерв / податки", iban: "UA••••0004", balance: round(group.earned * 0.05), currency: "UAH", type: "Резерв" },
+          ];
+
+      return json({
+        group: {
+          turnover: round(group.turnover),
+          earned: round(group.earned),
+          created: round(group.created),
+          processing: round(group.processing),
+          paidToSuppliers: round(group.paidToSuppliers),
+          ordersCount: group.orders.size,
+          shopsCount: (suppliers || []).length,
+          myShopsCount: adminOwned.size,
+        },
+        shops,
+        ledger,
+        subAccounts,
+        providers: { monobank: monoMode, liqpay: providerMode("liqpay") },
+        series: buildStats(allSplits, []),
+      });
+    }
+
+
   } catch (err: any) {
     console.error("bank-gateway error:", err);
     return json({ error: err.message || "Internal error" }, 500);
