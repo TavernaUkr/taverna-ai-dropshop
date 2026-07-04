@@ -443,8 +443,11 @@ serve(async (req) => {
       const { supplier_id } = body;
       if (!supplier_id) return json({ error: "supplier_id required" }, 400);
       if (action === "admin_payout" && !isAdmin && !isInternal) return json({ error: "Forbidden: admin required" }, 403);
-      if (action === "request_withdrawal" && !isStaff && !(profileId && await canManageSupplier(supabase, profileId, supplier_id, telegramId)))
-        return json({ error: "Forbidden" }, 403);
+      if (action === "request_withdrawal") {
+        const access = await getShopAccess(supabase, profileId, supplier_id, telegramId, isStaff);
+        if (access !== "owner" && access !== "staff")
+          return json({ error: "Forbidden: read-only (керує власник магазину)" }, 403);
+      }
 
       const { data: bal } = await supabase.from("shop_balances").select("*").eq("supplier_id", supplier_id).maybeSingle();
       const { data: method } = await supabase.from("payout_methods")
