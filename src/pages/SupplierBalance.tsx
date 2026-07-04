@@ -273,7 +273,15 @@ export default function SupplierBalance() {
               <Store className="h-4 w-4 text-primary" />
               <span className="font-semibold text-sm">Керування рахунком магазину</span>
             </div>
-            <SupplierBalanceCard supplierId={selected} />
+            {shops.find((s) => s.supplier_id === selected)?.role === "manager" && (
+              <div className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">
+                Режим перегляду менеджера — ви бачите чи надійшли кошти, але виплатами та карткою керує власник.
+              </div>
+            )}
+            <SupplierBalanceCard
+              supplierId={selected}
+              readOnly={shops.find((s) => s.supplier_id === selected)?.role === "manager"}
+            />
           </div>
         )}
 
