@@ -12,6 +12,9 @@ async function hashToken(token: string): Promise<string> {
   return Array.from(new Uint8Array(hashBuffer), (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+const DAY = 24 * 3600 * 1000;
+const round = (n: number) => Math.round(n * 100) / 100;
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   const json = (b: any, status = 200) =>
@@ -28,7 +31,8 @@ serve(async (req) => {
       .from("sessions").select("*, profile:profiles(*)")
       .eq("token_hash", await hashToken(session_token)).gt("expires_at", new Date().toISOString()).single();
     if (!session) return json({ error: "Invalid session" }, 401);
-    const { data: rolesData } = await supabase.from("user_roles").select("role").eq("user_id", session.profile.id);
+    const adminProfileId = session.profile.id;
+    const { data: rolesData } = await supabase.from("user_roles").select("role").eq("user_id", adminProfileId);
     const roles = (rolesData || []).map((r: any) => r.role);
     if (!roles.includes("admin")) return json({ error: "Forbidden: admin required" }, 403);
 
@@ -39,61 +43,142 @@ serve(async (req) => {
       return json({ success: true, cleared: true });
     }
 
-    const { data: suppliers } = await supabase.from("suppliers").select("id, shop_name").eq("is_active", true).limit(8);
+    const { data: suppliers } = await supabase.from("suppliers").select("id, shop_name").eq("is_active", true).limit(6);
     if (!suppliers?.length) return json({ error: "Немає магазинів для генерації" }, 400);
 
-    const created: any[] = [];
+    // spread orders across periods: today, this week, this month, months ago, last year
+    const offsetsDays = [0, 1, 3, 6, 12, 20, 45, 90, 200, 400];
     const now = Date.now();
+    const created: any[] = [];
+    const movementsInserted: any[] = [];
+
+    // running balance per supplier (so balance_after is coherent)
+    const running: Record<string, number> = {};
 
     for (let i = 0; i < suppliers.length; i++) {
       const sup = suppliers[i];
-      const isCod = i % 2 === 1; // alternate prepaid / COD
-      const retail = 1000 + i * 250;
-      const supplierAmount = Math.round((retail / 1.33) * 100) / 100;
-      const commission = Math.round((retail - supplierAmount) * 100) / 100;
+      running[sup.id] = 0;
+      const isCod = i % 2 === 1;
 
-      // create order
-      const { data: order } = await supabase.from("orders").insert({
-        order_number: `TEST-${now}-${i}`,
-        status: "delivered",
-        subtotal: retail,
-        total: retail,
-        payment_method: isCod ? "cash_on_delivery" : "card",
-        payment_status: isCod ? "pending" : "paid",
-        received_at: new Date(now - 20 * 24 * 3600 * 1000).toISOString(), // received 20 days ago → eligible
-        tracking_status: "received",
-        notes: "[TEST] generated for payment testing",
-      }).select().single();
-      if (!order) continue;
+      for (let j = 0; j < offsetsDays.length; j++) {
+        const daysAgo = offsetsDays[j];
+        const ts = new Date(now - daysAgo * DAY).toISOString();
+        const retail = 800 + ((i * 3 + j) % 6) * 350;
+        const supplierAmount = round(retail / 1.33);
+        const commission = round(retail - supplierAmount);
 
-      // create split, already eligible (eligible 5 days ago)
-      const { data: split } = await supabase.from("order_splits").insert({
-        order_id: order.id,
+        // 3 stages depending on age: recent -> created, mid -> processing, old -> paid
+        const stage = daysAgo <= 2 ? "created" : daysAgo <= 12 ? "processing" : "paid";
+
+        const { data: order } = await supabase.from("orders").insert({
+          order_number: `TEST-${now}-${i}-${j}`,
+          status: "delivered",
+          subtotal: retail, total: retail,
+          payment_method: isCod ? "cash_on_delivery" : "card",
+          payment_status: isCod ? "pending" : "paid",
+          received_at: ts, tracking_status: "received",
+          notes: "[TEST] balance seed",
+          created_at: ts,
+        }).select().single();
+        if (!order) continue;
+
+        const { data: split } = await supabase.from("order_splits").insert({
+          order_id: order.id, supplier_id: sup.id,
+          product_total: retail, supplier_amount: supplierAmount, platform_commission: commission,
+          markup_percentage: 33, payment_method: isCod ? "cash_on_delivery" : "card",
+          split_status: "test", payout_stage: stage,
+          payout_type: isCod ? "partial_markup" : "full_prepaid",
+          eligible_payout_at: new Date(now - Math.max(0, daysAgo - 3) * DAY).toISOString(),
+          is_returnable: true, created_at: ts,
+          paid_at: stage === "paid" ? ts : null,
+        }).select().single();
+
+        // For paid stage, record ledger movements so history & balances populate
+        if (stage === "paid" && split) {
+          running[sup.id] += supplierAmount;
+          const { data: mv1 } = await supabase.from("balance_movements").insert({
+            supplier_id: sup.id, order_split_id: split.id, type: "payout_accrual",
+            amount: supplierAmount, balance_after: round(running[sup.id]), status: "settled",
+            provider: "internal", description: `[TEST] Нарахування ${order.order_number}`, created_at: ts,
+          }).select().single();
+          if (mv1) movementsInserted.push(mv1.id);
+
+          if (isCod && commission > 0) {
+            running[sup.id] -= commission;
+            const { data: mv2 } = await supabase.from("balance_movements").insert({
+              supplier_id: sup.id, order_split_id: split.id, type: "markup_debit",
+              amount: -commission, balance_after: round(running[sup.id]), status: "settled",
+              provider: "internal", description: `[TEST] Наша націнка ${order.order_number}`,
+              created_at: new Date(now - daysAgo * DAY + 3600000).toISOString(),
+            }).select().single();
+            if (mv2) movementsInserted.push(mv2.id);
+          }
+        }
+
+        created.push({ shop: sup.shop_name, order: order.order_number, stage, supplierAmount, commission });
+      }
+
+      // For the two oldest, simulate a withdrawal (paid out) to fill lifetime_paid
+      const withdrawAmt = round(running[sup.id] * 0.4);
+      let lifetimePaid = 0;
+      if (withdrawAmt > 0) {
+        running[sup.id] -= withdrawAmt;
+        lifetimePaid = withdrawAmt;
+        const { data: mvw } = await supabase.from("balance_movements").insert({
+          supplier_id: sup.id, type: "withdrawal", amount: -withdrawAmt,
+          balance_after: round(running[sup.id]), status: "settled", provider: "monobank",
+          external_tx_id: `TEST-WD-${sup.id.slice(0, 6)}`, description: "[TEST] Вивід коштів",
+          created_at: new Date(now - 30 * DAY).toISOString(),
+        }).select().single();
+        if (mvw) movementsInserted.push(mvw.id);
+      }
+
+      // upsert shop_balances with coherent totals
+      const { data: existingBal } = await supabase.from("shop_balances").select("id").eq("supplier_id", sup.id).maybeSingle();
+      const balPayload = {
         supplier_id: sup.id,
-        product_total: retail,
-        supplier_amount: supplierAmount,
-        platform_commission: commission,
-        markup_percentage: 33,
-        payment_method: isCod ? "cash_on_delivery" : "card",
-        split_status: "test",
-        payout_stage: "created",
-        payout_type: isCod ? "partial_markup" : "full_prepaid",
-        eligible_payout_at: new Date(now - 5 * 24 * 3600 * 1000).toISOString(),
-        is_returnable: true,
-      }).select().single();
+        available: round(running[sup.id]),
+        pending: round(80 + i * 120), // "in processing" indicator
+        lifetime_paid: lifetimePaid,
+        currency: "UAH",
+      };
+      if (existingBal) await supabase.from("shop_balances").update(balPayload).eq("id", existingBal.id);
+      else await supabase.from("shop_balances").insert(balPayload);
 
-      created.push({ shop: sup.shop_name, order: order.order_number, type: isCod ? "COD" : "prepaid", supplier_amount: supplierAmount, commission });
+      // payout method with demo card + IBAN (owner sees withdraw/auto controls)
+      const { data: existingMethod } = await supabase.from("payout_methods")
+        .select("id").eq("supplier_id", sup.id).eq("is_default", true).maybeSingle();
+      const methodPayload = {
+        supplier_id: sup.id, is_default: true, provider: "monobank", type: "iban",
+        masked_pan: `**** **** **** ${1000 + i}`.slice(-19),
+        card_token: `tok_sbx_${sup.id.slice(0, 6)}`,
+        iban: `UA90305299299000414912345678${i}`,
+        holder: `TEST SHOP ${i + 1}`,
+        auto_withdraw: i % 2 === 0, auto_charge: isCod, min_withdraw: 100,
+      };
+      if (existingMethod) await supabase.from("payout_methods").update(methodPayload).eq("id", existingMethod.id);
+      else await supabase.from("payout_methods").insert(methodPayload);
     }
 
-    // run accruals immediately so balances populate
-    const accrualRes = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/bank-gateway`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-internal-key": Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")! },
-      body: JSON.stringify({ action: "run_accruals" }),
-    });
-    const accrual = await accrualRes.json();
+    // Link the admin as a MANAGER of the last shop so manager (read-only) view can be demoed
+    const managerShop = suppliers[suppliers.length - 1];
+    if (managerShop) {
+      const { data: link } = await supabase.from("shop_manager_links")
+        .select("id").eq("supplier_id", managerShop.id).eq("profile_id", adminProfileId).maybeSingle();
+      if (!link) {
+        await supabase.from("shop_manager_links").insert({
+          supplier_id: managerShop.id, profile_id: adminProfileId, assigned_by: adminProfileId,
+        });
+      }
+    }
 
-    return json({ success: true, created, accrual });
+    return json({
+      success: true,
+      created: created.length,
+      movements: movementsInserted.length,
+      shops: suppliers.length,
+      managerDemoShop: managerShop?.shop_name || null,
+    });
   } catch (err: any) {
     console.error("seed-test-payments error:", err);
     return json({ error: err.message || "Internal error" }, 500);

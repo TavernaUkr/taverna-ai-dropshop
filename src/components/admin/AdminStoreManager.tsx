@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Store, Settings, Loader2, UserPlus, Send, Shield, Eye, ArrowRightLeft,
-  Bot, Package, Crown, AlertTriangle, Users
+  Bot, Package, Crown, AlertTriangle, Users, Wallet
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -341,6 +341,10 @@ export function AdminStoreManager({ filter = 'all' }: { filter?: 'all' | 'partne
                               onClick={() => { setTransferDialog({ supplier }); setTransferTelegramId(""); }}>
                               <ArrowRightLeft className="h-3.5 w-3.5" />
                             </Button>
+                            <Button variant="outline" size="sm" className="gap-1.5 text-xs"
+                              onClick={() => navigate(`/supplier-balance/${supplier.id}`)}>
+                              <Wallet className="h-3.5 w-3.5" />
+                            </Button>
                             <Button variant="ghost" size="sm" className="gap-1.5 text-xs"
                               onClick={() => navigate(`/supplier/${supplier.id}`)}>
                               <Eye className="h-3.5 w-3.5" />
@@ -350,10 +354,16 @@ export function AdminStoreManager({ filter = 'all' }: { filter?: 'all' | 'partne
                       }
 
                       return (
-                        <Button variant="ghost" size="sm" className="flex-1 gap-1.5 text-xs"
-                          onClick={() => navigate(`/supplier/${supplier.id}`)}>
-                          <Eye className="h-3.5 w-3.5" /> Переглянути
-                        </Button>
+                        <>
+                          <Button variant="ghost" size="sm" className="flex-1 gap-1.5 text-xs"
+                            onClick={() => navigate(`/supplier/${supplier.id}`)}>
+                            <Eye className="h-3.5 w-3.5" /> Переглянути
+                          </Button>
+                          <Button variant="outline" size="sm" className="gap-1.5 text-xs"
+                            onClick={() => navigate(`/supplier-balance/${supplier.id}`)}>
+                            <Wallet className="h-3.5 w-3.5" /> Баланс
+                          </Button>
+                        </>
                       );
                     })()}
                   </div>
