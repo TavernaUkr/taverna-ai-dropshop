@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Store, Settings, Loader2, UserPlus, Send, Shield, Eye, ArrowRightLeft,
-  Bot, Package, Crown, AlertTriangle, Users
+  Bot, Package, Crown, AlertTriangle, Users, Wallet
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
