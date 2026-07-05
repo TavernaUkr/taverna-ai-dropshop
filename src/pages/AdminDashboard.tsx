@@ -338,11 +338,13 @@ export default function AdminDashboard() {
 
           {/* === ОПЛАТИ === */}
           <TabsContent value="payments">
-            <Tabs defaultValue="balances" className="w-full">
-              <TabsList className="w-full grid grid-cols-2 mb-4">
+            <Tabs defaultValue="group" className="w-full">
+              <TabsList className="w-full grid grid-cols-3 mb-4">
+                <TabsTrigger value="group">Taverna Group</TabsTrigger>
                 <TabsTrigger value="balances">Баланси магазинів</TabsTrigger>
                 <TabsTrigger value="splits">Виплати за замовлення</TabsTrigger>
               </TabsList>
+              <TabsContent value="group"><TavernaGroupPanel /></TabsContent>
               <TabsContent value="balances"><ShopBalancesPanel mode="admin" /></TabsContent>
               <TabsContent value="splits"><PaymentsManager mode="admin" /></TabsContent>
             </Tabs>
