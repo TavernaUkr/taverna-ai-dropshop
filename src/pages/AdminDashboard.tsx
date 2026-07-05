@@ -33,6 +33,7 @@ import { AdminRolesManager } from '@/components/admin/AdminRolesManager';
 import { CommandCenter } from '@/components/admin/CommandCenter';
 import { PaymentsManager } from '@/components/admin/PaymentsManager';
 import { ShopBalancesPanel } from '@/components/admin/ShopBalancesPanel';
+import { TavernaGroupPanel } from '@/components/admin/TavernaGroupPanel';
 
 interface SupplierApplication {
   id: string;
