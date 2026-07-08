@@ -108,6 +108,11 @@ export default function SupplierBalance() {
   const consolidatedPaid = shops.reduce((s, r) => s + Number(r.lifetime_paid || 0), 0);
   const points = series[period] || [];
   const maxVal = Math.max(1, ...points.map((p) => p.turnover));
+  // Manager view: no access to supplier funds, only order payment statuses.
+  const viewerIsManager = devRoleOverride === "shop_manager"
+    || (shops.length > 0 && shops.every((s) => s.role === "manager"));
+  const selectedShop = shops.find((s) => s.supplier_id === selected);
+  const selectedIsManager = viewerIsManager || selectedShop?.role === "manager";
 
   return (
     <div className="min-h-screen bg-background">
