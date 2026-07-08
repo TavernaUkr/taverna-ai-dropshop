@@ -35,7 +35,7 @@ const TYPE_META: Record<string, { label: string; positive: boolean }> = {
   penalty: { label: "Штраф", positive: false },
 };
 
-export function SupplierBalanceCard({ supplierId, readOnly: readOnlyProp }: Props) {
+export function SupplierBalanceCard({ supplierId, readOnly: readOnlyProp, previewRole }: Props) {
   const { sessionToken } = useTelegramAuthContext();
   const [loading, setLoading] = useState(true);
   const [balance, setBalance] = useState<any>(null);
@@ -53,8 +53,8 @@ export function SupplierBalanceCard({ supplierId, readOnly: readOnlyProp }: Prop
     setLoading(true);
     try {
       const [bal, mv] = await Promise.all([
-        supabase.functions.invoke("bank-gateway", { body: { action: "get_balance", session_token: sessionToken, supplier_id: supplierId } }),
-        supabase.functions.invoke("bank-gateway", { body: { action: "list_movements", session_token: sessionToken, supplier_id: supplierId } }),
+        supabase.functions.invoke("bank-gateway", { body: { action: "get_balance", session_token: sessionToken, supplier_id: supplierId, preview_role: previewRole || undefined } }),
+        supabase.functions.invoke("bank-gateway", { body: { action: "list_movements", session_token: sessionToken, supplier_id: supplierId, preview_role: previewRole || undefined } }),
       ]);
       if (bal.data?.error) throw new Error(bal.data.error);
       setBalance(bal.data?.balance || null);
@@ -68,7 +68,7 @@ export function SupplierBalanceCard({ supplierId, readOnly: readOnlyProp }: Prop
     } finally {
       setLoading(false);
     }
-  }, [sessionToken, supplierId]);
+  }, [sessionToken, supplierId, previewRole]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -76,7 +76,7 @@ export function SupplierBalanceCard({ supplierId, readOnly: readOnlyProp }: Prop
     setBusy(true);
     try {
       const { data, error } = await supabase.functions.invoke("bank-gateway", {
-        body: { action, session_token: sessionToken, supplier_id: supplierId, ...extra },
+        body: { action, session_token: sessionToken, supplier_id: supplierId, preview_role: previewRole || undefined, ...extra },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
