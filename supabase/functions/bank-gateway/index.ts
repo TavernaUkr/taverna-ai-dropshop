@@ -70,7 +70,15 @@ async function getShopAccess(
   supplierId: string,
   telegramId: number | null,
   isStaff: boolean,
+  previewRole?: string | null,
 ): Promise<"staff" | "owner" | "manager" | null> {
+  // Dev preview downgrade (only ever set for real admins) — never elevates.
+  if (previewRole) {
+    if (previewRole === "supplier") return "owner";
+    if (previewRole === "shop_manager") return "manager";
+    if (previewRole === "moderator") return "staff";
+    return null; // customer / guest have no financial access
+  }
   if (isStaff) return "staff";
   if (telegramId != null) {
     const { data: sup } = await supabase
