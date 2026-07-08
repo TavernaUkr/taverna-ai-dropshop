@@ -22,6 +22,8 @@ interface Props {
   supplierId: string;
   /** Force read-only (managers). When omitted, derived from server access level. */
   readOnly?: boolean;
+  /** Dev role preview ("жук") — forwarded so admins can view as supplier/manager. */
+  previewRole?: string | null;
 }
 
 const TYPE_META: Record<string, { label: string; positive: boolean }> = {
