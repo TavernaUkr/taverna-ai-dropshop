@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft, Wallet, Loader2, Store, TrendingUp, Clock, Package,
-  Banknote, BarChart3, Layers,
+  Banknote, BarChart3, Layers, Eye,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
