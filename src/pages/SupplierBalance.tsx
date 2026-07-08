@@ -11,6 +11,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SupplierBalanceCard } from "@/components/supplier/SupplierBalanceCard";
+import { ShopPaymentsView } from "@/components/supplier/ShopPaymentsView";
 import { supabase } from "@/integrations/supabase/client";
 import { useTelegramAuthContext } from "@/components/TelegramAuthProvider";
 import { toast } from "sonner";
@@ -54,7 +55,7 @@ const fmt = (n: number) => Number(n || 0).toLocaleString("uk-UA");
 export default function SupplierBalance() {
   const navigate = useNavigate();
   const { supplierId: paramSupplierId } = useParams<{ supplierId?: string }>();
-  const { sessionToken } = useTelegramAuthContext();
+  const { sessionToken, devRoleOverride } = useTelegramAuthContext();
 
   const [loadingShops, setLoadingShops] = useState(true);
   const [shops, setShops] = useState<ShopRow[]>([]);
@@ -70,7 +71,7 @@ export default function SupplierBalance() {
     setLoadingShops(true);
     try {
       const { data, error } = await supabase.functions.invoke("bank-gateway", {
-        body: { action: "list_my_shops", session_token: sessionToken },
+        body: { action: "list_my_shops", session_token: sessionToken, preview_role: devRoleOverride || undefined },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -80,13 +81,13 @@ export default function SupplierBalance() {
     } finally {
       setLoadingShops(false);
     }
-  }, [sessionToken]);
+  }, [sessionToken, devRoleOverride]);
 
   const loadStats = useCallback(async () => {
     if (!sessionToken) return;
     setLoadingStats(true);
     try {
-      const body: Record<string, any> = { action: "get_stats", session_token: sessionToken };
+      const body: Record<string, any> = { action: "get_stats", session_token: sessionToken, preview_role: devRoleOverride || undefined };
       if (selected !== "all") body.supplier_id = selected;
       const { data, error } = await supabase.functions.invoke("bank-gateway", { body });
       if (error) throw error;
@@ -98,7 +99,7 @@ export default function SupplierBalance() {
     } finally {
       setLoadingStats(false);
     }
-  }, [sessionToken, selected]);
+  }, [sessionToken, selected, devRoleOverride]);
 
   useEffect(() => { loadShops(); }, [loadShops]);
   useEffect(() => { loadStats(); }, [loadStats]);
