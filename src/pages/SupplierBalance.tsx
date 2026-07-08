@@ -133,24 +133,38 @@ export default function SupplierBalance() {
       </div>
 
       <div className="p-4 space-y-4 pb-28">
-        {/* Consolidated balance */}
-        <Card className="overflow-hidden border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-2 mb-3">
+        {/* Consolidated balance — hidden for managers (no fund access) */}
+        {viewerIsManager ? (
+          <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5">
+            <CardContent className="p-4 flex items-center gap-3">
               <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Wallet className="h-5 w-5 text-primary" />
+                <Eye className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Загальний баланс (усі магазини)</p>
-                <p className="text-2xl font-bold">{fmt(consolidatedAvailable)} ₴</p>
+                <p className="text-sm font-semibold text-foreground">Перегляд оплат (менеджер)</p>
+                <p className="text-xs text-muted-foreground">Ви бачите статуси оплат замовлень без доступу до коштів постачальника</p>
               </div>
-            </div>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Banknote className="h-3.5 w-3.5" />
-              Всього виплачено: <span className="font-semibold text-foreground">{fmt(consolidatedPaid)} ₴</span>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="overflow-hidden border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Wallet className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Загальний баланс (усі магазини)</p>
+                  <p className="text-2xl font-bold">{fmt(consolidatedAvailable)} ₴</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Banknote className="h-3.5 w-3.5" />
+                Всього виплачено: <span className="font-semibold text-foreground">{fmt(consolidatedPaid)} ₴</span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Shop selector */}
         {loadingShops ? (
