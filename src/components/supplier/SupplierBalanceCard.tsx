@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   Wallet, Loader2, ArrowDownToLine, CreditCard, RefreshCw,
-  TrendingUp, TrendingDown, Banknote, ShieldCheck,
+  TrendingUp, TrendingDown, Banknote, ShieldCheck, Zap,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,8 @@ interface Props {
   supplierId: string;
   /** Force read-only (managers). When omitted, derived from server access level. */
   readOnly?: boolean;
+  /** Dev role preview ("жук") — forwarded so admins can view as supplier/manager. */
+  previewRole?: string | null;
 }
 
 const TYPE_META: Record<string, { label: string; positive: boolean }> = {
@@ -33,7 +35,7 @@ const TYPE_META: Record<string, { label: string; positive: boolean }> = {
   penalty: { label: "Штраф", positive: false },
 };
 
-export function SupplierBalanceCard({ supplierId, readOnly: readOnlyProp }: Props) {
+export function SupplierBalanceCard({ supplierId, readOnly: readOnlyProp, previewRole }: Props) {
   const { sessionToken } = useTelegramAuthContext();
   const [loading, setLoading] = useState(true);
   const [balance, setBalance] = useState<any>(null);
@@ -43,6 +45,8 @@ export function SupplierBalanceCard({ supplierId, readOnly: readOnlyProp }: Prop
   const [canManageServer, setCanManageServer] = useState(true);
   const [busy, setBusy] = useState(false);
   const [cardOpen, setCardOpen] = useState(false);
+  const [autoOpen, setAutoOpen] = useState(false);
+  const [minWithdraw, setMinWithdraw] = useState("");
   const [cardNumber, setCardNumber] = useState("");
   const [cardHolder, setCardHolder] = useState("");
 
@@ -51,12 +55,13 @@ export function SupplierBalanceCard({ supplierId, readOnly: readOnlyProp }: Prop
     setLoading(true);
     try {
       const [bal, mv] = await Promise.all([
-        supabase.functions.invoke("bank-gateway", { body: { action: "get_balance", session_token: sessionToken, supplier_id: supplierId } }),
-        supabase.functions.invoke("bank-gateway", { body: { action: "list_movements", session_token: sessionToken, supplier_id: supplierId } }),
+        supabase.functions.invoke("bank-gateway", { body: { action: "get_balance", session_token: sessionToken, supplier_id: supplierId, preview_role: previewRole || undefined } }),
+        supabase.functions.invoke("bank-gateway", { body: { action: "list_movements", session_token: sessionToken, supplier_id: supplierId, preview_role: previewRole || undefined } }),
       ]);
       if (bal.data?.error) throw new Error(bal.data.error);
       setBalance(bal.data?.balance || null);
       setMethod(bal.data?.method || null);
+      setMinWithdraw(bal.data?.method?.min_withdraw != null ? String(bal.data.method.min_withdraw) : "");
       setCanManageServer(bal.data?.canManage !== false);
       setProviders(bal.data?.providers || { monobank: "sandbox", liqpay: "sandbox" });
       setMovements(mv.data?.movements || []);
@@ -66,7 +71,7 @@ export function SupplierBalanceCard({ supplierId, readOnly: readOnlyProp }: Prop
     } finally {
       setLoading(false);
     }
-  }, [sessionToken, supplierId]);
+  }, [sessionToken, supplierId, previewRole]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -74,7 +79,7 @@ export function SupplierBalanceCard({ supplierId, readOnly: readOnlyProp }: Prop
     setBusy(true);
     try {
       const { data, error } = await supabase.functions.invoke("bank-gateway", {
-        body: { action, session_token: sessionToken, supplier_id: supplierId, ...extra },
+        body: { action, session_token: sessionToken, supplier_id: supplierId, preview_role: previewRole || undefined, ...extra },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -146,7 +151,7 @@ export function SupplierBalanceCard({ supplierId, readOnly: readOnlyProp }: Prop
         </CardContent>
       </Card>
 
-      {/* Payout method — hidden for read-only (managers) */}
+      {/* Payout method + Auto-payments — hidden for read-only (managers) */}
       {!readOnly && (
       <Card>
         <CardContent className="p-5 space-y-4">
@@ -162,58 +167,101 @@ export function SupplierBalanceCard({ supplierId, readOnly: readOnlyProp }: Prop
             )}
           </div>
 
-          <Dialog open={cardOpen} onOpenChange={setCardOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" className="w-full">
-                <CreditCard className="h-4 w-4" /> {method?.masked_pan ? "Змінити картку" : "Прив'язати картку"}
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Прив'язка картки</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted rounded-lg p-3">
-                  <ShieldCheck className="h-4 w-4 text-green-600 shrink-0" />
-                  Зберігаємо лише токен і останні 4 цифри. Повний номер та CVV не зберігаються.
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Номер картки</Label>
-                  <Input inputMode="numeric" placeholder="0000 0000 0000 0000" value={cardNumber}
-                    onChange={(e) => setCardNumber(e.target.value)} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Власник картки</Label>
-                  <Input placeholder="IVAN PETRENKO" value={cardHolder} onChange={(e) => setCardHolder(e.target.value)} />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button onClick={bindCard} disabled={busy}>
-                  {busy && <Loader2 className="h-4 w-4 animate-spin" />} Прив'язати
+          <div className="grid grid-cols-2 gap-2">
+            {/* Bind card */}
+            <Dialog open={cardOpen} onOpenChange={setCardOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="w-full">
+                  <CreditCard className="h-4 w-4" /> {method?.masked_pan ? "Змінити картку" : "Картка"}
                 </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Прив'язка картки</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted rounded-lg p-3">
+                    <ShieldCheck className="h-4 w-4 text-green-600 shrink-0" />
+                    Зберігаємо лише токен і останні 4 цифри. Повний номер та CVV не зберігаються.
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Номер картки</Label>
+                    <Input inputMode="numeric" placeholder="0000 0000 0000 0000" value={cardNumber}
+                      onChange={(e) => setCardNumber(e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Власник картки</Label>
+                    <Input placeholder="IVAN PETRENKO" value={cardHolder} onChange={(e) => setCardHolder(e.target.value)} />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button onClick={bindCard} disabled={busy}>
+                    {busy && <Loader2 className="h-4 w-4 animate-spin" />} Прив'язати
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
 
-          <div className="flex items-center justify-between">
-            <div>
-              <Label className="text-sm">Авто-вивід коштів</Label>
-              <p className="text-xs text-muted-foreground">Щодня виводимо доступний баланс</p>
-            </div>
-            <Switch checked={!!method?.auto_withdraw} disabled={busy}
-              onCheckedChange={(v) => toggleAuto("auto_withdraw", v)} />
-          </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <Label className="text-sm">Авто-списання націнки</Label>
-              <p className="text-xs text-muted-foreground">Списувати нашу націнку з картки по наложених</p>
-            </div>
-            <Switch checked={!!method?.auto_charge} disabled={busy || !method?.masked_pan}
-              onCheckedChange={(v) => toggleAuto("auto_charge", v)} />
+            {/* Dedicated auto-payments dialog */}
+            <Dialog open={autoOpen} onOpenChange={setAutoOpen}>
+              <DialogTrigger asChild>
+                <Button variant={method?.auto_withdraw || method?.auto_charge ? "default" : "outline"} className="w-full">
+                  <Zap className="h-4 w-4" /> Автооплати
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2"><Zap className="h-4 w-4 text-primary" /> Автооплати</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-1">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <Label className="text-sm">Авто-вивід коштів</Label>
+                      <p className="text-xs text-muted-foreground">Щодня автоматично виводимо доступний баланс на картку</p>
+                    </div>
+                    <Switch checked={!!method?.auto_withdraw} disabled={busy}
+                      onCheckedChange={(v) => toggleAuto("auto_withdraw", v)} />
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <Label className="text-sm">Авто-списання націнки</Label>
+                      <p className="text-xs text-muted-foreground">Списувати нашу націнку з картки по наложених платежах</p>
+                    </div>
+                    <Switch checked={!!method?.auto_charge} disabled={busy || !method?.masked_pan}
+                      onCheckedChange={(v) => toggleAuto("auto_charge", v)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-sm">Мінімальна сума авто-виводу (₴)</Label>
+                    <Input inputMode="numeric" placeholder="100" value={minWithdraw}
+                      onChange={(e) => setMinWithdraw(e.target.value.replace(/\D/g, ""))} />
+                    <p className="text-xs text-muted-foreground">Авто-вивід спрацьовує лише коли баланс ≥ цієї суми</p>
+                  </div>
+                  {!method?.masked_pan && (
+                    <div className="flex items-center gap-2 text-xs text-amber-600 bg-amber-500/10 rounded-lg p-3">
+                      <ShieldCheck className="h-4 w-4 shrink-0" />
+                      Спершу прив'яжіть картку, щоб увімкнути авто-списання націнки.
+                    </div>
+                  )}
+                </div>
+                <DialogFooter>
+                  <Button
+                    onClick={async () => {
+                      const r = await callAction("set_payout_method",
+                        { min_withdraw: Number(minWithdraw || 0) }, "Налаштування автооплат збережено");
+                      if (r) setAutoOpen(false);
+                    }}
+                    disabled={busy}
+                  >
+                    {busy && <Loader2 className="h-4 w-4 animate-spin" />} Зберегти
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         </CardContent>
       </Card>
       )}
+
 
 
 

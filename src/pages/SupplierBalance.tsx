@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft, Wallet, Loader2, Store, TrendingUp, Clock, Package,
-  Banknote, BarChart3, Layers,
+  Banknote, BarChart3, Layers, Eye,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SupplierBalanceCard } from "@/components/supplier/SupplierBalanceCard";
+import { ShopPaymentsView } from "@/components/supplier/ShopPaymentsView";
 import { supabase } from "@/integrations/supabase/client";
 import { useTelegramAuthContext } from "@/components/TelegramAuthProvider";
 import { toast } from "sonner";
@@ -54,7 +55,7 @@ const fmt = (n: number) => Number(n || 0).toLocaleString("uk-UA");
 export default function SupplierBalance() {
   const navigate = useNavigate();
   const { supplierId: paramSupplierId } = useParams<{ supplierId?: string }>();
-  const { sessionToken } = useTelegramAuthContext();
+  const { sessionToken, devRoleOverride } = useTelegramAuthContext();
 
   const [loadingShops, setLoadingShops] = useState(true);
   const [shops, setShops] = useState<ShopRow[]>([]);
@@ -70,7 +71,7 @@ export default function SupplierBalance() {
     setLoadingShops(true);
     try {
       const { data, error } = await supabase.functions.invoke("bank-gateway", {
-        body: { action: "list_my_shops", session_token: sessionToken },
+        body: { action: "list_my_shops", session_token: sessionToken, preview_role: devRoleOverride || undefined },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -80,13 +81,13 @@ export default function SupplierBalance() {
     } finally {
       setLoadingShops(false);
     }
-  }, [sessionToken]);
+  }, [sessionToken, devRoleOverride]);
 
   const loadStats = useCallback(async () => {
     if (!sessionToken) return;
     setLoadingStats(true);
     try {
-      const body: Record<string, any> = { action: "get_stats", session_token: sessionToken };
+      const body: Record<string, any> = { action: "get_stats", session_token: sessionToken, preview_role: devRoleOverride || undefined };
       if (selected !== "all") body.supplier_id = selected;
       const { data, error } = await supabase.functions.invoke("bank-gateway", { body });
       if (error) throw error;
@@ -98,7 +99,7 @@ export default function SupplierBalance() {
     } finally {
       setLoadingStats(false);
     }
-  }, [sessionToken, selected]);
+  }, [sessionToken, selected, devRoleOverride]);
 
   useEffect(() => { loadShops(); }, [loadShops]);
   useEffect(() => { loadStats(); }, [loadStats]);
@@ -107,6 +108,11 @@ export default function SupplierBalance() {
   const consolidatedPaid = shops.reduce((s, r) => s + Number(r.lifetime_paid || 0), 0);
   const points = series[period] || [];
   const maxVal = Math.max(1, ...points.map((p) => p.turnover));
+  // Manager view: no access to supplier funds, only order payment statuses.
+  const viewerIsManager = devRoleOverride === "shop_manager"
+    || (shops.length > 0 && shops.every((s) => s.role === "manager"));
+  const selectedShop = shops.find((s) => s.supplier_id === selected);
+  const selectedIsManager = viewerIsManager || selectedShop?.role === "manager";
 
   return (
     <div className="min-h-screen bg-background">
@@ -127,24 +133,38 @@ export default function SupplierBalance() {
       </div>
 
       <div className="p-4 space-y-4 pb-28">
-        {/* Consolidated balance */}
-        <Card className="overflow-hidden border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-2 mb-3">
+        {/* Consolidated balance — hidden for managers (no fund access) */}
+        {viewerIsManager ? (
+          <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5">
+            <CardContent className="p-4 flex items-center gap-3">
               <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Wallet className="h-5 w-5 text-primary" />
+                <Eye className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Загальний баланс (усі магазини)</p>
-                <p className="text-2xl font-bold">{fmt(consolidatedAvailable)} ₴</p>
+                <p className="text-sm font-semibold text-foreground">Перегляд оплат (менеджер)</p>
+                <p className="text-xs text-muted-foreground">Ви бачите статуси оплат замовлень без доступу до коштів постачальника</p>
               </div>
-            </div>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Banknote className="h-3.5 w-3.5" />
-              Всього виплачено: <span className="font-semibold text-foreground">{fmt(consolidatedPaid)} ₴</span>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="overflow-hidden border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Wallet className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Загальний баланс (усі магазини)</p>
+                  <p className="text-2xl font-bold">{fmt(consolidatedAvailable)} ₴</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Banknote className="h-3.5 w-3.5" />
+                Всього виплачено: <span className="font-semibold text-foreground">{fmt(consolidatedPaid)} ₴</span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Shop selector */}
         {loadingShops ? (
@@ -175,17 +195,19 @@ export default function SupplierBalance() {
                     <AvatarFallback className="text-[9px] bg-primary/10 text-primary">{s.shop_name.charAt(0)}</AvatarFallback>
                   </Avatar>
                   <span className="max-w-[120px] truncate">{s.shop_name}</span>
-                  <span className={cn("text-[11px]", selected === s.supplier_id ? "opacity-90" : "text-muted-foreground")}>
-                    {fmt(s.available)}₴
-                  </span>
+                  {!viewerIsManager && (
+                    <span className={cn("text-[11px]", selected === s.supplier_id ? "opacity-90" : "text-muted-foreground")}>
+                      {fmt(s.available)}₴
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
           </ScrollArea>
         )}
 
-        {/* Stat cards */}
-        {loadingStats || !totals ? (
+        {/* Stat cards — hidden for managers (financial data) */}
+        {viewerIsManager ? null : loadingStats || !totals ? (
           <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
         ) : (
           <>
@@ -266,28 +288,28 @@ export default function SupplierBalance() {
           </>
         )}
 
-        {/* Per-shop balance management (withdraw / card) — only when a shop is selected */}
+        {/* Per-shop panel — only when a shop is selected */}
         {selected !== "all" && (
           <div className="space-y-2">
             <div className="flex items-center gap-2 mt-2">
               <Store className="h-4 w-4 text-primary" />
-              <span className="font-semibold text-sm">Керування рахунком магазину</span>
+              <span className="font-semibold text-sm">
+                {selectedIsManager ? "Оплати магазину" : "Керування рахунком магазину"}
+              </span>
             </div>
-            {shops.find((s) => s.supplier_id === selected)?.role === "manager" && (
-              <div className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">
-                Режим перегляду менеджера — ви бачите чи надійшли кошти, але виплатами та карткою керує власник.
-              </div>
+            {selectedIsManager ? (
+              <ShopPaymentsView supplierId={selected} previewRole={devRoleOverride} />
+            ) : (
+              <SupplierBalanceCard supplierId={selected} previewRole={devRoleOverride} />
             )}
-            <SupplierBalanceCard
-              supplierId={selected}
-              readOnly={shops.find((s) => s.supplier_id === selected)?.role === "manager"}
-            />
           </div>
         )}
 
         {selected === "all" && shops.length > 0 && (
           <p className="text-center text-xs text-muted-foreground pt-2">
-            Оберіть магазин вище, щоб вивести кошти або прив'язати картку
+            {viewerIsManager
+              ? "Оберіть магазин вище, щоб побачити статуси оплат замовлень"
+              : "Оберіть магазин вище, щоб вивести кошти або прив'язати картку"}
           </p>
         )}
 
