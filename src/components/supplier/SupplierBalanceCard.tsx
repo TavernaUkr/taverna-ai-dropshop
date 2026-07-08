@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   Wallet, Loader2, ArrowDownToLine, CreditCard, RefreshCw,
-  TrendingUp, TrendingDown, Banknote, ShieldCheck,
+  TrendingUp, TrendingDown, Banknote, ShieldCheck, Zap,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
