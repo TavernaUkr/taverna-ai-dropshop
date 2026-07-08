@@ -584,7 +584,42 @@ serve(async (req) => {
       return json({ rows, providers: { monobank: providerMode("monobank"), liqpay: providerMode("liqpay") } });
     }
 
-    // ---------------- get_stats (earnings + products sold, with period breakdown) ----------------
+    // ---------------- list_shop_payments (manager read-only: order payment statuses, no funds) ----------------
+    if (action === "list_shop_payments") {
+      const { supplier_id } = body;
+      if (!supplier_id) return json({ error: "supplier_id required" }, 400);
+      const access = await getShopAccess(supabase, profileId, supplier_id, telegramId, isStaff, previewRole);
+      if (!access) return json({ error: "Forbidden" }, 403);
+
+      const { data: splits } = await supabase.from("order_splits")
+        .select("id, order_id, product_total, payout_stage, split_status, payment_method, payout_type, created_at, paid_at")
+        .eq("supplier_id", supplier_id).order("created_at", { ascending: false }).limit(100);
+      const orderIds = [...new Set((splits || []).map((s: any) => s.order_id).filter(Boolean))];
+      const orderMap: Record<string, any> = {};
+      if (orderIds.length) {
+        const { data: ords } = await supabase.from("orders")
+          .select("id, order_number, payment_status, total").in("id", orderIds);
+        (ords || []).forEach((o: any) => { orderMap[o.id] = o; });
+      }
+      const payments = (splits || []).map((s: any) => {
+        const isCod = s.payment_method === "cash_on_delivery" || s.payout_type === "partial_markup";
+        // Payment status the manager sees: created / partial / paid
+        let status: "created" | "partial" | "paid" = "created";
+        if (s.payout_stage === "paid" || orderMap[s.order_id]?.payment_status === "paid") status = "paid";
+        else if (isCod) status = "partial";
+        return {
+          id: s.id,
+          order_number: orderMap[s.order_id]?.order_number || (s.order_id ? String(s.order_id).slice(0, 8) : "—"),
+          amount: Number(s.product_total || 0),
+          payment_method: s.payment_method,
+          status,
+          created_at: s.created_at,
+          paid_at: s.paid_at,
+        };
+      });
+      return json({ payments });
+    }
+
     if (action === "get_stats") {
       if (!profileId) return json({ error: "Forbidden" }, 403);
       let supplierIds: string[] = [];
