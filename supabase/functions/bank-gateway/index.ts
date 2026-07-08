@@ -306,7 +306,7 @@ serve(async (req) => {
     if (action === "get_balance") {
       const { supplier_id } = body;
       if (!supplier_id) return json({ error: "supplier_id required" }, 400);
-      const access = await getShopAccess(supabase, profileId, supplier_id, telegramId, isStaff);
+      const access = await getShopAccess(supabase, profileId, supplier_id, telegramId, isStaff, previewRole);
       if (!access) return json({ error: "Forbidden" }, 403);
 
       let { data: bal } = await supabase.from("shop_balances").select("*").eq("supplier_id", supplier_id).maybeSingle();
@@ -369,7 +369,7 @@ serve(async (req) => {
       const { supplier_id, auto_withdraw, auto_charge, min_withdraw, iban, holder } = body;
       if (!supplier_id) return json({ error: "supplier_id required" }, 400);
       {
-        const access = await getShopAccess(supabase, profileId, supplier_id, telegramId, isStaff);
+        const access = await getShopAccess(supabase, profileId, supplier_id, telegramId, isStaff, previewRole);
         if (access !== "owner" && access !== "staff")
           return json({ error: "Forbidden: read-only (керує власник магазину)" }, 403);
       }
@@ -397,7 +397,7 @@ serve(async (req) => {
       const { supplier_id, card_number, holder, provider = "liqpay" } = body;
       if (!supplier_id || !card_number) return json({ error: "supplier_id and card_number required" }, 400);
       {
-        const access = await getShopAccess(supabase, profileId, supplier_id, telegramId, isStaff);
+        const access = await getShopAccess(supabase, profileId, supplier_id, telegramId, isStaff, previewRole);
         if (access !== "owner" && access !== "staff")
           return json({ error: "Forbidden: read-only (керує власник магазину)" }, 403);
       }
@@ -458,7 +458,7 @@ serve(async (req) => {
       if (!supplier_id) return json({ error: "supplier_id required" }, 400);
       if (action === "admin_payout" && !isAdmin && !isInternal) return json({ error: "Forbidden: admin required" }, 403);
       if (action === "request_withdrawal") {
-        const access = await getShopAccess(supabase, profileId, supplier_id, telegramId, isStaff);
+        const access = await getShopAccess(supabase, profileId, supplier_id, telegramId, isStaff, previewRole);
         if (access !== "owner" && access !== "staff")
           return json({ error: "Forbidden: read-only (керує власник магазину)" }, 403);
       }
