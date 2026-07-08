@@ -45,6 +45,8 @@ export function SupplierBalanceCard({ supplierId, readOnly: readOnlyProp, previe
   const [canManageServer, setCanManageServer] = useState(true);
   const [busy, setBusy] = useState(false);
   const [cardOpen, setCardOpen] = useState(false);
+  const [autoOpen, setAutoOpen] = useState(false);
+  const [minWithdraw, setMinWithdraw] = useState("");
   const [cardNumber, setCardNumber] = useState("");
   const [cardHolder, setCardHolder] = useState("");
 
