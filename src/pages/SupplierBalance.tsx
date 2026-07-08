@@ -206,8 +206,8 @@ export default function SupplierBalance() {
           </ScrollArea>
         )}
 
-        {/* Stat cards */}
-        {loadingStats || !totals ? (
+        {/* Stat cards — hidden for managers (financial data) */}
+        {viewerIsManager ? null : loadingStats || !totals ? (
           <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
         ) : (
           <>
