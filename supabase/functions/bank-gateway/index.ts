@@ -546,7 +546,7 @@ serve(async (req) => {
       if (!profileId) return json({ error: "Forbidden" }, 403);
       let ids = await getCallerShopIds(supabase, profileId, telegramId);
       // staff with no owned shops can still oversee everything
-      if (ids.length === 0 && isStaff) {
+      if (ids.length === 0 && seesAll) {
         const { data } = await supabase.from("suppliers").select("id").eq("is_active", true);
         ids = (data || []).map((s: any) => s.id);
       }
@@ -567,7 +567,7 @@ serve(async (req) => {
       const methodMap: Record<string, any> = {};
       (methods || []).forEach((m: any) => { methodMap[m.supplier_id] = m; });
       const rows = (suppliers || []).map((s: any) => {
-        const role = isStaff ? "staff" : ownedSet.has(s.id) ? "owner" : "manager";
+        const role = previewRole === "shop_manager" ? "manager" : previewRole === "supplier" ? "owner" : previewRole === "moderator" ? "staff" : isStaff ? "staff" : ownedSet.has(s.id) ? "owner" : "manager";
         return {
           supplier_id: s.id,
           shop_name: s.shop_name,
@@ -589,12 +589,12 @@ serve(async (req) => {
       if (!profileId) return json({ error: "Forbidden" }, 403);
       let supplierIds: string[] = [];
       if (body.supplier_id) {
-        if (!isStaff && !(await canManageSupplier(supabase, profileId, body.supplier_id, telegramId)))
+        if (!seesAll && !(await canManageSupplier(supabase, profileId, body.supplier_id, telegramId)))
           return json({ error: "Forbidden" }, 403);
         supplierIds = [body.supplier_id];
       } else {
         supplierIds = await getCallerShopIds(supabase, profileId, telegramId);
-        if (supplierIds.length === 0 && isStaff) {
+        if (supplierIds.length === 0 && seesAll) {
           const { data } = await supabase.from("suppliers").select("id").eq("is_active", true);
           supplierIds = (data || []).map((s: any) => s.id);
         }
