@@ -295,6 +295,12 @@ serve(async (req) => {
     const isAdmin = roles.includes("admin");
     const isModerator = roles.includes("moderator");
     const isStaff = isAdmin || isModerator;
+    // Dev role preview via "жук": only honored for real admins; downgrades access.
+    const previewRole = (isAdmin && typeof body.preview_role === "string"
+      && ["supplier", "shop_manager", "moderator"].includes(body.preview_role))
+      ? body.preview_role : null;
+    // Effective "can see everything" flag for list/stats when previewing supplier/manager/mod.
+    const seesAll = isStaff || !!previewRole;
 
     // ---------------- get_balance ----------------
     if (action === "get_balance") {
