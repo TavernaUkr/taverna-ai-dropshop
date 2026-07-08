@@ -195,9 +195,11 @@ export default function SupplierBalance() {
                     <AvatarFallback className="text-[9px] bg-primary/10 text-primary">{s.shop_name.charAt(0)}</AvatarFallback>
                   </Avatar>
                   <span className="max-w-[120px] truncate">{s.shop_name}</span>
-                  <span className={cn("text-[11px]", selected === s.supplier_id ? "opacity-90" : "text-muted-foreground")}>
-                    {fmt(s.available)}₴
-                  </span>
+                  {!viewerIsManager && (
+                    <span className={cn("text-[11px]", selected === s.supplier_id ? "opacity-90" : "text-muted-foreground")}>
+                      {fmt(s.available)}₴
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
