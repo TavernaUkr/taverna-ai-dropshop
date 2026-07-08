@@ -288,28 +288,28 @@ export default function SupplierBalance() {
           </>
         )}
 
-        {/* Per-shop balance management (withdraw / card) — only when a shop is selected */}
+        {/* Per-shop panel — only when a shop is selected */}
         {selected !== "all" && (
           <div className="space-y-2">
             <div className="flex items-center gap-2 mt-2">
               <Store className="h-4 w-4 text-primary" />
-              <span className="font-semibold text-sm">Керування рахунком магазину</span>
+              <span className="font-semibold text-sm">
+                {selectedIsManager ? "Оплати магазину" : "Керування рахунком магазину"}
+              </span>
             </div>
-            {shops.find((s) => s.supplier_id === selected)?.role === "manager" && (
-              <div className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">
-                Режим перегляду менеджера — ви бачите чи надійшли кошти, але виплатами та карткою керує власник.
-              </div>
+            {selectedIsManager ? (
+              <ShopPaymentsView supplierId={selected} previewRole={devRoleOverride} />
+            ) : (
+              <SupplierBalanceCard supplierId={selected} previewRole={devRoleOverride} />
             )}
-            <SupplierBalanceCard
-              supplierId={selected}
-              readOnly={shops.find((s) => s.supplier_id === selected)?.role === "manager"}
-            />
           </div>
         )}
 
         {selected === "all" && shops.length > 0 && (
           <p className="text-center text-xs text-muted-foreground pt-2">
-            Оберіть магазин вище, щоб вивести кошти або прив'язати картку
+            {viewerIsManager
+              ? "Оберіть магазин вище, щоб побачити статуси оплат замовлень"
+              : "Оберіть магазин вище, щоб вивести кошти або прив'язати картку"}
           </p>
         )}
 
