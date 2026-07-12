@@ -316,6 +316,7 @@ serve(async (req) => {
       if (!supplier_id) return json({ error: "supplier_id required" }, 400);
       const access = await getShopAccess(supabase, profileId, supplier_id, telegramId, isStaff, previewRole);
       if (!access) return json({ error: "Forbidden" }, 403);
+      if (access === "manager") return json({ error: "Forbidden: manager payment-status view only" }, 403);
 
       let { data: bal } = await supabase.from("shop_balances").select("*").eq("supplier_id", supplier_id).maybeSingle();
       if (!bal) {
@@ -367,6 +368,7 @@ serve(async (req) => {
       if (!supplier_id) return json({ error: "supplier_id required" }, 400);
       const access = await getShopAccess(supabase, profileId, supplier_id, telegramId, isStaff, previewRole);
       if (!access) return json({ error: "Forbidden" }, 403);
+      if (access === "manager") return json({ error: "Forbidden: manager payment-status view only" }, 403);
       const { data } = await supabase.from("balance_movements")
         .select("*").eq("supplier_id", supplier_id).order("created_at", { ascending: false }).limit(200);
       return json({ movements: data || [] });
@@ -559,8 +561,8 @@ serve(async (req) => {
     if (action === "list_my_shops") {
       if (!profileId) return json({ error: "Forbidden" }, 403);
       let ids = await getCallerShopIds(supabase, profileId, telegramId);
-      // staff with no owned shops can still oversee everything
-      if (ids.length === 0 && seesAll) {
+      // staff and admin role previews oversee all shops, so admin panel links always open any registered shop.
+      if (seesAll) {
         const { data } = await supabase.from("suppliers").select("id").eq("is_active", true);
         ids = (data || []).map((s: any) => s.id);
       }
@@ -617,14 +619,13 @@ serve(async (req) => {
       }
       const payments = (splits || []).map((s: any) => {
         const isCod = s.payment_method === "cash_on_delivery" || s.payout_type === "partial_markup";
-        // Payment status the manager sees: created / partial / paid
+        // Payment status the manager sees: created / partial / paid, without balance/settlement sums.
         let status: "created" | "partial" | "paid" = "created";
-        if (s.payout_stage === "paid" || orderMap[s.order_id]?.payment_status === "paid") status = "paid";
+        if (s.payout_stage === "paid") status = "paid";
         else if (isCod) status = "partial";
         return {
           id: s.id,
           order_number: orderMap[s.order_id]?.order_number || (s.order_id ? String(s.order_id).slice(0, 8) : "—"),
-          amount: Number(s.product_total || 0),
           payment_method: s.payment_method,
           status,
           created_at: s.created_at,
