@@ -637,20 +637,30 @@ serve(async (req) => {
 
     if (action === "get_stats") {
       if (!profileId) return json({ error: "Forbidden" }, 403);
+      const emptyTotals = { turnover: 0, earned: 0, processing: 0, productsSold: 0, productsAmount: 0, ordersCount: 0 };
+      if (previewRole === "shop_manager") {
+        return json({ totals: emptyTotals, series: buildStats([], []) });
+      }
       let supplierIds: string[] = [];
       if (body.supplier_id) {
+        const access = await getShopAccess(supabase, profileId, body.supplier_id, telegramId, isStaff, previewRole);
+        if (!access) return json({ error: "Forbidden" }, 403);
+        if (access === "manager") return json({ totals: emptyTotals, series: buildStats([], []) });
         if (!seesAll && !(await canManageSupplier(supabase, profileId, body.supplier_id, telegramId)))
           return json({ error: "Forbidden" }, 403);
         supplierIds = [body.supplier_id];
       } else {
-        supplierIds = await getCallerShopIds(supabase, profileId, telegramId);
+        supplierIds = [];
+        if (telegramId != null) {
+          const { data: owned } = await supabase.from("suppliers").select("id").eq("telegram_id", telegramId);
+          supplierIds = (owned || []).map((s: any) => s.id);
+        }
         if (supplierIds.length === 0 && seesAll) {
           const { data } = await supabase.from("suppliers").select("id").eq("is_active", true);
           supplierIds = (data || []).map((s: any) => s.id);
         }
       }
 
-      const emptyTotals = { turnover: 0, earned: 0, processing: 0, productsSold: 0, productsAmount: 0, ordersCount: 0 };
       if (supplierIds.length === 0) {
         return json({ totals: emptyTotals, series: buildStats([], []) });
       }
