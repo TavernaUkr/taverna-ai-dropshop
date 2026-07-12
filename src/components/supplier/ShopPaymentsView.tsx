@@ -17,7 +17,7 @@ interface Props {
 interface Payment {
   id: string;
   order_number: string;
-  amount: number;
+  amount?: number | null;
   payment_method: string | null;
   status: "created" | "partial" | "paid";
   created_at: string;
@@ -110,7 +110,6 @@ export function ShopPaymentsView({ supplierId, previewRole }: Props) {
                         </p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-sm font-semibold">{fmt(p.amount)} ₴</span>
                         <Badge variant="outline" className={cn("gap-1 text-[10px]", M.cls)}>
                           <M.icon className="h-3 w-3" /> {M.label}
                         </Badge>

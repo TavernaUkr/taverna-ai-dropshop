@@ -94,7 +94,7 @@ export function ShopBalancesPanel({ mode }: Props) {
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      toast.success(`Згенеровано ${data?.created?.length || 0} тест-замовлень, нараховано ${data?.accrual?.accrued || 0}`);
+      toast.success(`Оновлено тестові оплати: ${data?.created || 0} замовлень, ${data?.shops || 0} магазинів`);
       setMovements({});
       await load();
     } catch (e: any) {

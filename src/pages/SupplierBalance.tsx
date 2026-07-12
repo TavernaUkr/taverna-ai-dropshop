@@ -104,6 +104,18 @@ export default function SupplierBalance() {
   useEffect(() => { loadShops(); }, [loadShops]);
   useEffect(() => { loadStats(); }, [loadStats]);
 
+  useEffect(() => {
+    if (paramSupplierId && selected !== paramSupplierId) {
+      setSelected(paramSupplierId);
+    }
+  }, [paramSupplierId, selected]);
+
+  useEffect(() => {
+    if (!loadingShops && selected !== "all" && shops.length > 0 && !shops.some((s) => s.supplier_id === selected)) {
+      setSelected(paramSupplierId || "all");
+    }
+  }, [loadingShops, shops, selected, paramSupplierId]);
+
   const consolidatedAvailable = shops.reduce((s, r) => s + Number(r.available || 0), 0);
   const consolidatedPaid = shops.reduce((s, r) => s + Number(r.lifetime_paid || 0), 0);
   const points = series[period] || [];
