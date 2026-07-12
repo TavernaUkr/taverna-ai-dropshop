@@ -195,7 +195,7 @@ export const DevRoleSwitcher = ({ currentRole, onRoleChange, profileId }: DevRol
 
         <div className="p-2 bg-destructive/10 rounded-lg border border-destructive/20">
           <p className="text-[10px] text-destructive leading-tight">
-            ⚠️ Тільки для тестування UI. Реальні ролі контролюються через API бекенду.
+            ⚠️ Для адміна це змінює і UI, і тестовий доступ до рахунків/оплат.
           </p>
         </div>
       </div>

@@ -74,6 +74,7 @@ async function getShopAccess(
 ): Promise<"staff" | "owner" | "manager" | null> {
   // Dev preview downgrade (only ever set for real admins) — never elevates.
   if (previewRole) {
+      if (previewRole === "admin") return "staff";
     if (previewRole === "supplier") return "owner";
     if (previewRole === "shop_manager") return "manager";
     if (previewRole === "moderator") return "staff";
@@ -297,10 +298,17 @@ serve(async (req) => {
     const isStaff = isAdmin || isModerator;
     // Dev role preview via "жук": only honored for real admins; downgrades access.
     const previewRole = (isAdmin && typeof body.preview_role === "string"
-      && ["supplier", "shop_manager", "moderator"].includes(body.preview_role))
+      && ["guest", "customer", "supplier", "shop_manager", "moderator", "admin"].includes(body.preview_role))
       ? body.preview_role : null;
+    if (previewRole === "guest" || previewRole === "customer") {
+      if (["get_balance", "list_movements", "set_payout_method", "bind_card", "request_withdrawal", "list_my_shops", "list_shop_payments", "get_stats"].includes(action)) {
+        if (action === "list_my_shops") return json({ rows: [], providers: { monobank: providerMode("monobank"), liqpay: providerMode("liqpay") } });
+        if (action === "get_stats") return json({ totals: { turnover: 0, earned: 0, processing: 0, productsSold: 0, productsAmount: 0, ordersCount: 0 }, series: buildStats([], []) });
+        return json({ error: "Forbidden" }, 403);
+      }
+    }
     // Effective "can see everything" flag for list/stats when previewing supplier/manager/mod.
-    const seesAll = isStaff || !!previewRole;
+    const seesAll = isStaff || !!(previewRole && previewRole !== "guest" && previewRole !== "customer");
 
     // ---------------- get_balance ----------------
     if (action === "get_balance") {
@@ -308,6 +316,7 @@ serve(async (req) => {
       if (!supplier_id) return json({ error: "supplier_id required" }, 400);
       const access = await getShopAccess(supabase, profileId, supplier_id, telegramId, isStaff, previewRole);
       if (!access) return json({ error: "Forbidden" }, 403);
+      if (access === "manager") return json({ error: "Forbidden: manager payment-status view only" }, 403);
 
       let { data: bal } = await supabase.from("shop_balances").select("*").eq("supplier_id", supplier_id).maybeSingle();
       if (!bal) {
@@ -318,7 +327,7 @@ serve(async (req) => {
         .select("id, provider, type, masked_pan, holder, iban, is_default, auto_withdraw, auto_charge, min_withdraw")
         .eq("supplier_id", supplier_id).eq("is_default", true).maybeSingle();
       // managers get read-only view (owner controls payouts/cards)
-      const canManage = access === "owner" || access === "staff";
+      const canManage = access === "owner" || (access === "staff" && isAdmin && previewRole !== "moderator");
       return json({ balance: bal, method: method || null, access, canManage, providers: { monobank: providerMode("monobank"), liqpay: providerMode("liqpay") } });
     }
 
@@ -357,8 +366,9 @@ serve(async (req) => {
     if (action === "list_movements") {
       const { supplier_id } = body;
       if (!supplier_id) return json({ error: "supplier_id required" }, 400);
-      if (!isStaff && !(profileId && await canManageSupplier(supabase, profileId, supplier_id, telegramId)))
-        return json({ error: "Forbidden" }, 403);
+      const access = await getShopAccess(supabase, profileId, supplier_id, telegramId, isStaff, previewRole);
+      if (!access) return json({ error: "Forbidden" }, 403);
+      if (access === "manager") return json({ error: "Forbidden: manager payment-status view only" }, 403);
       const { data } = await supabase.from("balance_movements")
         .select("*").eq("supplier_id", supplier_id).order("created_at", { ascending: false }).limit(200);
       return json({ movements: data || [] });
@@ -370,8 +380,10 @@ serve(async (req) => {
       if (!supplier_id) return json({ error: "supplier_id required" }, 400);
       {
         const access = await getShopAccess(supabase, profileId, supplier_id, telegramId, isStaff, previewRole);
-        if (access !== "owner" && access !== "staff")
+        if (access !== "owner" && !(access === "staff" && isAdmin))
           return json({ error: "Forbidden: read-only (керує власник магазину)" }, 403);
+        if (previewRole === "moderator")
+          return json({ error: "Forbidden: moderator view-only" }, 403);
       }
 
       const { data: existing } = await supabase.from("payout_methods")
@@ -398,8 +410,10 @@ serve(async (req) => {
       if (!supplier_id || !card_number) return json({ error: "supplier_id and card_number required" }, 400);
       {
         const access = await getShopAccess(supabase, profileId, supplier_id, telegramId, isStaff, previewRole);
-        if (access !== "owner" && access !== "staff")
+        if (access !== "owner" && !(access === "staff" && isAdmin))
           return json({ error: "Forbidden: read-only (керує власник магазину)" }, 403);
+        if (previewRole === "moderator")
+          return json({ error: "Forbidden: moderator view-only" }, 403);
       }
 
       const digits = String(card_number).replace(/\D/g, "");
@@ -459,8 +473,10 @@ serve(async (req) => {
       if (action === "admin_payout" && !isAdmin && !isInternal) return json({ error: "Forbidden: admin required" }, 403);
       if (action === "request_withdrawal") {
         const access = await getShopAccess(supabase, profileId, supplier_id, telegramId, isStaff, previewRole);
-        if (access !== "owner" && access !== "staff")
+        if (access !== "owner" && !(access === "staff" && isAdmin))
           return json({ error: "Forbidden: read-only (керує власник магазину)" }, 403);
+        if (previewRole === "moderator")
+          return json({ error: "Forbidden: moderator view-only" }, 403);
       }
 
       const { data: bal } = await supabase.from("shop_balances").select("*").eq("supplier_id", supplier_id).maybeSingle();
@@ -545,8 +561,8 @@ serve(async (req) => {
     if (action === "list_my_shops") {
       if (!profileId) return json({ error: "Forbidden" }, 403);
       let ids = await getCallerShopIds(supabase, profileId, telegramId);
-      // staff with no owned shops can still oversee everything
-      if (ids.length === 0 && seesAll) {
+      // staff and admin role previews oversee all shops, so admin panel links always open any registered shop.
+      if (seesAll) {
         const { data } = await supabase.from("suppliers").select("id").eq("is_active", true);
         ids = (data || []).map((s: any) => s.id);
       }
@@ -567,14 +583,14 @@ serve(async (req) => {
       const methodMap: Record<string, any> = {};
       (methods || []).forEach((m: any) => { methodMap[m.supplier_id] = m; });
       const rows = (suppliers || []).map((s: any) => {
-        const role = previewRole === "shop_manager" ? "manager" : previewRole === "supplier" ? "owner" : previewRole === "moderator" ? "staff" : isStaff ? "staff" : ownedSet.has(s.id) ? "owner" : "manager";
+        const role = previewRole === "shop_manager" ? "manager" : previewRole === "supplier" ? "owner" : (previewRole === "moderator" || previewRole === "admin") ? "staff" : isStaff ? "staff" : ownedSet.has(s.id) ? "owner" : "manager";
         return {
           supplier_id: s.id,
           shop_name: s.shop_name,
           logo_url: s.logo_url,
           is_active: s.is_active,
           role,
-          canManage: role === "owner" || role === "staff",
+          canManage: role === "owner" || (role === "staff" && isAdmin && previewRole !== "moderator"),
           available: Number(balMap[s.id]?.available || 0),
           pending: Number(balMap[s.id]?.pending || 0),
           lifetime_paid: Number(balMap[s.id]?.lifetime_paid || 0),
@@ -603,14 +619,13 @@ serve(async (req) => {
       }
       const payments = (splits || []).map((s: any) => {
         const isCod = s.payment_method === "cash_on_delivery" || s.payout_type === "partial_markup";
-        // Payment status the manager sees: created / partial / paid
+        // Payment status the manager sees: created / partial / paid, without balance/settlement sums.
         let status: "created" | "partial" | "paid" = "created";
-        if (s.payout_stage === "paid" || orderMap[s.order_id]?.payment_status === "paid") status = "paid";
+        if (s.payout_stage === "paid") status = "paid";
         else if (isCod) status = "partial";
         return {
           id: s.id,
           order_number: orderMap[s.order_id]?.order_number || (s.order_id ? String(s.order_id).slice(0, 8) : "—"),
-          amount: Number(s.product_total || 0),
           payment_method: s.payment_method,
           status,
           created_at: s.created_at,
@@ -622,20 +637,30 @@ serve(async (req) => {
 
     if (action === "get_stats") {
       if (!profileId) return json({ error: "Forbidden" }, 403);
+      const emptyTotals = { turnover: 0, earned: 0, processing: 0, productsSold: 0, productsAmount: 0, ordersCount: 0 };
+      if (previewRole === "shop_manager") {
+        return json({ totals: emptyTotals, series: buildStats([], []) });
+      }
       let supplierIds: string[] = [];
       if (body.supplier_id) {
+        const access = await getShopAccess(supabase, profileId, body.supplier_id, telegramId, isStaff, previewRole);
+        if (!access) return json({ error: "Forbidden" }, 403);
+        if (access === "manager") return json({ totals: emptyTotals, series: buildStats([], []) });
         if (!seesAll && !(await canManageSupplier(supabase, profileId, body.supplier_id, telegramId)))
           return json({ error: "Forbidden" }, 403);
         supplierIds = [body.supplier_id];
       } else {
-        supplierIds = await getCallerShopIds(supabase, profileId, telegramId);
+        supplierIds = [];
+        if (telegramId != null) {
+          const { data: owned } = await supabase.from("suppliers").select("id").eq("telegram_id", telegramId);
+          supplierIds = (owned || []).map((s: any) => s.id);
+        }
         if (supplierIds.length === 0 && seesAll) {
           const { data } = await supabase.from("suppliers").select("id").eq("is_active", true);
           supplierIds = (data || []).map((s: any) => s.id);
         }
       }
 
-      const emptyTotals = { turnover: 0, earned: 0, processing: 0, productsSold: 0, productsAmount: 0, ordersCount: 0 };
       if (supplierIds.length === 0) {
         return json({ totals: emptyTotals, series: buildStats([], []) });
       }

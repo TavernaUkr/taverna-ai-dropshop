@@ -15,6 +15,30 @@ async function hashToken(token: string): Promise<string> {
 const DAY = 24 * 3600 * 1000;
 const round = (n: number) => Math.round(n * 100) / 100;
 
+async function clearTestPayments(supabase: any) {
+  const { data: testOrders } = await supabase
+    .from("orders")
+    .select("id")
+    .like("order_number", "TEST-%");
+  const orderIds = (testOrders || []).map((o: any) => o.id);
+
+  let splitIds: string[] = [];
+  if (orderIds.length) {
+    const { data: testSplits } = await supabase
+      .from("order_splits")
+      .select("id")
+      .in("order_id", orderIds);
+    splitIds = (testSplits || []).map((s: any) => s.id);
+  }
+
+  if (splitIds.length) {
+    await supabase.from("balance_movements").delete().in("order_split_id", splitIds);
+    await supabase.from("order_splits").delete().in("id", splitIds);
+  }
+  await supabase.from("balance_movements").delete().like("description", "%[TEST]%");
+  if (orderIds.length) await supabase.from("orders").delete().in("id", orderIds);
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   const json = (b: any, status = 200) =>
@@ -37,13 +61,13 @@ serve(async (req) => {
     if (!roles.includes("admin")) return json({ error: "Forbidden: admin required" }, 403);
 
     if (mode === "clear") {
-      await supabase.from("balance_movements").delete().like("description", "%[TEST]%");
-      await supabase.from("order_splits").delete().eq("split_status", "test");
-      await supabase.from("orders").delete().like("order_number", "TEST-%");
+      await clearTestPayments(supabase);
       return json({ success: true, cleared: true });
     }
 
-    const { data: suppliers } = await supabase.from("suppliers").select("id, shop_name").eq("is_active", true).limit(6);
+    await clearTestPayments(supabase);
+
+    const { data: suppliers } = await supabase.from("suppliers").select("id, shop_name").eq("is_active", true).order("created_at", { ascending: true });
     if (!suppliers?.length) return json({ error: "Немає магазинів для генерації" }, 400);
 
     // spread orders across periods: today, this week, this month, months ago, last year
@@ -54,10 +78,12 @@ serve(async (req) => {
 
     // running balance per supplier (so balance_after is coherent)
     const running: Record<string, number> = {};
+    const pending: Record<string, number> = {};
 
     for (let i = 0; i < suppliers.length; i++) {
       const sup = suppliers[i];
       running[sup.id] = 0;
+      pending[sup.id] = 0;
       const isCod = i % 2 === 1;
 
       for (let j = 0; j < offsetsDays.length; j++) {
@@ -93,6 +119,10 @@ serve(async (req) => {
           paid_at: stage === "paid" ? ts : null,
         }).select().single();
 
+        if (stage === "processing") {
+          pending[sup.id] += supplierAmount;
+        }
+
         // For paid stage, record ledger movements so history & balances populate
         if (stage === "paid" && split) {
           running[sup.id] += supplierAmount;
@@ -113,6 +143,19 @@ serve(async (req) => {
             }).select().single();
             if (mv2) movementsInserted.push(mv2.id);
           }
+        }
+
+        // One older paid order gets a test return adjustment to show reliability/edge cases.
+        if (stage === "paid" && split && j === offsetsDays.length - 2) {
+          const adjust = round(supplierAmount * 0.08);
+          running[sup.id] -= adjust;
+          const { data: mvr } = await supabase.from("balance_movements").insert({
+            supplier_id: sup.id, order_split_id: split.id, type: "refund_adjust",
+            amount: -adjust, balance_after: round(running[sup.id]), status: "settled",
+            provider: "internal", description: `[TEST] Коригування повернення ${order.order_number}`,
+            created_at: new Date(now - daysAgo * DAY + 7200000).toISOString(),
+          }).select().single();
+          if (mvr) movementsInserted.push(mvr.id);
         }
 
         created.push({ shop: sup.shop_name, order: order.order_number, stage, supplierAmount, commission });
@@ -138,7 +181,7 @@ serve(async (req) => {
       const balPayload = {
         supplier_id: sup.id,
         available: round(running[sup.id]),
-        pending: round(80 + i * 120), // "in processing" indicator
+        pending: round(pending[sup.id]),
         lifetime_paid: lifetimePaid,
         currency: "UAH",
       };

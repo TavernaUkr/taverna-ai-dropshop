@@ -17,7 +17,6 @@ interface Props {
 interface Payment {
   id: string;
   order_number: string;
-  amount: number;
   payment_method: string | null;
   status: "created" | "partial" | "paid";
   created_at: string;
@@ -29,8 +28,6 @@ const STATUS_META: Record<Payment["status"], { label: string; icon: any; cls: st
   partial: { label: "Часткова оплата", icon: Hourglass, cls: "bg-blue-500/10 text-blue-600 border-blue-500/20" },
   paid: { label: "Оплачено", icon: CheckCircle2, cls: "bg-green-500/10 text-green-600 border-green-500/20" },
 };
-
-const fmt = (n: number) => Number(n || 0).toLocaleString("uk-UA");
 
 export function ShopPaymentsView({ supplierId, previewRole }: Props) {
   const { sessionToken } = useTelegramAuthContext();
@@ -110,7 +107,6 @@ export function ShopPaymentsView({ supplierId, previewRole }: Props) {
                         </p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-sm font-semibold">{fmt(p.amount)} ₴</span>
                         <Badge variant="outline" className={cn("gap-1 text-[10px]", M.cls)}>
                           <M.icon className="h-3 w-3" /> {M.label}
                         </Badge>

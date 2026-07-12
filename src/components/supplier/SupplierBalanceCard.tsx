@@ -47,6 +47,8 @@ export function SupplierBalanceCard({ supplierId, readOnly: readOnlyProp, previe
   const [cardOpen, setCardOpen] = useState(false);
   const [autoOpen, setAutoOpen] = useState(false);
   const [minWithdraw, setMinWithdraw] = useState("");
+  const [iban, setIban] = useState("");
+  const [holderName, setHolderName] = useState("");
   const [cardNumber, setCardNumber] = useState("");
   const [cardHolder, setCardHolder] = useState("");
 
@@ -62,6 +64,8 @@ export function SupplierBalanceCard({ supplierId, readOnly: readOnlyProp, previe
       setBalance(bal.data?.balance || null);
       setMethod(bal.data?.method || null);
       setMinWithdraw(bal.data?.method?.min_withdraw != null ? String(bal.data.method.min_withdraw) : "");
+      setIban(bal.data?.method?.iban || "");
+      setHolderName(bal.data?.method?.holder || "");
       setCanManageServer(bal.data?.canManage !== false);
       setProviders(bal.data?.providers || { monobank: "sandbox", liqpay: "sandbox" });
       setMovements(mv.data?.movements || []);
@@ -214,6 +218,11 @@ export function SupplierBalanceCard({ supplierId, readOnly: readOnlyProp, previe
                   <DialogTitle className="flex items-center gap-2"><Zap className="h-4 w-4 text-primary" /> Автооплати</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4 py-1">
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="outline">Mono: {providers.monobank}</Badge>
+                    <Badge variant="outline">LiqPay: {providers.liqpay}</Badge>
+                    {method?.masked_pan && <Badge variant="secondary" className="font-mono">{method.masked_pan}</Badge>}
+                  </div>
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <Label className="text-sm">Авто-вивід коштів</Label>
@@ -236,6 +245,14 @@ export function SupplierBalanceCard({ supplierId, readOnly: readOnlyProp, previe
                       onChange={(e) => setMinWithdraw(e.target.value.replace(/\D/g, ""))} />
                     <p className="text-xs text-muted-foreground">Авто-вивід спрацьовує лише коли баланс ≥ цієї суми</p>
                   </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-sm">IBAN для виводу</Label>
+                    <Input placeholder="UA..." value={iban} onChange={(e) => setIban(e.target.value.toUpperCase())} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-sm">Отримувач</Label>
+                    <Input placeholder="ФОП / власник картки" value={holderName} onChange={(e) => setHolderName(e.target.value)} />
+                  </div>
                   {!method?.masked_pan && (
                     <div className="flex items-center gap-2 text-xs text-amber-600 bg-amber-500/10 rounded-lg p-3">
                       <ShieldCheck className="h-4 w-4 shrink-0" />
@@ -247,7 +264,7 @@ export function SupplierBalanceCard({ supplierId, readOnly: readOnlyProp, previe
                   <Button
                     onClick={async () => {
                       const r = await callAction("set_payout_method",
-                        { min_withdraw: Number(minWithdraw || 0) }, "Налаштування автооплат збережено");
+                        { min_withdraw: Number(minWithdraw || 0), iban: iban.trim() || undefined, holder: holderName.trim() || undefined }, "Налаштування автооплат збережено");
                       if (r) setAutoOpen(false);
                     }}
                     disabled={busy}
