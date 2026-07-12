@@ -297,10 +297,17 @@ serve(async (req) => {
     const isStaff = isAdmin || isModerator;
     // Dev role preview via "жук": only honored for real admins; downgrades access.
     const previewRole = (isAdmin && typeof body.preview_role === "string"
-      && ["supplier", "shop_manager", "moderator"].includes(body.preview_role))
+      && ["guest", "customer", "supplier", "shop_manager", "moderator", "admin"].includes(body.preview_role))
       ? body.preview_role : null;
+    if (previewRole === "guest" || previewRole === "customer") {
+      if (["get_balance", "list_movements", "set_payout_method", "bind_card", "request_withdrawal", "list_my_shops", "list_shop_payments", "get_stats"].includes(action)) {
+        if (action === "list_my_shops") return json({ rows: [], providers: { monobank: providerMode("monobank"), liqpay: providerMode("liqpay") } });
+        if (action === "get_stats") return json({ totals: { turnover: 0, earned: 0, processing: 0, productsSold: 0, productsAmount: 0, ordersCount: 0 }, series: buildStats([], []) });
+        return json({ error: "Forbidden" }, 403);
+      }
+    }
     // Effective "can see everything" flag for list/stats when previewing supplier/manager/mod.
-    const seesAll = isStaff || !!previewRole;
+    const seesAll = isStaff || !!(previewRole && previewRole !== "guest" && previewRole !== "customer");
 
     // ---------------- get_balance ----------------
     if (action === "get_balance") {
@@ -318,7 +325,7 @@ serve(async (req) => {
         .select("id, provider, type, masked_pan, holder, iban, is_default, auto_withdraw, auto_charge, min_withdraw")
         .eq("supplier_id", supplier_id).eq("is_default", true).maybeSingle();
       // managers get read-only view (owner controls payouts/cards)
-      const canManage = access === "owner" || access === "staff";
+      const canManage = access === "owner" || (access === "staff" && previewRole !== "moderator");
       return json({ balance: bal, method: method || null, access, canManage, providers: { monobank: providerMode("monobank"), liqpay: providerMode("liqpay") } });
     }
 
@@ -357,8 +364,8 @@ serve(async (req) => {
     if (action === "list_movements") {
       const { supplier_id } = body;
       if (!supplier_id) return json({ error: "supplier_id required" }, 400);
-      if (!isStaff && !(profileId && await canManageSupplier(supabase, profileId, supplier_id, telegramId)))
-        return json({ error: "Forbidden" }, 403);
+      const access = await getShopAccess(supabase, profileId, supplier_id, telegramId, isStaff, previewRole);
+      if (!access) return json({ error: "Forbidden" }, 403);
       const { data } = await supabase.from("balance_movements")
         .select("*").eq("supplier_id", supplier_id).order("created_at", { ascending: false }).limit(200);
       return json({ movements: data || [] });
@@ -372,6 +379,8 @@ serve(async (req) => {
         const access = await getShopAccess(supabase, profileId, supplier_id, telegramId, isStaff, previewRole);
         if (access !== "owner" && access !== "staff")
           return json({ error: "Forbidden: read-only (керує власник магазину)" }, 403);
+        if (previewRole === "moderator")
+          return json({ error: "Forbidden: moderator view-only" }, 403);
       }
 
       const { data: existing } = await supabase.from("payout_methods")
@@ -400,6 +409,8 @@ serve(async (req) => {
         const access = await getShopAccess(supabase, profileId, supplier_id, telegramId, isStaff, previewRole);
         if (access !== "owner" && access !== "staff")
           return json({ error: "Forbidden: read-only (керує власник магазину)" }, 403);
+        if (previewRole === "moderator")
+          return json({ error: "Forbidden: moderator view-only" }, 403);
       }
 
       const digits = String(card_number).replace(/\D/g, "");
@@ -461,6 +472,8 @@ serve(async (req) => {
         const access = await getShopAccess(supabase, profileId, supplier_id, telegramId, isStaff, previewRole);
         if (access !== "owner" && access !== "staff")
           return json({ error: "Forbidden: read-only (керує власник магазину)" }, 403);
+        if (previewRole === "moderator")
+          return json({ error: "Forbidden: moderator view-only" }, 403);
       }
 
       const { data: bal } = await supabase.from("shop_balances").select("*").eq("supplier_id", supplier_id).maybeSingle();
@@ -574,7 +587,7 @@ serve(async (req) => {
           logo_url: s.logo_url,
           is_active: s.is_active,
           role,
-          canManage: role === "owner" || role === "staff",
+          canManage: role === "owner" || (role === "staff" && previewRole !== "moderator"),
           available: Number(balMap[s.id]?.available || 0),
           pending: Number(balMap[s.id]?.pending || 0),
           lifetime_paid: Number(balMap[s.id]?.lifetime_paid || 0),
