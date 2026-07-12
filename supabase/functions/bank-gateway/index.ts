@@ -327,7 +327,7 @@ serve(async (req) => {
         .select("id, provider, type, masked_pan, holder, iban, is_default, auto_withdraw, auto_charge, min_withdraw")
         .eq("supplier_id", supplier_id).eq("is_default", true).maybeSingle();
       // managers get read-only view (owner controls payouts/cards)
-      const canManage = access === "owner" || (access === "staff" && previewRole !== "moderator");
+      const canManage = access === "owner" || (access === "staff" && isAdmin && previewRole !== "moderator");
       return json({ balance: bal, method: method || null, access, canManage, providers: { monobank: providerMode("monobank"), liqpay: providerMode("liqpay") } });
     }
 
@@ -380,7 +380,7 @@ serve(async (req) => {
       if (!supplier_id) return json({ error: "supplier_id required" }, 400);
       {
         const access = await getShopAccess(supabase, profileId, supplier_id, telegramId, isStaff, previewRole);
-        if (access !== "owner" && access !== "staff")
+        if (access !== "owner" && !(access === "staff" && isAdmin))
           return json({ error: "Forbidden: read-only (керує власник магазину)" }, 403);
         if (previewRole === "moderator")
           return json({ error: "Forbidden: moderator view-only" }, 403);
@@ -410,7 +410,7 @@ serve(async (req) => {
       if (!supplier_id || !card_number) return json({ error: "supplier_id and card_number required" }, 400);
       {
         const access = await getShopAccess(supabase, profileId, supplier_id, telegramId, isStaff, previewRole);
-        if (access !== "owner" && access !== "staff")
+        if (access !== "owner" && !(access === "staff" && isAdmin))
           return json({ error: "Forbidden: read-only (керує власник магазину)" }, 403);
         if (previewRole === "moderator")
           return json({ error: "Forbidden: moderator view-only" }, 403);
@@ -473,7 +473,7 @@ serve(async (req) => {
       if (action === "admin_payout" && !isAdmin && !isInternal) return json({ error: "Forbidden: admin required" }, 403);
       if (action === "request_withdrawal") {
         const access = await getShopAccess(supabase, profileId, supplier_id, telegramId, isStaff, previewRole);
-        if (access !== "owner" && access !== "staff")
+        if (access !== "owner" && !(access === "staff" && isAdmin))
           return json({ error: "Forbidden: read-only (керує власник магазину)" }, 403);
         if (previewRole === "moderator")
           return json({ error: "Forbidden: moderator view-only" }, 403);
@@ -590,7 +590,7 @@ serve(async (req) => {
           logo_url: s.logo_url,
           is_active: s.is_active,
           role,
-          canManage: role === "owner" || (role === "staff" && previewRole !== "moderator"),
+          canManage: role === "owner" || (role === "staff" && isAdmin && previewRole !== "moderator"),
           available: Number(balMap[s.id]?.available || 0),
           pending: Number(balMap[s.id]?.pending || 0),
           lifetime_paid: Number(balMap[s.id]?.lifetime_paid || 0),
