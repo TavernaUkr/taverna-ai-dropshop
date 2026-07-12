@@ -74,6 +74,7 @@ async function getShopAccess(
 ): Promise<"staff" | "owner" | "manager" | null> {
   // Dev preview downgrade (only ever set for real admins) — never elevates.
   if (previewRole) {
+      if (previewRole === "admin") return "staff";
     if (previewRole === "supplier") return "owner";
     if (previewRole === "shop_manager") return "manager";
     if (previewRole === "moderator") return "staff";
@@ -580,7 +581,7 @@ serve(async (req) => {
       const methodMap: Record<string, any> = {};
       (methods || []).forEach((m: any) => { methodMap[m.supplier_id] = m; });
       const rows = (suppliers || []).map((s: any) => {
-        const role = previewRole === "shop_manager" ? "manager" : previewRole === "supplier" ? "owner" : previewRole === "moderator" ? "staff" : isStaff ? "staff" : ownedSet.has(s.id) ? "owner" : "manager";
+        const role = previewRole === "shop_manager" ? "manager" : previewRole === "supplier" ? "owner" : (previewRole === "moderator" || previewRole === "admin") ? "staff" : isStaff ? "staff" : ownedSet.has(s.id) ? "owner" : "manager";
         return {
           supplier_id: s.id,
           shop_name: s.shop_name,
