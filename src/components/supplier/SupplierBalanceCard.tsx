@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import {
   Wallet, Loader2, ArrowDownToLine, CreditCard, RefreshCw,
   TrendingUp, TrendingDown, Banknote, ShieldCheck, Zap,
+  CheckCircle2, Clock, ReceiptText,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -35,6 +36,32 @@ const TYPE_META: Record<string, { label: string; positive: boolean }> = {
   penalty: { label: "Штраф", positive: false },
 };
 
+interface PaymentRow {
+  id: string;
+  order_number: string;
+  payment_method: string | null;
+  status: "created" | "partial" | "paid";
+  amount?: number | null;
+  created_at: string;
+}
+
+interface PayoutRow {
+  id: string;
+  amount: number;
+  payout_method: string | null;
+  payout_status: string | null;
+  transaction_id: string | null;
+  scheduled_at: string | null;
+  processed_at: string | null;
+  created_at: string;
+}
+
+const PAYMENT_STATUS: Record<PaymentRow["status"], { label: string; cls: string }> = {
+  created: { label: "Створено", cls: "bg-amber-500/10 text-amber-600 border-amber-500/20" },
+  partial: { label: "Часткова", cls: "bg-blue-500/10 text-blue-600 border-blue-500/20" },
+  paid: { label: "Оплачено", cls: "bg-green-500/10 text-green-600 border-green-500/20" },
+};
+
 export function SupplierBalanceCard({ supplierId, readOnly: readOnlyProp, previewRole }: Props) {
   const { sessionToken } = useTelegramAuthContext();
   const [loading, setLoading] = useState(true);
@@ -42,6 +69,8 @@ export function SupplierBalanceCard({ supplierId, readOnly: readOnlyProp, previe
   const [method, setMethod] = useState<any>(null);
   const [providers, setProviders] = useState<{ monobank: string; liqpay: string }>({ monobank: "sandbox", liqpay: "sandbox" });
   const [movements, setMovements] = useState<any[]>([]);
+  const [payments, setPayments] = useState<PaymentRow[]>([]);
+  const [payouts, setPayouts] = useState<PayoutRow[]>([]);
   const [canManageServer, setCanManageServer] = useState(true);
   const [busy, setBusy] = useState(false);
   const [cardOpen, setCardOpen] = useState(false);
@@ -53,14 +82,22 @@ export function SupplierBalanceCard({ supplierId, readOnly: readOnlyProp, previe
   const [cardHolder, setCardHolder] = useState("");
 
   const load = useCallback(async () => {
-    if (!sessionToken || !supplierId) return;
+    if (!sessionToken || !supplierId) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
-      const [bal, mv] = await Promise.all([
+      const [bal, mv, pay, po] = await Promise.all([
         supabase.functions.invoke("bank-gateway", { body: { action: "get_balance", session_token: sessionToken, supplier_id: supplierId, preview_role: previewRole || undefined } }),
         supabase.functions.invoke("bank-gateway", { body: { action: "list_movements", session_token: sessionToken, supplier_id: supplierId, preview_role: previewRole || undefined } }),
+        supabase.functions.invoke("bank-gateway", { body: { action: "list_shop_payments", session_token: sessionToken, supplier_id: supplierId, preview_role: previewRole || undefined } }),
+        supabase.functions.invoke("bank-gateway", { body: { action: "list_payouts", session_token: sessionToken, supplier_id: supplierId, preview_role: previewRole || undefined } }),
       ]);
       if (bal.data?.error) throw new Error(bal.data.error);
+      if (mv.data?.error) throw new Error(mv.data.error);
+      if (pay.data?.error) throw new Error(pay.data.error);
+      if (po.data?.error) throw new Error(po.data.error);
       setBalance(bal.data?.balance || null);
       setMethod(bal.data?.method || null);
       setMinWithdraw(bal.data?.method?.min_withdraw != null ? String(bal.data.method.min_withdraw) : "");
@@ -69,6 +106,8 @@ export function SupplierBalanceCard({ supplierId, readOnly: readOnlyProp, previe
       setCanManageServer(bal.data?.canManage !== false);
       setProviders(bal.data?.providers || { monobank: "sandbox", liqpay: "sandbox" });
       setMovements(mv.data?.movements || []);
+      setPayments(pay.data?.payments || []);
+      setPayouts(po.data?.payouts || []);
     } catch (e: any) {
       console.error(e);
       toast.error("Не вдалося завантажити баланс");
@@ -151,6 +190,42 @@ export function SupplierBalanceCard({ supplierId, readOnly: readOnlyProp, previe
             <Button className="w-full" onClick={withdraw} disabled={busy || available <= 0}>
               <ArrowDownToLine className="h-4 w-4" /> Вивести {available > 0 ? `${available.toLocaleString("uk-UA")} ₴` : ""}
             </Button>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Order payments */}
+      <Card>
+        <CardContent className="p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <ReceiptText className="h-4 w-4 text-primary" />
+            <p className="font-semibold text-sm">Тестові оплати замовлень</p>
+          </div>
+          {payments.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-6">Поки немає оплат</p>
+          ) : (
+            <ScrollArea className="h-64 pr-3">
+              <div className="space-y-2">
+                {payments.map((p) => {
+                  const meta = PAYMENT_STATUS[p.status];
+                  const isCod = p.payment_method === "cash_on_delivery";
+                  return (
+                    <div key={p.id} className="flex items-center justify-between gap-3 py-2 border-b border-border/50 last:border-0">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{p.order_number}</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {isCod ? "Наложений платіж" : "Оплата карткою"} · {new Date(p.created_at).toLocaleDateString("uk-UA")}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {p.amount != null && <span className="text-sm font-bold">{Number(p.amount).toLocaleString("uk-UA")} ₴</span>}
+                        <Badge variant="outline" className={cn("text-[10px]", meta.cls)}>{meta.label}</Badge>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </ScrollArea>
           )}
         </CardContent>
       </Card>
@@ -312,6 +387,44 @@ export function SupplierBalanceCard({ supplierId, readOnly: readOnlyProp, previe
                       <span className={cn("text-sm font-bold shrink-0", positive ? "text-green-600" : "text-red-600")}>
                         {positive ? "+" : ""}{Number(m.amount).toLocaleString("uk-UA")} ₴
                       </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </ScrollArea>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Payouts */}
+      <Card>
+        <CardContent className="p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <CheckCircle2 className="h-4 w-4 text-green-600" />
+            <p className="font-semibold text-sm">Виплати постачальнику</p>
+          </div>
+          {payouts.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-6">Поки немає виплат</p>
+          ) : (
+            <ScrollArea className="h-56 pr-3">
+              <div className="space-y-2">
+                {payouts.map((p) => {
+                  const isDone = p.payout_status === "completed";
+                  const date = p.processed_at || p.scheduled_at || p.created_at;
+                  return (
+                    <div key={p.id} className="flex items-center justify-between gap-3 py-2 border-b border-border/50 last:border-0">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center shrink-0", isDone ? "bg-green-500/10" : "bg-amber-500/10")}>
+                          {isDone ? <CheckCircle2 className="h-4 w-4 text-green-600" /> : <Clock className="h-4 w-4 text-amber-600" />}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">{isDone ? "Виплачено" : "Очікує виплати"}</p>
+                          <p className="text-[11px] text-muted-foreground truncate">
+                            {new Date(date).toLocaleDateString("uk-UA")} · {p.payout_method || "method"}{p.transaction_id ? ` · ${p.transaction_id}` : ""}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-sm font-bold text-green-600 shrink-0">{Number(p.amount).toLocaleString("uk-UA")} ₴</span>
                     </div>
                   );
                 })}

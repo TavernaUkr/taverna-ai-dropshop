@@ -55,6 +55,19 @@ interface AuthState {
 
 const SESSION_TOKEN_KEY = 'taverna_session_token';
 
+const isDevAuthEnvironment = () => {
+  try {
+    return import.meta.env.DEV ||
+      window.location.hostname.includes('localhost') ||
+      window.location.hostname === '127.0.0.1' ||
+      window.location.hostname.includes('lovable.app') ||
+      window.location.hostname.includes('lovableproject.com') ||
+      window.location.hostname.includes('id-preview--');
+  } catch {
+    return false;
+  }
+};
+
 export function useTelegramAuth() {
   const [state, setState] = useState<AuthState>({
     isLoading: true,
@@ -320,9 +333,10 @@ export function useTelegramAuth() {
         if (isValid) return;
       }
       
-      // If in Telegram WebApp, auto-authenticate
+      // If in Telegram WebApp or Lovable test preview, auto-authenticate.
+      // The preview uses mock_dev_auth so the role switcher can exercise backend RBAC.
       const tg = (window as any).Telegram?.WebApp;
-      if (tg?.initData) {
+      if (tg?.initData || isDevAuthEnvironment()) {
         authenticate();
       } else {
         setState(prev => ({ ...prev, isLoading: false }));

@@ -35,7 +35,10 @@ export function ShopPaymentsView({ supplierId, previewRole }: Props) {
   const [payments, setPayments] = useState<Payment[]>([]);
 
   const load = useCallback(async () => {
-    if (!sessionToken || !supplierId) return;
+    if (!sessionToken || !supplierId) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("bank-gateway", {
