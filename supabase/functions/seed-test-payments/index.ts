@@ -37,6 +37,7 @@ async function clearTestPayments(supabase: any) {
   }
   await supabase.from("balance_movements").delete().like("description", "%[TEST]%");
   await supabase.from("supplier_payouts").delete().like("transaction_id", "TEST-WD-%");
+  await supabase.from("supplier_payouts").delete().like("transaction_id", "%SBX%");
   if (orderIds.length) await supabase.from("orders").delete().in("id", orderIds);
 }
 
