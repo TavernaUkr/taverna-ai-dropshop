@@ -36,6 +36,8 @@ async function clearTestPayments(supabase: any) {
     await supabase.from("order_splits").delete().in("id", splitIds);
   }
   await supabase.from("balance_movements").delete().like("description", "%[TEST]%");
+  await supabase.from("supplier_payouts").delete().like("transaction_id", "TEST-WD-%");
+  await supabase.from("supplier_payouts").delete().like("transaction_id", "%SBX%");
   if (orderIds.length) await supabase.from("orders").delete().in("id", orderIds);
 }
 
@@ -167,13 +169,24 @@ serve(async (req) => {
       if (withdrawAmt > 0) {
         running[sup.id] -= withdrawAmt;
         lifetimePaid = withdrawAmt;
+        const txId = `TEST-WD-${sup.id.slice(0, 6)}`;
         const { data: mvw } = await supabase.from("balance_movements").insert({
           supplier_id: sup.id, type: "withdrawal", amount: -withdrawAmt,
           balance_after: round(running[sup.id]), status: "settled", provider: "monobank",
-          external_tx_id: `TEST-WD-${sup.id.slice(0, 6)}`, description: "[TEST] Вивід коштів",
+          external_tx_id: txId, description: "[TEST] Вивід коштів",
           created_at: new Date(now - 30 * DAY).toISOString(),
         }).select().single();
         if (mvw) movementsInserted.push(mvw.id);
+        await supabase.from("supplier_payouts").insert({
+          supplier_id: sup.id,
+          amount: withdrawAmt,
+          payout_method: "monobank_sandbox",
+          payout_status: "completed",
+          iban: `UA90305299299000414912345678${i}`,
+          transaction_id: txId,
+          processed_at: new Date(now - 30 * DAY).toISOString(),
+          created_at: new Date(now - 30 * DAY).toISOString(),
+        });
       }
 
       // upsert shop_balances with coherent totals

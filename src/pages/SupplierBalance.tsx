@@ -67,7 +67,10 @@ export default function SupplierBalance() {
   const [period, setPeriod] = useState<Period>("month");
 
   const loadShops = useCallback(async () => {
-    if (!sessionToken) return;
+    if (!sessionToken) {
+      setLoadingShops(false);
+      return;
+    }
     setLoadingShops(true);
     try {
       const { data, error } = await supabase.functions.invoke("bank-gateway", {
@@ -84,7 +87,10 @@ export default function SupplierBalance() {
   }, [sessionToken, devRoleOverride]);
 
   const loadStats = useCallback(async () => {
-    if (!sessionToken) return;
+    if (!sessionToken) {
+      setLoadingStats(false);
+      return;
+    }
     setLoadingStats(true);
     try {
       const body: Record<string, any> = { action: "get_stats", session_token: sessionToken, preview_role: devRoleOverride || undefined };
