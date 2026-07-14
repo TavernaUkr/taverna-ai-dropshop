@@ -197,7 +197,9 @@ serve(async (req) => {
         card_token: `tok_sbx_${sup.id.slice(0, 6)}`,
         iban: `UA90305299299000414912345678${i}`,
         holder: `TEST SHOP ${i + 1}`,
-        auto_withdraw: i % 2 === 0, auto_charge: isCod, min_withdraw: 100,
+        // auto_withdraw defaults OFF so seeded balances remain visible for demo;
+        // owner/admin enables via the "Автооплати" dialog when they want to test it.
+        auto_withdraw: false, auto_charge: isCod, min_withdraw: 100,
       };
       if (existingMethod) await supabase.from("payout_methods").update(methodPayload).eq("id", existingMethod.id);
       else await supabase.from("payout_methods").insert(methodPayload);
