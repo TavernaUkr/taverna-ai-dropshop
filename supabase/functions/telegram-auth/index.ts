@@ -346,6 +346,70 @@ serve(async (req) => {
       );
     }
 
+    // ---------- CART CRUD (server-side, RLS-locked table) ----------
+    if (action === 'cart_get' && session_token) {
+      const session = await validateSession(supabase, session_token);
+      if (!session) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      const { data } = await supabase
+        .from('cart_items')
+        .select('*, product:products(id, name, price, images, sizes, colors, supplier_id, supplier:suppliers(id, shop_name))')
+        .eq('profile_id', session.profile.id)
+        .order('created_at', { ascending: false });
+      return new Response(JSON.stringify({ success: true, items: data || [] }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    if (action === 'cart_add' && session_token) {
+      const session = await validateSession(supabase, session_token);
+      if (!session) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      const { product_id, size, color } = body;
+      if (!product_id) throw new Error('product_id required');
+      // Verify product exists
+      const { data: prod } = await supabase.from('products').select('id').eq('id', product_id).maybeSingle();
+      if (!prod) throw new Error('Product not found');
+      const { data: existing } = await supabase
+        .from('cart_items')
+        .select('id, quantity')
+        .eq('profile_id', session.profile.id)
+        .eq('product_id', product_id)
+        .eq('size', size || '')
+        .eq('color', color || '')
+        .maybeSingle();
+      if (existing) {
+        await supabase.from('cart_items').update({ quantity: existing.quantity + 1, updated_at: new Date().toISOString() }).eq('id', existing.id);
+      } else {
+        await supabase.from('cart_items').insert({ profile_id: session.profile.id, product_id, quantity: 1, size: size || null, color: color || null });
+      }
+      return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    if (action === 'cart_update' && session_token) {
+      const session = await validateSession(supabase, session_token);
+      if (!session) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      const { cart_item_id, quantity } = body;
+      const qty = Math.max(1, Math.floor(Number(quantity) || 1));
+      const { error } = await supabase.from('cart_items').update({ quantity: qty, updated_at: new Date().toISOString() }).eq('id', cart_item_id).eq('profile_id', session.profile.id);
+      if (error) throw error;
+      return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    if (action === 'cart_remove' && session_token) {
+      const session = await validateSession(supabase, session_token);
+      if (!session) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      const { cart_item_id } = body;
+      const { error } = await supabase.from('cart_items').delete().eq('id', cart_item_id).eq('profile_id', session.profile.id);
+      if (error) throw error;
+      return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    if (action === 'cart_clear' && session_token) {
+      const session = await validateSession(supabase, session_token);
+      if (!session) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      const { error } = await supabase.from('cart_items').delete().eq('profile_id', session.profile.id);
+      if (error) throw error;
+      return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+
     // Handle get orders
     if (action === 'get_orders' && session_token) {
       const session = await validateSession(supabase, session_token);
