@@ -259,8 +259,8 @@ Deno.serve(async (req) => {
 
     // Action: mark_deadline_paid — supplier paid their margin
     if (action === 'mark_deadline_paid') {
-      const { deadline_id } = await req.json().catch(() => ({}));
       if (!deadline_id) throw new Error('deadline_id required');
+
 
       await supabase
         .from('supplier_payment_deadlines')
