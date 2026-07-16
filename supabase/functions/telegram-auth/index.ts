@@ -197,12 +197,14 @@ serve(async (req) => {
       }
       
       const { updates } = body;
+      const safeUpdates = sanitizeProfileUpdates(updates || {});
       const { data: updatedProfile, error } = await supabase
         .from('profiles')
-        .update(updates)
+        .update(safeUpdates)
         .eq('id', session.profile.id)
         .select()
         .single();
+
       
       if (error) throw error;
       
