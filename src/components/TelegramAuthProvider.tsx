@@ -17,16 +17,17 @@ type TestRole = 'guest' | AppRole;
 
 const DEV_ROLE_STORAGE_KEY = 'taverna_dev_role_override';
 
-// Check if we're in Lovable.dev environment (for always-available testing)
+// Check if we're in Lovable in-editor iframe preview (never true on the public deployed site).
 const isLovableDevEnvironment = () => {
   try {
-    return window.location.hostname.includes('lovable.app') || 
-           window.location.hostname.includes('lovableproject.com') ||
-           window.location.hostname.includes('id-preview--');
+    if (!import.meta.env.DEV) return false;
+    const host = window.location.hostname;
+    return host === 'localhost' || host === '127.0.0.1' || host.startsWith('id-preview--');
   } catch {
     return false;
   }
 };
+
 
 // Check if we're in any development environment (localhost, dev mode)
 const isDevEnv = () => {
