@@ -386,7 +386,37 @@ serve(async (req) => {
       
       const { order, guest_info } = body;
       const orderNumber = `TAV-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-      
+
+      // Server-side price recalculation to prevent tampering
+      const clientItems = Array.isArray(order?.items) ? order.items : [];
+      if (clientItems.length === 0) throw new Error('Order has no items');
+      const productIds = clientItems.map((i: any) => i.product_id).filter(Boolean);
+      const { data: catalog } = await supabase.from('products').select('id, name, price, images').in('id', productIds);
+      const priceMap = new Map<string, { price: number; name: string; image: string | null }>(
+        (catalog || []).map((p: any) => [p.id, { price: Number(p.price), name: p.name, image: p.images?.[0] || null }])
+      );
+
+      let recomputedSubtotal = 0;
+      const orderItems = clientItems.map((item: any) => {
+        const p = priceMap.get(item.product_id);
+        if (!p) throw new Error(`Unknown product ${item.product_id}`);
+        const qty = Math.max(1, Math.floor(Number(item.quantity) || 1));
+        const lineTotal = p.price * qty;
+        recomputedSubtotal += lineTotal;
+        return {
+          product_id: item.product_id,
+          product_name: p.name,
+          product_image: p.image,
+          price: p.price,
+          quantity: qty,
+          size: item.size,
+          color: item.color,
+          total: lineTotal,
+        };
+      });
+      const deliveryCost = Math.max(0, Number(order.delivery_cost) || 0);
+      const recomputedTotal = recomputedSubtotal + deliveryCost;
+
       const { data: newOrder, error: orderError } = await supabase
         .from('orders')
         .insert({
@@ -396,9 +426,9 @@ serve(async (req) => {
           payment_method: order.payment_method,
           payment_status: 'pending',
           delivery_service: 'nova_poshta',
-          delivery_cost: order.delivery_cost,
-          subtotal: order.subtotal,
-          total: order.total,
+          delivery_cost: deliveryCost,
+          subtotal: recomputedSubtotal,
+          total: recomputedTotal,
           notes: order.notes,
           status: 'pending',
         })
@@ -407,19 +437,7 @@ serve(async (req) => {
       
       if (orderError) throw new Error('Failed to create order');
       
-      const orderItems = order.items.map((item: any) => ({
-        order_id: newOrder.id,
-        product_id: item.product_id,
-        product_name: item.product_name,
-        product_image: item.product_image,
-        price: item.price,
-        quantity: item.quantity,
-        size: item.size,
-        color: item.color,
-        total: item.total,
-      }));
-      
-      await supabase.from('order_items').insert(orderItems);
+      await supabase.from('order_items').insert(orderItems.map((oi: any) => ({ ...oi, order_id: newOrder.id })));
       await supabase.from('cart_items').delete().eq('profile_id', session.profile.id);
       
       // Save last used city and warehouse to profile for future auto-fill
@@ -433,8 +451,6 @@ serve(async (req) => {
             last_warehouse_ref: guest_info.warehouse_ref || null,
           })
           .eq('id', session.profile.id);
-        
-        console.log('Saved delivery address to profile:', session.profile.id);
       }
       
       return new Response(
@@ -447,8 +463,37 @@ serve(async (req) => {
     if (action === 'create_guest_order') {
       const { guest_info, order } = body;
       const orderNumber = `TAV-G-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-      
-      // Create guest order without profile
+
+      // Server-side price recalculation
+      const clientItems = Array.isArray(order?.items) ? order.items : [];
+      if (clientItems.length === 0) throw new Error('Order has no items');
+      const productIds = clientItems.map((i: any) => i.product_id).filter(Boolean);
+      const { data: catalog } = await supabase.from('products').select('id, name, price, images').in('id', productIds);
+      const priceMap = new Map<string, { price: number; name: string; image: string | null }>(
+        (catalog || []).map((p: any) => [p.id, { price: Number(p.price), name: p.name, image: p.images?.[0] || null }])
+      );
+
+      let recomputedSubtotal = 0;
+      const orderItems = clientItems.map((item: any) => {
+        const p = priceMap.get(item.product_id);
+        if (!p) throw new Error(`Unknown product ${item.product_id}`);
+        const qty = Math.max(1, Math.floor(Number(item.quantity) || 1));
+        const lineTotal = p.price * qty;
+        recomputedSubtotal += lineTotal;
+        return {
+          product_id: item.product_id,
+          product_name: p.name,
+          product_image: p.image,
+          price: p.price,
+          quantity: qty,
+          size: item.size,
+          color: item.color,
+          total: lineTotal,
+        };
+      });
+      const deliveryCost = Math.max(0, Number(order.delivery_cost) || 0);
+      const recomputedTotal = recomputedSubtotal + deliveryCost;
+
       const { data: newOrder, error: orderError } = await supabase
         .from('orders')
         .insert({
@@ -456,9 +501,9 @@ serve(async (req) => {
           payment_method: order.payment_method,
           payment_status: 'pending',
           delivery_service: guest_info.delivery_service || 'nova_poshta',
-          delivery_cost: order.delivery_cost,
-          subtotal: order.subtotal,
-          total: order.total,
+          delivery_cost: deliveryCost,
+          subtotal: recomputedSubtotal,
+          total: recomputedTotal,
           notes: `ГІСТЬ: ${guest_info.recipient_name}, ${guest_info.phone}, ${guest_info.city}${guest_info.warehouse_number ? `, Відділення №${guest_info.warehouse_number}` : ''}${guest_info.street_address ? `, ${guest_info.street_address} ${guest_info.building_number}` : ''}${order.notes ? ` | ${order.notes}` : ''}`,
           status: 'pending',
         })
@@ -467,27 +512,14 @@ serve(async (req) => {
       
       if (orderError) throw new Error('Failed to create order');
       
-      const orderItems = order.items.map((item: any) => ({
-        order_id: newOrder.id,
-        product_id: item.product_id,
-        product_name: item.product_name,
-        product_image: item.product_image,
-        price: item.price,
-        quantity: item.quantity,
-        size: item.size,
-        color: item.color,
-        total: item.total,
-      }));
-      
-      await supabase.from('order_items').insert(orderItems);
-      
-      console.log('Guest order created:', orderNumber);
-      
+      await supabase.from('order_items').insert(orderItems.map((oi: any) => ({ ...oi, order_id: newOrder.id })));
+
       return new Response(
         JSON.stringify({ success: true, order: newOrder }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
     
     // Handle create review
     if (action === 'create_review' && session_token) {
