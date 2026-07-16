@@ -3,8 +3,15 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-internal-key",
 };
+
+async function hashTokenSha256(token: string): Promise<string> {
+  const data = new TextEncoder().encode(token);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(hashBuffer), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 
 interface ProductData {
   id: string;
@@ -57,7 +64,23 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const { product_id, channel_id = "@taverna_ukr_group", custom_text } = await req.json();
+    const body = await req.json();
+    const { product_id, channel_id = "@taverna_ukr_group", custom_text, session_token } = body;
+
+    // AuthN: require internal key OR staff session
+    const _supabaseAuthClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const internalKey = req.headers.get("x-internal-key");
+    if (internalKey !== Deno.env.get("INTERNAL_FUNCTION_KEY")) {
+      if (!session_token) throw new Error("Unauthorized");
+      const tokenHash = await hashTokenSha256(session_token);
+      const { data: session } = await _supabaseAuthClient.from("sessions").select("profile_id").eq("token_hash", tokenHash).gt("expires_at", new Date().toISOString()).maybeSingle();
+      if (!session) throw new Error("Invalid session");
+      const { data: roles } = await _supabaseAuthClient.from("user_roles").select("role").eq("user_id", session.profile_id);
+      const roleList = (roles || []).map((r: any) => r.role);
+      if (!roleList.includes("admin") && !roleList.includes("moderator") && !roleList.includes("supplier") && !roleList.includes("shop_manager")) {
+        throw new Error("Forbidden");
+      }
+    }
 
     if (!product_id) {
       throw new Error("product_id is required");
