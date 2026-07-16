@@ -334,10 +334,11 @@ export function useTelegramAuth() {
       if (existingToken) {
         const isValid = await validateSession(existingToken);
         if (isValid) return;
+        // Stale token — clear and fall through to fresh auth below.
+        storeToken(null);
       }
-      
+
       // If in Telegram WebApp or Lovable test preview, auto-authenticate.
-      // The preview uses mock_dev_auth so the role switcher can exercise backend RBAC.
       const tg = (window as any).Telegram?.WebApp;
       if (tg?.initData || isDevAuthEnvironment()) {
         authenticate();
@@ -345,9 +346,9 @@ export function useTelegramAuth() {
         setState(prev => ({ ...prev, isLoading: false }));
       }
     };
-    
+
     checkSession();
-  }, [getStoredToken, validateSession, authenticate]);
+  }, [getStoredToken, storeToken, validateSession, authenticate]);
 
   return {
     ...state,
