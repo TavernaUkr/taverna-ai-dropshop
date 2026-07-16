@@ -57,16 +57,17 @@ const SESSION_TOKEN_KEY = 'taverna_session_token';
 
 const isDevAuthEnvironment = () => {
   try {
-    return import.meta.env.DEV ||
-      window.location.hostname.includes('localhost') ||
-      window.location.hostname === '127.0.0.1' ||
-      window.location.hostname.includes('lovable.app') ||
-      window.location.hostname.includes('lovableproject.com') ||
-      window.location.hostname.includes('id-preview--');
+    // Only allow the mock-auth bypass on truly local development or the Lovable in-editor iframe preview,
+    // never on public *.lovable.app / *.lovableproject.com deployments.
+    const host = window.location.hostname;
+    if (host === 'localhost' || host === '127.0.0.1') return true;
+    if (import.meta.env.DEV && host.startsWith('id-preview--')) return true;
+    return false;
   } catch {
     return false;
   }
 };
+
 
 export function useTelegramAuth() {
   const [state, setState] = useState<AuthState>({
