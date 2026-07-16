@@ -742,7 +742,7 @@ serve(async (req) => {
     // Create session token
     const sessionToken = generateSessionToken();
     const tokenHash = await hashToken(sessionToken);
-    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
     
     // Delete any existing sessions for this profile (optional: keep multiple sessions)
     await supabase
