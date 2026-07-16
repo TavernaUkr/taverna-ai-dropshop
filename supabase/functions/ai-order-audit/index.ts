@@ -3,19 +3,45 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-internal-key, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+async function hashToken(token: string): Promise<string> {
+  const data = new TextEncoder().encode(token);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(hashBuffer), (b) => b.toString(16).padStart(2, "0")).join("");
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { order_id } = await req.json();
+    const body = await req.json();
+    const { order_id, session_token } = body;
     if (!order_id) throw new Error("order_id required");
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // AuthN: require internal key OR staff session
+    const internalKey = req.headers.get("x-internal-key");
+    if (internalKey !== Deno.env.get("INTERNAL_FUNCTION_KEY")) {
+      if (!session_token) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const tokenHash = await hashToken(session_token);
+      const { data: session } = await supabase.from("sessions").select("profile_id").eq("token_hash", tokenHash).gt("expires_at", new Date().toISOString()).maybeSingle();
+      if (!session) {
+        return new Response(JSON.stringify({ error: "Invalid session" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", session.profile_id);
+      const roleList = (roles || []).map((r: any) => r.role);
+      if (!roleList.includes("admin") && !roleList.includes("moderator")) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
+
 
     // Fetch order
     const { data: order } = await supabase.from("orders").select("*").eq("id", order_id).single();

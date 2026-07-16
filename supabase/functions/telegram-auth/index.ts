@@ -13,13 +13,46 @@ function generateSessionToken(): string {
   return Array.from(array, b => b.toString(16).padStart(2, '0')).join('');
 }
 
-// Hash the token for storage
+// Hash the token for storage using HMAC-SHA256 with server-side secret (rainbow-table resistant)
 async function hashToken(token: string): Promise<string> {
+  const secret = Deno.env.get('SESSION_HMAC_SECRET') || '';
   const encoder = new TextEncoder();
-  const data = encoder.encode(token);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  if (secret) {
+    const key = await crypto.subtle.importKey(
+      'raw',
+      encoder.encode(secret),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign'],
+    );
+    const sig = await crypto.subtle.sign('HMAC', key, encoder.encode(token));
+    return Array.from(new Uint8Array(sig), (b) => b.toString(16).padStart(2, '0')).join('');
+  }
+  // fallback for environments without the secret configured
+  const hashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(token));
   return Array.from(new Uint8Array(hashBuffer), b => b.toString(16).padStart(2, '0')).join('');
 }
+
+// Allowlist of profile fields the user is permitted to update directly
+const PROFILE_UPDATABLE_FIELDS = new Set<string>([
+  'first_name', 'last_name', 'phone', 'email', 'avatar_url',
+  'last_city', 'last_city_ref', 'last_warehouse', 'last_warehouse_ref',
+]);
+
+function sanitizeProfileUpdates(updates: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(updates || {})) {
+    if (PROFILE_UPDATABLE_FIELDS.has(k)) out[k] = v;
+  }
+  return out;
+}
+
+// Determine if we should allow the "mock_dev_auth" bypass.
+// Requires an explicit ALLOW_MOCK_AUTH secret to be set (never true in real deployments).
+function mockAuthAllowed(): boolean {
+  return Deno.env.get('ALLOW_MOCK_AUTH') === 'true';
+}
+
 
 // Telegram Mini App auth validation
 async function validateTelegramAuth(initData: string, botToken: string): Promise<any> {
@@ -164,12 +197,14 @@ serve(async (req) => {
       }
       
       const { updates } = body;
+      const safeUpdates = sanitizeProfileUpdates(updates || {});
       const { data: updatedProfile, error } = await supabase
         .from('profiles')
-        .update(updates)
+        .update(safeUpdates)
         .eq('id', session.profile.id)
         .select()
         .single();
+
       
       if (error) throw error;
       
@@ -311,6 +346,70 @@ serve(async (req) => {
       );
     }
 
+    // ---------- CART CRUD (server-side, RLS-locked table) ----------
+    if (action === 'cart_get' && session_token) {
+      const session = await validateSession(supabase, session_token);
+      if (!session) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      const { data } = await supabase
+        .from('cart_items')
+        .select('*, product:products(id, name, price, images, sizes, colors, supplier_id, supplier:suppliers(id, shop_name))')
+        .eq('profile_id', session.profile.id)
+        .order('created_at', { ascending: false });
+      return new Response(JSON.stringify({ success: true, items: data || [] }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    if (action === 'cart_add' && session_token) {
+      const session = await validateSession(supabase, session_token);
+      if (!session) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      const { product_id, size, color } = body;
+      if (!product_id) throw new Error('product_id required');
+      // Verify product exists
+      const { data: prod } = await supabase.from('products').select('id').eq('id', product_id).maybeSingle();
+      if (!prod) throw new Error('Product not found');
+      const { data: existing } = await supabase
+        .from('cart_items')
+        .select('id, quantity')
+        .eq('profile_id', session.profile.id)
+        .eq('product_id', product_id)
+        .eq('size', size || '')
+        .eq('color', color || '')
+        .maybeSingle();
+      if (existing) {
+        await supabase.from('cart_items').update({ quantity: existing.quantity + 1, updated_at: new Date().toISOString() }).eq('id', existing.id);
+      } else {
+        await supabase.from('cart_items').insert({ profile_id: session.profile.id, product_id, quantity: 1, size: size || null, color: color || null });
+      }
+      return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    if (action === 'cart_update' && session_token) {
+      const session = await validateSession(supabase, session_token);
+      if (!session) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      const { cart_item_id, quantity } = body;
+      const qty = Math.max(1, Math.floor(Number(quantity) || 1));
+      const { error } = await supabase.from('cart_items').update({ quantity: qty, updated_at: new Date().toISOString() }).eq('id', cart_item_id).eq('profile_id', session.profile.id);
+      if (error) throw error;
+      return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    if (action === 'cart_remove' && session_token) {
+      const session = await validateSession(supabase, session_token);
+      if (!session) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      const { cart_item_id } = body;
+      const { error } = await supabase.from('cart_items').delete().eq('id', cart_item_id).eq('profile_id', session.profile.id);
+      if (error) throw error;
+      return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    if (action === 'cart_clear' && session_token) {
+      const session = await validateSession(supabase, session_token);
+      if (!session) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      const { error } = await supabase.from('cart_items').delete().eq('profile_id', session.profile.id);
+      if (error) throw error;
+      return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+
     // Handle get orders
     if (action === 'get_orders' && session_token) {
       const session = await validateSession(supabase, session_token);
@@ -351,7 +450,37 @@ serve(async (req) => {
       
       const { order, guest_info } = body;
       const orderNumber = `TAV-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-      
+
+      // Server-side price recalculation to prevent tampering
+      const clientItems = Array.isArray(order?.items) ? order.items : [];
+      if (clientItems.length === 0) throw new Error('Order has no items');
+      const productIds = clientItems.map((i: any) => i.product_id).filter(Boolean);
+      const { data: catalog } = await supabase.from('products').select('id, name, price, images').in('id', productIds);
+      const priceMap = new Map<string, { price: number; name: string; image: string | null }>(
+        (catalog || []).map((p: any) => [p.id, { price: Number(p.price), name: p.name, image: p.images?.[0] || null }])
+      );
+
+      let recomputedSubtotal = 0;
+      const orderItems = clientItems.map((item: any) => {
+        const p = priceMap.get(item.product_id);
+        if (!p) throw new Error(`Unknown product ${item.product_id}`);
+        const qty = Math.max(1, Math.floor(Number(item.quantity) || 1));
+        const lineTotal = p.price * qty;
+        recomputedSubtotal += lineTotal;
+        return {
+          product_id: item.product_id,
+          product_name: p.name,
+          product_image: p.image,
+          price: p.price,
+          quantity: qty,
+          size: item.size,
+          color: item.color,
+          total: lineTotal,
+        };
+      });
+      const deliveryCost = Math.max(0, Number(order.delivery_cost) || 0);
+      const recomputedTotal = recomputedSubtotal + deliveryCost;
+
       const { data: newOrder, error: orderError } = await supabase
         .from('orders')
         .insert({
@@ -361,9 +490,9 @@ serve(async (req) => {
           payment_method: order.payment_method,
           payment_status: 'pending',
           delivery_service: 'nova_poshta',
-          delivery_cost: order.delivery_cost,
-          subtotal: order.subtotal,
-          total: order.total,
+          delivery_cost: deliveryCost,
+          subtotal: recomputedSubtotal,
+          total: recomputedTotal,
           notes: order.notes,
           status: 'pending',
         })
@@ -372,19 +501,7 @@ serve(async (req) => {
       
       if (orderError) throw new Error('Failed to create order');
       
-      const orderItems = order.items.map((item: any) => ({
-        order_id: newOrder.id,
-        product_id: item.product_id,
-        product_name: item.product_name,
-        product_image: item.product_image,
-        price: item.price,
-        quantity: item.quantity,
-        size: item.size,
-        color: item.color,
-        total: item.total,
-      }));
-      
-      await supabase.from('order_items').insert(orderItems);
+      await supabase.from('order_items').insert(orderItems.map((oi: any) => ({ ...oi, order_id: newOrder.id })));
       await supabase.from('cart_items').delete().eq('profile_id', session.profile.id);
       
       // Save last used city and warehouse to profile for future auto-fill
@@ -398,8 +515,6 @@ serve(async (req) => {
             last_warehouse_ref: guest_info.warehouse_ref || null,
           })
           .eq('id', session.profile.id);
-        
-        console.log('Saved delivery address to profile:', session.profile.id);
       }
       
       return new Response(
@@ -412,8 +527,37 @@ serve(async (req) => {
     if (action === 'create_guest_order') {
       const { guest_info, order } = body;
       const orderNumber = `TAV-G-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-      
-      // Create guest order without profile
+
+      // Server-side price recalculation
+      const clientItems = Array.isArray(order?.items) ? order.items : [];
+      if (clientItems.length === 0) throw new Error('Order has no items');
+      const productIds = clientItems.map((i: any) => i.product_id).filter(Boolean);
+      const { data: catalog } = await supabase.from('products').select('id, name, price, images').in('id', productIds);
+      const priceMap = new Map<string, { price: number; name: string; image: string | null }>(
+        (catalog || []).map((p: any) => [p.id, { price: Number(p.price), name: p.name, image: p.images?.[0] || null }])
+      );
+
+      let recomputedSubtotal = 0;
+      const orderItems = clientItems.map((item: any) => {
+        const p = priceMap.get(item.product_id);
+        if (!p) throw new Error(`Unknown product ${item.product_id}`);
+        const qty = Math.max(1, Math.floor(Number(item.quantity) || 1));
+        const lineTotal = p.price * qty;
+        recomputedSubtotal += lineTotal;
+        return {
+          product_id: item.product_id,
+          product_name: p.name,
+          product_image: p.image,
+          price: p.price,
+          quantity: qty,
+          size: item.size,
+          color: item.color,
+          total: lineTotal,
+        };
+      });
+      const deliveryCost = Math.max(0, Number(order.delivery_cost) || 0);
+      const recomputedTotal = recomputedSubtotal + deliveryCost;
+
       const { data: newOrder, error: orderError } = await supabase
         .from('orders')
         .insert({
@@ -421,9 +565,9 @@ serve(async (req) => {
           payment_method: order.payment_method,
           payment_status: 'pending',
           delivery_service: guest_info.delivery_service || 'nova_poshta',
-          delivery_cost: order.delivery_cost,
-          subtotal: order.subtotal,
-          total: order.total,
+          delivery_cost: deliveryCost,
+          subtotal: recomputedSubtotal,
+          total: recomputedTotal,
           notes: `ГІСТЬ: ${guest_info.recipient_name}, ${guest_info.phone}, ${guest_info.city}${guest_info.warehouse_number ? `, Відділення №${guest_info.warehouse_number}` : ''}${guest_info.street_address ? `, ${guest_info.street_address} ${guest_info.building_number}` : ''}${order.notes ? ` | ${order.notes}` : ''}`,
           status: 'pending',
         })
@@ -432,27 +576,14 @@ serve(async (req) => {
       
       if (orderError) throw new Error('Failed to create order');
       
-      const orderItems = order.items.map((item: any) => ({
-        order_id: newOrder.id,
-        product_id: item.product_id,
-        product_name: item.product_name,
-        product_image: item.product_image,
-        price: item.price,
-        quantity: item.quantity,
-        size: item.size,
-        color: item.color,
-        total: item.total,
-      }));
-      
-      await supabase.from('order_items').insert(orderItems);
-      
-      console.log('Guest order created:', orderNumber);
-      
+      await supabase.from('order_items').insert(orderItems.map((oi: any) => ({ ...oi, order_id: newOrder.id })));
+
       return new Response(
         JSON.stringify({ success: true, order: newOrder }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
     
     // Handle create review
     if (action === 'create_review' && session_token) {
@@ -521,12 +652,12 @@ serve(async (req) => {
 
     // Handle login/authentication
     let telegramUser: any;
-    const isProduction = Deno.env.get('DENO_ENV') === 'production';
-    
-    // Only allow mock auth in non-production
+    const allowMock = mockAuthAllowed();
+
+    // Only allow mock auth when ALLOW_MOCK_AUTH secret is explicitly set
     if (init_data === 'mock_dev_auth') {
-      if (isProduction) {
-        throw new Error('Mock authentication not allowed in production');
+      if (!allowMock) {
+        throw new Error('Mock authentication is disabled');
       }
       // Mock user for development only
       telegramUser = {
@@ -539,10 +670,10 @@ serve(async (req) => {
     } else if (init_data) {
       const botToken = Deno.env.get('TELEGRAM_BOT_TOKEN');
       if (!botToken) {
-        // If no bot token configured, require it in production
-        if (isProduction) {
+        if (!allowMock) {
           throw new Error('TELEGRAM_BOT_TOKEN not configured');
         }
+
         // In development, try to parse user data directly with warning
         try {
           const urlParams = new URLSearchParams(init_data);
@@ -675,7 +806,7 @@ serve(async (req) => {
     // Create session token
     const sessionToken = generateSessionToken();
     const tokenHash = await hashToken(sessionToken);
-    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
     
     // Delete any existing sessions for this profile (optional: keep multiple sessions)
     await supabase

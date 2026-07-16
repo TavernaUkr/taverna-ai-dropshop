@@ -296,11 +296,11 @@ serve(async (req) => {
     const isAdmin = roles.includes("admin");
     const isModerator = roles.includes("moderator");
     const isStaff = isAdmin || isModerator;
-    // Dev role preview via "жук": honored for real admins and the Lovable mock test profile.
-    const isMockTestProfile = profileId === "38363307-c867-4dad-835d-e5bf0f301464" || Number(telegramId) === 123456789;
-    const previewRole = ((isAdmin || isMockTestProfile) && typeof body.preview_role === "string"
+    // Dev role preview: only honored for real admins (never based on a hardcoded profile/telegram id).
+    const previewRole = (isAdmin && typeof body.preview_role === "string"
       && ["guest", "customer", "supplier", "shop_manager", "moderator", "admin"].includes(body.preview_role))
       ? body.preview_role : null;
+
     if (previewRole === "guest" || previewRole === "customer") {
       if (["get_balance", "list_movements", "list_payouts", "set_payout_method", "bind_card", "request_withdrawal", "list_my_shops", "list_shop_payments", "get_stats"].includes(action)) {
         if (action === "list_my_shops") return json({ rows: [], providers: { monobank: providerMode("monobank"), liqpay: providerMode("liqpay") } });

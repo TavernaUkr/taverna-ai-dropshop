@@ -2,8 +2,14 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-internal-key',
 };
+
+async function hashToken(token: string): Promise<string> {
+  const data = new TextEncoder().encode(token);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(hashBuffer), (b) => b.toString(16).padStart(2, "0")).join("");
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -16,7 +22,31 @@ Deno.serve(async (req) => {
   );
 
   try {
-    const { action, order_id, session_token } = await req.json();
+    const { action, order_id, session_token, deadline_id } = await req.json();
+
+    // AuthN: require internal key OR admin session
+    const internalKey = req.headers.get("x-internal-key");
+    const isInternal = internalKey === Deno.env.get("INTERNAL_FUNCTION_KEY");
+    if (!isInternal) {
+      if (!session_token) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const tokenHash = await hashToken(session_token);
+      const { data: session } = await supabase.from("sessions").select("profile_id").eq("token_hash", tokenHash).gt("expires_at", new Date().toISOString()).maybeSingle();
+      if (!session) {
+        return new Response(JSON.stringify({ error: "Invalid session" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", session.profile_id);
+      const roleList = (roles || []).map((r: any) => r.role);
+      if (!roleList.includes("admin")) {
+        return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      // Restrict cron-only actions to internal callers
+      if (["run_auto_payouts", "recalc_eligibility", "check_deadlines", "legacy_auto_payouts"].includes(action)) {
+        return new Response(JSON.stringify({ error: "Forbidden: cron-only action" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
+
 
     // Action: split_order — calculate and create order splits when order is placed
     if (action === 'split_order') {
@@ -229,8 +259,8 @@ Deno.serve(async (req) => {
 
     // Action: mark_deadline_paid — supplier paid their margin
     if (action === 'mark_deadline_paid') {
-      const { deadline_id } = await req.json().catch(() => ({}));
       if (!deadline_id) throw new Error('deadline_id required');
+
 
       await supabase
         .from('supplier_payment_deadlines')

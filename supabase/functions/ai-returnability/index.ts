@@ -2,8 +2,28 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-internal-key",
 };
+
+async function hashToken(token: string): Promise<string> {
+  const data = new TextEncoder().encode(token);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(hashBuffer), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function requireStaffOrInternal(req: Request, supabase: any, sessionToken?: string): Promise<{ ok: boolean; error?: string }> {
+  const internalKey = req.headers.get("x-internal-key");
+  if (internalKey && internalKey === Deno.env.get("INTERNAL_FUNCTION_KEY")) return { ok: true };
+  if (!sessionToken) return { ok: false, error: "Unauthorized" };
+  const tokenHash = await hashToken(sessionToken);
+  const { data: session } = await supabase.from("sessions").select("profile_id").eq("token_hash", tokenHash).gt("expires_at", new Date().toISOString()).maybeSingle();
+  if (!session) return { ok: false, error: "Invalid session" };
+  const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", session.profile_id);
+  const roleList = (roles || []).map((r: any) => r.role);
+  if (roleList.includes("admin") || roleList.includes("moderator")) return { ok: true };
+  return { ok: false, error: "Forbidden" };
+}
+
 
 // Heuristic fallback keywords for non-returnable goods under Ukrainian law
 // (hygiene, underwear, perishable food, cosmetics opened, etc.)
@@ -30,8 +50,13 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json().catch(() => ({}));
+    const auth = await requireStaffOrInternal(req, supabase, body?.session_token);
+    if (!auth.ok) {
+      return new Response(JSON.stringify({ error: auth.error }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
     const productId: string | undefined = body?.product_id;
     const limit: number = body?.limit || 50;
+
 
     let query = supabase
       .from("products")
