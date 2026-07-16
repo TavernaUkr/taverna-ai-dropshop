@@ -57,11 +57,13 @@ const SESSION_TOKEN_KEY = 'taverna_session_token';
 
 const isDevAuthEnvironment = () => {
   try {
-    // Only allow the mock-auth bypass on truly local development or the Lovable in-editor iframe preview,
-    // never on public *.lovable.app / *.lovableproject.com deployments.
     const host = window.location.hostname;
     if (host === 'localhost' || host === '127.0.0.1') return true;
-    if (import.meta.env.DEV && host.startsWith('id-preview--')) return true;
+    // Lovable sandbox previews (in-editor iframe and shareable preview) — allow mock auth
+    // so the app is testable without a real Telegram Mini App context.
+    if (host.startsWith('id-preview--')) return true;
+    if (host.endsWith('.lovableproject.com')) return true;
+    if (host.endsWith('.lovable.app')) return true;
     return false;
   } catch {
     return false;
@@ -332,10 +334,11 @@ export function useTelegramAuth() {
       if (existingToken) {
         const isValid = await validateSession(existingToken);
         if (isValid) return;
+        // Stale token — clear and fall through to fresh auth below.
+        storeToken(null);
       }
-      
+
       // If in Telegram WebApp or Lovable test preview, auto-authenticate.
-      // The preview uses mock_dev_auth so the role switcher can exercise backend RBAC.
       const tg = (window as any).Telegram?.WebApp;
       if (tg?.initData || isDevAuthEnvironment()) {
         authenticate();
@@ -343,9 +346,9 @@ export function useTelegramAuth() {
         setState(prev => ({ ...prev, isLoading: false }));
       }
     };
-    
+
     checkSession();
-  }, [getStoredToken, validateSession, authenticate]);
+  }, [getStoredToken, storeToken, validateSession, authenticate]);
 
   return {
     ...state,
