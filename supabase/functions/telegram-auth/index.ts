@@ -588,12 +588,12 @@ serve(async (req) => {
 
     // Handle login/authentication
     let telegramUser: any;
-    const isProduction = Deno.env.get('DENO_ENV') === 'production';
-    
-    // Only allow mock auth in non-production
+    const allowMock = mockAuthAllowed();
+
+    // Only allow mock auth when ALLOW_MOCK_AUTH secret is explicitly set
     if (init_data === 'mock_dev_auth') {
-      if (isProduction) {
-        throw new Error('Mock authentication not allowed in production');
+      if (!allowMock) {
+        throw new Error('Mock authentication is disabled');
       }
       // Mock user for development only
       telegramUser = {
@@ -606,10 +606,10 @@ serve(async (req) => {
     } else if (init_data) {
       const botToken = Deno.env.get('TELEGRAM_BOT_TOKEN');
       if (!botToken) {
-        // If no bot token configured, require it in production
-        if (isProduction) {
+        if (!allowMock) {
           throw new Error('TELEGRAM_BOT_TOKEN not configured');
         }
+
         // In development, try to parse user data directly with warning
         try {
           const urlParams = new URLSearchParams(init_data);
