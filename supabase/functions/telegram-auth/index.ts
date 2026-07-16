@@ -13,13 +13,46 @@ function generateSessionToken(): string {
   return Array.from(array, b => b.toString(16).padStart(2, '0')).join('');
 }
 
-// Hash the token for storage
+// Hash the token for storage using HMAC-SHA256 with server-side secret (rainbow-table resistant)
 async function hashToken(token: string): Promise<string> {
+  const secret = Deno.env.get('SESSION_HMAC_SECRET') || '';
   const encoder = new TextEncoder();
-  const data = encoder.encode(token);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  if (secret) {
+    const key = await crypto.subtle.importKey(
+      'raw',
+      encoder.encode(secret),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign'],
+    );
+    const sig = await crypto.subtle.sign('HMAC', key, encoder.encode(token));
+    return Array.from(new Uint8Array(sig), (b) => b.toString(16).padStart(2, '0')).join('');
+  }
+  // fallback for environments without the secret configured
+  const hashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(token));
   return Array.from(new Uint8Array(hashBuffer), b => b.toString(16).padStart(2, '0')).join('');
 }
+
+// Allowlist of profile fields the user is permitted to update directly
+const PROFILE_UPDATABLE_FIELDS = new Set<string>([
+  'first_name', 'last_name', 'phone', 'email', 'avatar_url',
+  'last_city', 'last_city_ref', 'last_warehouse', 'last_warehouse_ref',
+]);
+
+function sanitizeProfileUpdates(updates: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(updates || {})) {
+    if (PROFILE_UPDATABLE_FIELDS.has(k)) out[k] = v;
+  }
+  return out;
+}
+
+// Determine if we should allow the "mock_dev_auth" bypass.
+// Requires an explicit ALLOW_MOCK_AUTH secret to be set (never true in real deployments).
+function mockAuthAllowed(): boolean {
+  return Deno.env.get('ALLOW_MOCK_AUTH') === 'true';
+}
+
 
 // Telegram Mini App auth validation
 async function validateTelegramAuth(initData: string, botToken: string): Promise<any> {
