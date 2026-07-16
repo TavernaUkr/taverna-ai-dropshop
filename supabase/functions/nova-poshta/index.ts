@@ -10,10 +10,15 @@ const NOVA_POSHTA_API = 'https://api.novaposhta.ua/v2.0/json/';
 
 // Hash the token for lookup
 async function hashToken(token: string): Promise<string> {
+  const secret = Deno.env.get("SESSION_HMAC_SECRET") || "";
   const encoder = new TextEncoder();
-  const data = encoder.encode(token);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  return Array.from(new Uint8Array(hashBuffer), b => b.toString(16).padStart(2, '0')).join('');
+  if (secret) {
+    const key = await crypto.subtle.importKey("raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+    const sig = await crypto.subtle.sign("HMAC", key, encoder.encode(token));
+    return Array.from(new Uint8Array(sig), (b) => b.toString(16).padStart(2, "0")).join("");
+  }
+  const hashBuffer = await crypto.subtle.digest("SHA-256", encoder.encode(token));
+  return Array.from(new Uint8Array(hashBuffer), (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 // Validate session
