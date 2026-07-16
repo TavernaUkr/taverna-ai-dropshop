@@ -31,6 +31,8 @@ import MyShops from "./pages/MyShops";
 import SupplierBalance from "./pages/SupplierBalance";
 import SupportChat from "./components/SupportChat";
 import NotFound from "./pages/NotFound";
+import OAuthConsent from "./pages/OAuthConsent";
+import Login from "./pages/Login";
 
 const queryClient = new QueryClient();
 
@@ -123,6 +125,8 @@ function AnimatedRoutes() {
             <Route path="/orders-history" element={<OrdersHistoryPage />} />
             <Route path="/store-orders-history" element={<SupplierStoreOrdersHistory />} />
             <Route path="/store-orders-history/:supplierId" element={<SupplierStoreOrdersHistory />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
