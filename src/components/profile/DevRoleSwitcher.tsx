@@ -146,11 +146,20 @@ export const DevRoleSwitcher = ({ currentRole, onRoleChange }: DevRoleSwitcherPr
           </SelectContent>
         </Select>
 
+        <button
+          onClick={() => setDevRoleOverride(null)}
+          className="w-full flex items-center justify-center gap-2 h-8 rounded-lg border border-border text-xs text-muted-foreground hover:bg-muted transition-colors"
+        >
+          <RotateCcw className="h-3 w-3" />
+          Скинути до реальної ролі
+        </button>
+
         <div className="p-2 bg-destructive/10 rounded-lg border border-destructive/20">
           <p className="text-[10px] text-destructive leading-tight">
-            ⚠️ Для адміна це змінює і UI, і тестовий доступ до рахунків/оплат.
+            ⚠️ Тестовий режим прев'ю: змінює UI і тестовий доступ до рахунків/оплат.
           </p>
         </div>
+
       </div>
     </div>
   );
