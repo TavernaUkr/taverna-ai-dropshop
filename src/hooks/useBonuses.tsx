@@ -125,9 +125,18 @@ export function useBonuses() {
 
       return true;
     } catch (err: any) {
+      if (isPreviewDevEnvironment()) {
+        setBonusData(prev => prev ? {
+          ...prev,
+          balance: prev.balance - amount,
+          totalSpent: prev.totalSpent + amount,
+        } : null);
+        return true;
+      }
       console.error("Error spending bonuses:", err);
       return false;
     }
+
   };
 
   const addBonuses = async (amount: number): Promise<boolean> => {
