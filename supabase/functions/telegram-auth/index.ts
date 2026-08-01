@@ -808,11 +808,16 @@ serve(async (req) => {
     const tokenHash = await hashToken(sessionToken);
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
     
-    // Delete any existing sessions for this profile (optional: keep multiple sessions)
+    // Keep active sessions. Preview/HMR can start authentication more than once in
+    // parallel; deleting all profile sessions here lets the last request invalidate
+    // the token returned by the first request before the client can use it.
+    // Only remove expired rows so separate tabs/devices and concurrent auth calls
+    // cannot revoke one another. Explicit logout still revokes its exact token.
     await supabase
       .from('sessions')
       .delete()
-      .eq('profile_id', profile.id);
+      .eq('profile_id', profile.id)
+      .lte('expires_at', new Date().toISOString());
     
     // Insert new session
     const { error: sessionError } = await supabase
