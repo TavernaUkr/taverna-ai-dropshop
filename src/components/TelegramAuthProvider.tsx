@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { Loader2, ShieldCheck, User } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { isPreviewDevEnvironment, PREVIEW_PROFILE_ID } from '@/lib/dev-preview';
 
 type AppRole = 'admin' | 'moderator' | 'supplier' | 'shop_manager' | 'customer';
 type TestRole = 'guest' | AppRole;
