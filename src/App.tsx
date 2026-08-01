@@ -33,6 +33,7 @@ import SupportChat from "./components/SupportChat";
 import NotFound from "./pages/NotFound";
 import OAuthConsent from "./pages/OAuthConsent";
 import Login from "./pages/Login";
+import { FloatingDevRoleSwitcher } from "@/components/dev/FloatingDevRoleSwitcher";
 
 const queryClient = new QueryClient();
 
@@ -146,7 +147,9 @@ const App = () => (
             <Sonner />
             <BrowserRouter>
               <AnimatedRoutes />
+              <FloatingDevRoleSwitcher />
             </BrowserRouter>
+
           </FavoritesProvider>
         </CartProvider>
       </TelegramAuthProvider>

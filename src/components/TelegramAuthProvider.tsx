@@ -11,34 +11,19 @@ import {
 } from '@/components/ui/dialog';
 import { Loader2, ShieldCheck, User } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { isPreviewDevEnvironment, PREVIEW_PROFILE_ID } from '@/lib/dev-preview';
 
 type AppRole = 'admin' | 'moderator' | 'supplier' | 'shop_manager' | 'customer';
 type TestRole = 'guest' | AppRole;
 
 const DEV_ROLE_STORAGE_KEY = 'taverna_dev_role_override';
 
-// Check if we're in Lovable in-editor iframe preview (never true on the public deployed site).
-const isLovableDevEnvironment = () => {
-  try {
-    if (!import.meta.env.DEV) return false;
-    const host = window.location.hostname;
-    return host === 'localhost' || host === '127.0.0.1' || host.startsWith('id-preview--');
-  } catch {
-    return false;
-  }
-};
-
+// Single shared check (never true on the published production domain).
+const isLovableDevEnvironment = isPreviewDevEnvironment;
 
 // Check if we're in any development environment (localhost, dev mode)
-const isDevEnv = () => {
-  try {
-    return import.meta.env.DEV || 
-           window.location.hostname.includes('localhost') ||
-           window.location.hostname === '127.0.0.1';
-  } catch {
-    return false;
-  }
-};
+const isDevEnv = isPreviewDevEnvironment;
+
 
 const isTestRole = (value: unknown): value is TestRole => {
   return (
@@ -221,17 +206,30 @@ export function TelegramAuthProvider({ children }: TelegramAuthProviderProps) {
   }, [effectiveRole]);
 
   const isAuthenticated = effectiveRole !== 'guest' && (canUseDevRoleSwitcher ? true : auth.isAuthenticated);
-  const profile = effectiveRole === 'guest' ? null : (auth.profile || (canUseDevRoleSwitcher ? {
-    id: '38363307-c867-4dad-835d-e5bf0f301464',
+  const previewRoleNames: Record<TestRole, string> = {
+    guest: 'Гість',
+    customer: 'Клієнт',
+    supplier: 'Постачальник',
+    shop_manager: 'Менеджер магазину',
+    moderator: 'Модератор',
+    admin: 'Адмін',
+  };
+  const previewProfile = canUseDevRoleSwitcher ? {
+    id: PREVIEW_PROFILE_ID,
     telegram_id: 123456789,
     first_name: 'Тест',
-    last_name: 'Користувач',
+    last_name: previewRoleNames[effectiveRole],
     phone: '380501234567',
-    user_type: 'customer',
+    user_type: effectiveRole === 'supplier' ? 'supplier' : 'customer',
+    telegram_username: `test_${effectiveRole}`,
     is_active: true,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
-  } : null));
+  } : null;
+  const profile = effectiveRole === 'guest'
+    ? null
+    : (canUseDevRoleSwitcher && devRoleOverride ? { ...(auth.profile || {}), ...previewProfile } : (auth.profile || previewProfile));
+
 
   // Provide test addresses in dev environment when real addresses are empty
   const testAddresses = canUseDevRoleSwitcher && auth.addresses.length === 0 ? [

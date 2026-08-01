@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTelegramAuthContext } from "@/components/TelegramAuthProvider";
+import { isPreviewDevEnvironment } from "@/lib/dev-preview";
 
 interface BonusData {
   id: string;
@@ -79,9 +80,23 @@ export function useBonuses() {
         });
       }
     } catch (err: any) {
-      console.error("Error fetching bonuses:", err);
-      setError(err.message);
+      if (isPreviewDevEnvironment()) {
+        // Preview/demo fallback: tables are locked down for direct client access.
+        setBonusData({
+          id: "preview-bonus",
+          balance: 1250,
+          totalEarned: 4380,
+          totalSpent: 3130,
+          reputationScore: 4.7,
+          reputationMultiplier: 1.2,
+        });
+        setError(null);
+      } else {
+        console.error("Error fetching bonuses:", err);
+        setError(err.message);
+      }
     } finally {
+
       setIsLoading(false);
     }
   }, [isAuthenticated, profile?.id]);
@@ -110,9 +125,18 @@ export function useBonuses() {
 
       return true;
     } catch (err: any) {
+      if (isPreviewDevEnvironment()) {
+        setBonusData(prev => prev ? {
+          ...prev,
+          balance: prev.balance - amount,
+          totalSpent: prev.totalSpent + amount,
+        } : null);
+        return true;
+      }
       console.error("Error spending bonuses:", err);
       return false;
     }
+
   };
 
   const addBonuses = async (amount: number): Promise<boolean> => {
@@ -139,9 +163,18 @@ export function useBonuses() {
 
       return true;
     } catch (err: any) {
+      if (isPreviewDevEnvironment()) {
+        setBonusData(prev => prev ? {
+          ...prev,
+          balance: prev.balance + amount,
+          totalEarned: prev.totalEarned + amount,
+        } : null);
+        return true;
+      }
       console.error("Error adding bonuses:", err);
       return false;
     }
+
   };
 
   useEffect(() => {

@@ -1,5 +1,4 @@
-import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
+import { useState } from "react";
 import {
   Select,
   SelectContent,
@@ -8,8 +7,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Bug, X, Shield } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { Bug, X, Shield, RotateCcw } from "lucide-react";
 import { useTelegramAuthContext } from "@/components/TelegramAuthProvider";
 
 type TestRole = "guest" | "customer" | "supplier" | "shop_manager" | "moderator" | "admin";
@@ -20,59 +18,14 @@ interface DevRoleSwitcherProps {
   profileId?: string | null;
 }
 
-// Check if we're in Lovable.dev environment (for always-available testing)
-const isLovableDevEnvironment = () => {
-  try {
-    return window.location.hostname.includes('lovable.app') || 
-           window.location.hostname.includes('lovableproject.com') ||
-           window.location.hostname.includes('id-preview--');
-  } catch {
-    return false;
-  }
-};
-
-export const DevRoleSwitcher = ({ currentRole, onRoleChange, profileId }: DevRoleSwitcherProps) => {
+export const DevRoleSwitcher = ({ currentRole, onRoleChange }: DevRoleSwitcherProps) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [isChecking, setIsChecking] = useState(true);
-  const { sessionToken } = useTelegramAuthContext();
-
-  // Check if user is a real admin via secure edge function
-  useEffect(() => {
-    const checkAdminAccess = async () => {
-      if (isLovableDevEnvironment()) {
-        setIsAdmin(true);
-        setIsChecking(false);
-        return;
-      }
-
-      if (!profileId || !sessionToken) {
-        setIsChecking(false);
-        setIsAdmin(false);
-        return;
-      }
-
-      try {
-        const { data, error } = await supabase.functions.invoke('manage-user-roles', {
-          body: { action: 'get_my_roles', session_token: sessionToken },
-        });
-        if (error || data?.error) {
-          setIsAdmin(false);
-        } else {
-          setIsAdmin((data?.roles || []).includes('admin'));
-        }
-      } catch (err) {
-        console.error('Error checking admin access:', err);
-        setIsAdmin(false);
-      } finally {
-        setIsChecking(false);
-      }
-    };
-
-    checkAdminAccess();
-  }, [profileId, sessionToken]);
+  const { canUseDevRoleSwitcher, setDevRoleOverride } = useTelegramAuthContext();
+  const isAdmin = canUseDevRoleSwitcher;
+  const isChecking = false;
 
   const roleLabels: Record<TestRole, { label: string; color: string; description: string }> = {
+
     guest: { 
       label: "👤 Гість", 
       color: "bg-muted text-muted-foreground",
@@ -193,11 +146,20 @@ export const DevRoleSwitcher = ({ currentRole, onRoleChange, profileId }: DevRol
           </SelectContent>
         </Select>
 
+        <button
+          onClick={() => setDevRoleOverride(null)}
+          className="w-full flex items-center justify-center gap-2 h-8 rounded-lg border border-border text-xs text-muted-foreground hover:bg-muted transition-colors"
+        >
+          <RotateCcw className="h-3 w-3" />
+          Скинути до реальної ролі
+        </button>
+
         <div className="p-2 bg-destructive/10 rounded-lg border border-destructive/20">
           <p className="text-[10px] text-destructive leading-tight">
-            ⚠️ Для адміна це змінює і UI, і тестовий доступ до рахунків/оплат.
+            ⚠️ Тестовий режим прев'ю: змінює UI і тестовий доступ до рахунків/оплат.
           </p>
         </div>
+
       </div>
     </div>
   );
