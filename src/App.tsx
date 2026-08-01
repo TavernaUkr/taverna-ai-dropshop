@@ -147,7 +147,9 @@ const App = () => (
             <Sonner />
             <BrowserRouter>
               <AnimatedRoutes />
+              <FloatingDevRoleSwitcher />
             </BrowserRouter>
+
           </FavoritesProvider>
         </CartProvider>
       </TelegramAuthProvider>
