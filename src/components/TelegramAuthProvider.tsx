@@ -17,28 +17,12 @@ type TestRole = 'guest' | AppRole;
 
 const DEV_ROLE_STORAGE_KEY = 'taverna_dev_role_override';
 
-// Check if we're in Lovable in-editor iframe preview (never true on the public deployed site).
-const isLovableDevEnvironment = () => {
-  try {
-    if (!import.meta.env.DEV) return false;
-    const host = window.location.hostname;
-    return host === 'localhost' || host === '127.0.0.1' || host.startsWith('id-preview--');
-  } catch {
-    return false;
-  }
-};
-
+// Single shared check (never true on the published production domain).
+const isLovableDevEnvironment = isPreviewDevEnvironment;
 
 // Check if we're in any development environment (localhost, dev mode)
-const isDevEnv = () => {
-  try {
-    return import.meta.env.DEV || 
-           window.location.hostname.includes('localhost') ||
-           window.location.hostname === '127.0.0.1';
-  } catch {
-    return false;
-  }
-};
+const isDevEnv = isPreviewDevEnvironment;
+
 
 const isTestRole = (value: unknown): value is TestRole => {
   return (
