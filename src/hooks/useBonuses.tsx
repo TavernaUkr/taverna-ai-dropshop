@@ -79,9 +79,23 @@ export function useBonuses() {
         });
       }
     } catch (err: any) {
-      console.error("Error fetching bonuses:", err);
-      setError(err.message);
+      if (isPreviewDevEnvironment()) {
+        // Preview/demo fallback: tables are locked down for direct client access.
+        setBonusData({
+          id: "preview-bonus",
+          balance: 1250,
+          totalEarned: 4380,
+          totalSpent: 3130,
+          reputationScore: 4.7,
+          reputationMultiplier: 1.2,
+        });
+        setError(null);
+      } else {
+        console.error("Error fetching bonuses:", err);
+        setError(err.message);
+      }
     } finally {
+
       setIsLoading(false);
     }
   }, [isAuthenticated, profile?.id]);
