@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTelegramAuthContext } from "@/components/TelegramAuthProvider";
+import { isPreviewDevEnvironment } from "@/lib/dev-preview";
 
 interface BonusData {
   id: string;
