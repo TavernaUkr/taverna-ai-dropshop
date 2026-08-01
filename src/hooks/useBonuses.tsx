@@ -163,9 +163,18 @@ export function useBonuses() {
 
       return true;
     } catch (err: any) {
+      if (isPreviewDevEnvironment()) {
+        setBonusData(prev => prev ? {
+          ...prev,
+          balance: prev.balance + amount,
+          totalEarned: prev.totalEarned + amount,
+        } : null);
+        return true;
+      }
       console.error("Error adding bonuses:", err);
       return false;
     }
+
   };
 
   useEffect(() => {
