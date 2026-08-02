@@ -558,8 +558,16 @@ serve(async (req) => {
       if (action === "request_withdrawal" && amount < min) return json({ error: `Мінімальна сума виводу ${min}₴` }, 400);
 
       const provider = method?.provider || "liqpay";
-      const dest = { iban: method?.iban || sup?.payment_iban, card_token: method?.card_token, holder: method?.holder || sup?.payment_card_holder };
+      const dest = {
+        iban: method?.iban || sup?.payment_iban,
+        card_token: method?.card_token,
+        holder: method?.holder || sup?.payment_card_holder,
+        wallet_address: method?.wallet_address,
+        wallet_currency: method?.wallet_currency,
+        supplier_id,
+      };
       const result = await providerPayout(provider, amount, dest);
+
       if (!result.ok) {
         await applyMovement(supabase, supplier_id, {
           type: "withdrawal", amount: -amount, status: "failed", provider,
