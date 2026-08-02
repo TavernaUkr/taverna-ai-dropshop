@@ -26,6 +26,7 @@ import {
   DeliveryType 
 } from './checkout/DeliveryServiceSelect';
 import { DeliveryEstimate } from './checkout/DeliveryEstimate';
+import { WalletPayment } from './checkout/WalletPayment';
 
 const PROMO_STORAGE_KEY = "taverna_active_promo";
 
@@ -93,6 +94,7 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
   
   // Payment
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
+  const [walletOrder, setWalletOrder] = useState<{ id: string; number?: string | null } | null>(null);
   const [orderNotes, setOrderNotes] = useState('');
   
   // Promo & Bonuses - real data
@@ -546,6 +548,10 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
             localStorage.removeItem(PROMO_STORAGE_KEY);
           }
           toast.success(`Замовлення #${data.order.order_number} створено!`);
+          if (paymentMethod === 'telegram_wallet') {
+            setWalletOrder({ id: data.order.id, number: data.order.order_number });
+            return;
+          }
           onOrderComplete(data.order.id);
         } else {
           throw new Error(data?.error || 'Failed to create order');
@@ -573,6 +579,10 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
 
         if (data?.success && data?.order) {
           toast.success(`Замовлення #${data.order.order_number} створено!`);
+          if (paymentMethod === 'telegram_wallet') {
+            setWalletOrder({ id: data.order.id, number: data.order.order_number });
+            return;
+          }
           onOrderComplete(data.order.id);
         } else {
           throw new Error(data?.error || 'Failed to create order');
@@ -973,10 +983,23 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4">
-          {currentStep === 'contact' && renderContactStep()}
-          {currentStep === 'delivery' && renderDeliveryStep()}
-          {currentStep === 'payment' && renderPaymentStep()}
-          {currentStep === 'confirm' && renderConfirmStep()}
+          {walletOrder ? (
+            <WalletPayment
+              orderId={walletOrder.id}
+              orderNumber={walletOrder.number}
+              amount={total}
+              sessionToken={sessionToken}
+              onPaid={(id) => { setWalletOrder(null); onOrderComplete(id); }}
+              onCancel={() => { const id = walletOrder.id; setWalletOrder(null); onOrderComplete(id); }}
+            />
+          ) : (
+            <>
+              {currentStep === 'contact' && renderContactStep()}
+              {currentStep === 'delivery' && renderDeliveryStep()}
+              {currentStep === 'payment' && renderPaymentStep()}
+              {currentStep === 'confirm' && renderConfirmStep()}
+            </>
+          )}
         </div>
       </div>
     </div>
