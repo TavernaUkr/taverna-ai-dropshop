@@ -72,15 +72,15 @@ const paymentMethods: {
   {
     id: "telegram_wallet",
     label: "Telegram Wallet",
-    description: "Оплата криптовалютою TON/USDT",
+    description: "Миттєва оплата в Telegram (TON/USDT)",
     icon: (
       <div className="w-6 h-6 rounded-full bg-[hsl(200,85%,50%)] flex items-center justify-center">
         <Wallet className="h-4 w-4 text-white" />
       </div>
     ),
-    disabled: true,
-    badge: "Скоро",
+    badge: "Миттєво",
   },
+
 ];
 
 export const PaymentMethodSelect = ({

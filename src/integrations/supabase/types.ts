@@ -696,6 +696,8 @@ export type Database = {
           supplier_id: string
           type: string
           updated_at: string
+          wallet_address: string | null
+          wallet_currency: string | null
         }
         Insert: {
           auto_charge?: boolean
@@ -712,6 +714,8 @@ export type Database = {
           supplier_id: string
           type?: string
           updated_at?: string
+          wallet_address?: string | null
+          wallet_currency?: string | null
         }
         Update: {
           auto_charge?: boolean
@@ -728,6 +732,8 @@ export type Database = {
           supplier_id?: string
           type?: string
           updated_at?: string
+          wallet_address?: string | null
+          wallet_currency?: string | null
         }
         Relationships: [
           {
@@ -2030,6 +2036,79 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      wallet_invoices: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          direct_pay_link: string | null
+          id: string
+          mode: string
+          order_id: string | null
+          paid_at: string | null
+          pay_link: string | null
+          profile_id: string | null
+          raw_payload: Json | null
+          status: string
+          updated_at: string
+          wallet_invoice_id: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency?: string
+          direct_pay_link?: string | null
+          id?: string
+          mode?: string
+          order_id?: string | null
+          paid_at?: string | null
+          pay_link?: string | null
+          profile_id?: string | null
+          raw_payload?: Json | null
+          status?: string
+          updated_at?: string
+          wallet_invoice_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          direct_pay_link?: string | null
+          id?: string
+          mode?: string
+          order_id?: string | null
+          paid_at?: string | null
+          pay_link?: string | null
+          profile_id?: string | null
+          raw_payload?: Json | null
+          status?: string
+          updated_at?: string
+          wallet_invoice_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_invoices_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallet_invoices_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallet_invoices_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_safe"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

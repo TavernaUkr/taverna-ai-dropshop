@@ -11,6 +11,7 @@ const MONOBANK_TOKEN = Deno.env.get("MONOBANK_TOKEN") || "";
 const LIQPAY_PUBLIC = Deno.env.get("LIQPAY_PUBLIC_KEY") || "";
 const LIQPAY_PRIVATE = Deno.env.get("LIQPAY_PRIVATE_KEY") || "";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const WALLET_MODE: "live" | "sandbox" = Deno.env.get("WALLET_PAY_API_KEY") ? "live" : "sandbox";
 
 function providerMode(provider: string): "live" | "sandbox" {
   if (provider === "monobank") return MONOBANK_TOKEN ? "live" : "sandbox";
@@ -211,12 +212,44 @@ async function applyMovement(
   return { balance_after: available, movement: mv };
 }
 
+// ---- provider: Telegram Wallet payout (delegated to the wallet-pay function) ----
+async function walletPayout(
+  amount: number,
+  dest: { wallet_address?: string; wallet_currency?: string; supplier_id?: string },
+) {
+  if (!dest.wallet_address) return { ok: false, error: "Не вказано адресу Telegram Wallet", mode: "sandbox" as const };
+  try {
+    const res = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/wallet-pay`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-internal-key": SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
+      body: JSON.stringify({
+        action: "create_payout",
+        amount,
+        wallet_address: dest.wallet_address,
+        currency: dest.wallet_currency || "USDT",
+        supplier_id: dest.supplier_id,
+      }),
+    });
+    const out = await res.json().catch(() => ({}));
+    if (!res.ok || !out?.ok) return { ok: false, error: out?.error || `HTTP ${res.status}`, mode: out?.mode || "sandbox" };
+    return { ok: true, tx_id: out.tx_id, mode: out.mode };
+  } catch (e: any) {
+    return { ok: false, error: e.message, mode: "sandbox" as const };
+  }
+}
+
 // ---- provider: outgoing payout to supplier ----
-async function providerPayout(provider: string, amount: number, dest: { iban?: string; card_token?: string; holder?: string }) {
+async function providerPayout(
+  provider: string,
+  amount: number,
+  dest: { iban?: string; card_token?: string; holder?: string; wallet_address?: string; wallet_currency?: string; supplier_id?: string },
+) {
+  if (provider === "telegram_wallet") return await walletPayout(amount, dest);
   const mode = providerMode(provider);
   if (mode === "sandbox") {
     return { ok: true, tx_id: fakeTx(provider.toUpperCase() + "-PAYOUT"), mode };
   }
+
   // LIVE: real outgoing transfer (FOP business / payout API)
   try {
     if (provider === "liqpay" && dest.card_token) {
@@ -309,7 +342,7 @@ serve(async (req) => {
 
     if (previewRole === "guest" || previewRole === "customer") {
       if (["get_balance", "list_movements", "list_payouts", "set_payout_method", "bind_card", "request_withdrawal", "list_my_shops", "list_shop_payments", "get_stats"].includes(action)) {
-        if (action === "list_my_shops") return json({ rows: [], providers: { monobank: providerMode("monobank"), liqpay: providerMode("liqpay") } });
+        if (action === "list_my_shops") return json({ rows: [], providers: { monobank: providerMode("monobank"), liqpay: providerMode("liqpay"), telegram_wallet: WALLET_MODE } });
         if (action === "get_stats") return json({ totals: { turnover: 0, earned: 0, processing: 0, productsSold: 0, productsAmount: 0, ordersCount: 0 }, series: buildStats([], []) });
         return json({ error: "Forbidden" }, 403);
       }
@@ -335,7 +368,7 @@ serve(async (req) => {
         .eq("supplier_id", supplier_id).eq("is_default", true).maybeSingle();
       // managers get read-only view (owner controls payouts/cards)
       const canManage = access === "owner" || (access === "staff" && (isAdmin || previewRole === "admin") && previewRole !== "moderator");
-      return json({ balance: bal, method: method || null, access, canManage, providers: { monobank: providerMode("monobank"), liqpay: providerMode("liqpay") } });
+      return json({ balance: bal, method: method || null, access, canManage, providers: { monobank: providerMode("monobank"), liqpay: providerMode("liqpay"), telegram_wallet: WALLET_MODE } });
     }
 
 
@@ -366,7 +399,7 @@ serve(async (req) => {
             }
           : null,
       }));
-      return json({ rows, role: (isAdmin || previewRole === "admin") ? "admin" : "moderator", providers: { monobank: providerMode("monobank"), liqpay: providerMode("liqpay") } });
+      return json({ rows, role: (isAdmin || previewRole === "admin") ? "admin" : "moderator", providers: { monobank: providerMode("monobank"), liqpay: providerMode("liqpay"), telegram_wallet: WALLET_MODE } });
     }
 
     // ---------------- list_movements ----------------
@@ -398,7 +431,7 @@ serve(async (req) => {
 
     // ---------------- set_payout_method (supplier/staff) ----------------
     if (action === "set_payout_method") {
-      const { supplier_id, auto_withdraw, auto_charge, min_withdraw, iban, holder } = body;
+      const { supplier_id, auto_withdraw, auto_charge, min_withdraw, iban, holder, provider, wallet_address, wallet_currency } = body;
       if (!supplier_id) return json({ error: "supplier_id required" }, 400);
       {
         const access = await getShopAccess(supabase, profileId, supplier_id, telegramId, isStaff, previewRole);
@@ -416,6 +449,17 @@ serve(async (req) => {
       if (min_withdraw !== undefined) patch.min_withdraw = min_withdraw;
       if (iban !== undefined) { patch.iban = iban; patch.type = "iban"; }
       if (holder !== undefined) patch.holder = holder;
+      if (wallet_address !== undefined) {
+        patch.wallet_address = wallet_address;
+        patch.provider = "telegram_wallet";
+        patch.type = "wallet";
+      }
+      if (wallet_currency !== undefined) patch.wallet_currency = wallet_currency;
+      if (provider !== undefined && ["liqpay", "monobank", "telegram_wallet"].includes(provider)) {
+        patch.provider = provider;
+        if (provider === "telegram_wallet") patch.type = "wallet";
+      }
+
 
       if (existing) {
         await supabase.from("payout_methods").update(patch).eq("id", existing.id);
@@ -515,8 +559,16 @@ serve(async (req) => {
       if (action === "request_withdrawal" && amount < min) return json({ error: `Мінімальна сума виводу ${min}₴` }, 400);
 
       const provider = method?.provider || "liqpay";
-      const dest = { iban: method?.iban || sup?.payment_iban, card_token: method?.card_token, holder: method?.holder || sup?.payment_card_holder };
+      const dest = {
+        iban: method?.iban || sup?.payment_iban,
+        card_token: method?.card_token,
+        holder: method?.holder || sup?.payment_card_holder,
+        wallet_address: method?.wallet_address,
+        wallet_currency: method?.wallet_currency,
+        supplier_id,
+      };
       const result = await providerPayout(provider, amount, dest);
+
       if (!result.ok) {
         await applyMovement(supabase, supplier_id, {
           type: "withdrawal", amount: -amount, status: "failed", provider,
@@ -546,7 +598,12 @@ serve(async (req) => {
         const available = Number(bal?.available || 0);
         if (available < Number(method.min_withdraw || 0) || available <= 0) continue;
         const provider = method.provider || "liqpay";
-        const result = await providerPayout(provider, available, { iban: method.iban, card_token: method.card_token, holder: method.holder });
+        const result = await providerPayout(provider, available, {
+          iban: method.iban, card_token: method.card_token, holder: method.holder,
+          wallet_address: method.wallet_address, wallet_currency: method.wallet_currency,
+          supplier_id: method.supplier_id,
+        });
+
         if (!result.ok) continue;
         const mv = await applyMovement(supabase, method.supplier_id, {
           type: "withdrawal", amount: -available, provider, external_tx_id: result.tx_id, description: `Авто-вивід (${result.mode})`,
@@ -588,7 +645,7 @@ serve(async (req) => {
         const { data } = await supabase.from("suppliers").select("id").eq("is_active", true);
         ids = (data || []).map((s: any) => s.id);
       }
-      if (ids.length === 0) return json({ rows: [], providers: { monobank: providerMode("monobank"), liqpay: providerMode("liqpay") } });
+      if (ids.length === 0) return json({ rows: [], providers: { monobank: providerMode("monobank"), liqpay: providerMode("liqpay"), telegram_wallet: WALLET_MODE } });
 
       // determine owner vs manager per shop
       const ownedSet = new Set<string>();
@@ -619,7 +676,7 @@ serve(async (req) => {
           method: methodMap[s.id] || null,
         };
       });
-      return json({ rows, providers: { monobank: providerMode("monobank"), liqpay: providerMode("liqpay") } });
+      return json({ rows, providers: { monobank: providerMode("monobank"), liqpay: providerMode("liqpay"), telegram_wallet: WALLET_MODE } });
     }
 
     // ---------------- list_shop_payments (manager read-only: order payment statuses, no funds) ----------------
