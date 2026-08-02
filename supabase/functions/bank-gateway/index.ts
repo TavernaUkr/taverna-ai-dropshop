@@ -11,6 +11,7 @@ const MONOBANK_TOKEN = Deno.env.get("MONOBANK_TOKEN") || "";
 const LIQPAY_PUBLIC = Deno.env.get("LIQPAY_PUBLIC_KEY") || "";
 const LIQPAY_PRIVATE = Deno.env.get("LIQPAY_PRIVATE_KEY") || "";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const WALLET_MODE: "live" | "sandbox" = Deno.env.get("WALLET_PAY_API_KEY") ? "live" : "sandbox";
 
 function providerMode(provider: string): "live" | "sandbox" {
   if (provider === "monobank") return MONOBANK_TOKEN ? "live" : "sandbox";
@@ -341,7 +342,7 @@ serve(async (req) => {
 
     if (previewRole === "guest" || previewRole === "customer") {
       if (["get_balance", "list_movements", "list_payouts", "set_payout_method", "bind_card", "request_withdrawal", "list_my_shops", "list_shop_payments", "get_stats"].includes(action)) {
-        if (action === "list_my_shops") return json({ rows: [], providers: { monobank: providerMode("monobank"), liqpay: providerMode("liqpay") } });
+        if (action === "list_my_shops") return json({ rows: [], providers: { monobank: providerMode("monobank"), liqpay: providerMode("liqpay"), telegram_wallet: WALLET_MODE } });
         if (action === "get_stats") return json({ totals: { turnover: 0, earned: 0, processing: 0, productsSold: 0, productsAmount: 0, ordersCount: 0 }, series: buildStats([], []) });
         return json({ error: "Forbidden" }, 403);
       }
@@ -367,7 +368,7 @@ serve(async (req) => {
         .eq("supplier_id", supplier_id).eq("is_default", true).maybeSingle();
       // managers get read-only view (owner controls payouts/cards)
       const canManage = access === "owner" || (access === "staff" && (isAdmin || previewRole === "admin") && previewRole !== "moderator");
-      return json({ balance: bal, method: method || null, access, canManage, providers: { monobank: providerMode("monobank"), liqpay: providerMode("liqpay") } });
+      return json({ balance: bal, method: method || null, access, canManage, providers: { monobank: providerMode("monobank"), liqpay: providerMode("liqpay"), telegram_wallet: WALLET_MODE } });
     }
 
 
@@ -398,7 +399,7 @@ serve(async (req) => {
             }
           : null,
       }));
-      return json({ rows, role: (isAdmin || previewRole === "admin") ? "admin" : "moderator", providers: { monobank: providerMode("monobank"), liqpay: providerMode("liqpay") } });
+      return json({ rows, role: (isAdmin || previewRole === "admin") ? "admin" : "moderator", providers: { monobank: providerMode("monobank"), liqpay: providerMode("liqpay"), telegram_wallet: WALLET_MODE } });
     }
 
     // ---------------- list_movements ----------------
@@ -644,7 +645,7 @@ serve(async (req) => {
         const { data } = await supabase.from("suppliers").select("id").eq("is_active", true);
         ids = (data || []).map((s: any) => s.id);
       }
-      if (ids.length === 0) return json({ rows: [], providers: { monobank: providerMode("monobank"), liqpay: providerMode("liqpay") } });
+      if (ids.length === 0) return json({ rows: [], providers: { monobank: providerMode("monobank"), liqpay: providerMode("liqpay"), telegram_wallet: WALLET_MODE } });
 
       // determine owner vs manager per shop
       const ownedSet = new Set<string>();
@@ -675,7 +676,7 @@ serve(async (req) => {
           method: methodMap[s.id] || null,
         };
       });
-      return json({ rows, providers: { monobank: providerMode("monobank"), liqpay: providerMode("liqpay") } });
+      return json({ rows, providers: { monobank: providerMode("monobank"), liqpay: providerMode("liqpay"), telegram_wallet: WALLET_MODE } });
     }
 
     // ---------------- list_shop_payments (manager read-only: order payment statuses, no funds) ----------------
