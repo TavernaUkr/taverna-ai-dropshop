@@ -26,3 +26,10 @@ verify_jwt = false
 
 [functions.manage-user-roles]
 verify_jwt = false
+
+[functions.wallet-pay]
+verify_jwt = false
+
+[functions.wallet-webhook]
+verify_jwt = false
+
