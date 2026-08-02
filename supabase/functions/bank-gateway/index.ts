@@ -211,12 +211,44 @@ async function applyMovement(
   return { balance_after: available, movement: mv };
 }
 
+// ---- provider: Telegram Wallet payout (delegated to the wallet-pay function) ----
+async function walletPayout(
+  amount: number,
+  dest: { wallet_address?: string; wallet_currency?: string; supplier_id?: string },
+) {
+  if (!dest.wallet_address) return { ok: false, error: "Не вказано адресу Telegram Wallet", mode: "sandbox" as const };
+  try {
+    const res = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/wallet-pay`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-internal-key": SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
+      body: JSON.stringify({
+        action: "create_payout",
+        amount,
+        wallet_address: dest.wallet_address,
+        currency: dest.wallet_currency || "USDT",
+        supplier_id: dest.supplier_id,
+      }),
+    });
+    const out = await res.json().catch(() => ({}));
+    if (!res.ok || !out?.ok) return { ok: false, error: out?.error || `HTTP ${res.status}`, mode: out?.mode || "sandbox" };
+    return { ok: true, tx_id: out.tx_id, mode: out.mode };
+  } catch (e: any) {
+    return { ok: false, error: e.message, mode: "sandbox" as const };
+  }
+}
+
 // ---- provider: outgoing payout to supplier ----
-async function providerPayout(provider: string, amount: number, dest: { iban?: string; card_token?: string; holder?: string }) {
+async function providerPayout(
+  provider: string,
+  amount: number,
+  dest: { iban?: string; card_token?: string; holder?: string; wallet_address?: string; wallet_currency?: string; supplier_id?: string },
+) {
+  if (provider === "telegram_wallet") return await walletPayout(amount, dest);
   const mode = providerMode(provider);
   if (mode === "sandbox") {
     return { ok: true, tx_id: fakeTx(provider.toUpperCase() + "-PAYOUT"), mode };
   }
+
   // LIVE: real outgoing transfer (FOP business / payout API)
   try {
     if (provider === "liqpay" && dest.card_token) {
