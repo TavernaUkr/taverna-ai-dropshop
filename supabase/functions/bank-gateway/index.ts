@@ -448,6 +448,17 @@ serve(async (req) => {
       if (min_withdraw !== undefined) patch.min_withdraw = min_withdraw;
       if (iban !== undefined) { patch.iban = iban; patch.type = "iban"; }
       if (holder !== undefined) patch.holder = holder;
+      if (wallet_address !== undefined) {
+        patch.wallet_address = wallet_address;
+        patch.provider = "telegram_wallet";
+        patch.type = "wallet";
+      }
+      if (wallet_currency !== undefined) patch.wallet_currency = wallet_currency;
+      if (provider !== undefined && ["liqpay", "monobank", "telegram_wallet"].includes(provider)) {
+        patch.provider = provider;
+        if (provider === "telegram_wallet") patch.type = "wallet";
+      }
+
 
       if (existing) {
         await supabase.from("payout_methods").update(patch).eq("id", existing.id);
