@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import {
   Wallet, Loader2, ArrowDownToLine, CreditCard, RefreshCw,
   TrendingUp, TrendingDown, Banknote, ShieldCheck, Zap,
-  CheckCircle2, Clock, ReceiptText,
+  CheckCircle2, Clock, ReceiptText, Send,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -67,7 +67,7 @@ export function SupplierBalanceCard({ supplierId, readOnly: readOnlyProp, previe
   const [loading, setLoading] = useState(true);
   const [balance, setBalance] = useState<any>(null);
   const [method, setMethod] = useState<any>(null);
-  const [providers, setProviders] = useState<{ monobank: string; liqpay: string }>({ monobank: "sandbox", liqpay: "sandbox" });
+  const [providers, setProviders] = useState<{ monobank: string; liqpay: string; telegram_wallet?: string }>({ monobank: "sandbox", liqpay: "sandbox", telegram_wallet: "sandbox" });
   const [movements, setMovements] = useState<any[]>([]);
   const [payments, setPayments] = useState<PaymentRow[]>([]);
   const [payouts, setPayouts] = useState<PayoutRow[]>([]);
@@ -80,6 +80,9 @@ export function SupplierBalanceCard({ supplierId, readOnly: readOnlyProp, previe
   const [holderName, setHolderName] = useState("");
   const [cardNumber, setCardNumber] = useState("");
   const [cardHolder, setCardHolder] = useState("");
+  const [walletOpen, setWalletOpen] = useState(false);
+  const [walletAddress, setWalletAddress] = useState("");
+  const [walletCurrency, setWalletCurrency] = useState("USDT");
 
   const load = useCallback(async () => {
     if (!sessionToken || !supplierId) {
@@ -103,8 +106,10 @@ export function SupplierBalanceCard({ supplierId, readOnly: readOnlyProp, previe
       setMinWithdraw(bal.data?.method?.min_withdraw != null ? String(bal.data.method.min_withdraw) : "");
       setIban(bal.data?.method?.iban || "");
       setHolderName(bal.data?.method?.holder || "");
+      setWalletAddress(bal.data?.method?.wallet_address || "");
+      setWalletCurrency(bal.data?.method?.wallet_currency || "USDT");
       setCanManageServer(bal.data?.canManage !== false);
-      setProviders(bal.data?.providers || { monobank: "sandbox", liqpay: "sandbox" });
+      setProviders(bal.data?.providers || { monobank: "sandbox", liqpay: "sandbox", telegram_wallet: "sandbox" });
       setMovements(mv.data?.movements || []);
       setPayments(pay.data?.payments || []);
       setPayouts(po.data?.payouts || []);
@@ -142,6 +147,13 @@ export function SupplierBalanceCard({ supplierId, readOnly: readOnlyProp, previe
     if (cardNumber.replace(/\D/g, "").length < 12) { toast.error("Введіть коректний номер картки"); return; }
     const r = await callAction("bind_card", { card_number: cardNumber, holder: cardHolder, provider: "liqpay" }, "Картку прив'язано");
     if (r) { setCardOpen(false); setCardNumber(""); setCardHolder(""); }
+  };
+  const saveWallet = async () => {
+    if (walletAddress.trim().length < 6) { toast.error("Введіть адресу Telegram Wallet"); return; }
+    const r = await callAction("set_payout_method",
+      { wallet_address: walletAddress.trim(), wallet_currency: walletCurrency, provider: "telegram_wallet" },
+      "Telegram Wallet підключено");
+    if (r) setWalletOpen(false);
   };
   const toggleAuto = (field: "auto_withdraw" | "auto_charge", value: boolean) =>
     callAction("set_payout_method", { [field]: value }, "Налаштування збережено");
@@ -187,9 +199,17 @@ export function SupplierBalanceCard({ supplierId, readOnly: readOnlyProp, previe
               Режим перегляду — виплатами керує власник магазину
             </div>
           ) : (
-            <Button className="w-full" onClick={withdraw} disabled={busy || available <= 0}>
-              <ArrowDownToLine className="h-4 w-4" /> Вивести {available > 0 ? `${available.toLocaleString("uk-UA")} ₴` : ""}
-            </Button>
+            <div className="space-y-2">
+              <Button className="w-full" onClick={withdraw} disabled={busy || available <= 0}>
+                <ArrowDownToLine className="h-4 w-4" /> Вивести {available > 0 ? `${available.toLocaleString("uk-UA")} ₴` : ""}
+                {method?.provider === "telegram_wallet" ? " на Telegram Wallet" : ""}
+              </Button>
+              <p className="text-[11px] text-center text-muted-foreground">
+                {method?.provider === "telegram_wallet"
+                  ? `Миттєвий вивід у Telegram Wallet (${method?.wallet_currency || "USDT"})`
+                  : "Вивід на банківські реквізити"}
+              </p>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -246,7 +266,7 @@ export function SupplierBalanceCard({ supplierId, readOnly: readOnlyProp, previe
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             {/* Bind card */}
             <Dialog open={cardOpen} onOpenChange={setCardOpen}>
               <DialogTrigger asChild>
@@ -281,6 +301,48 @@ export function SupplierBalanceCard({ supplierId, readOnly: readOnlyProp, previe
               </DialogContent>
             </Dialog>
 
+            {/* Telegram Wallet payout method */}
+            <Dialog open={walletOpen} onOpenChange={setWalletOpen}>
+              <DialogTrigger asChild>
+                <Button variant={method?.provider === "telegram_wallet" ? "default" : "outline"} className="w-full">
+                  <Send className="h-4 w-4" /> Wallet
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <Send className="h-4 w-4 text-primary" /> Telegram Wallet
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted rounded-lg p-3">
+                    <ShieldCheck className="h-4 w-4 text-green-600 shrink-0" />
+                    Вивід коштів прямо в Telegram Wallet — зазвичай миттєво, без банківських затримок.
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Адреса гаманця</Label>
+                    <Input placeholder="UQ... / TON або USDT адреса" value={walletAddress}
+                      onChange={(e) => setWalletAddress(e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Валюта виводу</Label>
+                    <div className="flex gap-2">
+                      {["USDT", "TON"].map((c) => (
+                        <Button key={c} type="button" variant={walletCurrency === c ? "default" : "outline"}
+                          size="sm" onClick={() => setWalletCurrency(c)}>{c}</Button>
+                      ))}
+                    </div>
+                  </div>
+                  <Badge variant="outline">Режим: {providers.telegram_wallet || "sandbox"}</Badge>
+                </div>
+                <DialogFooter>
+                  <Button onClick={saveWallet} disabled={busy}>
+                    {busy && <Loader2 className="h-4 w-4 animate-spin" />} Зберегти
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
             {/* Dedicated auto-payments dialog */}
             <Dialog open={autoOpen} onOpenChange={setAutoOpen}>
               <DialogTrigger asChild>
@@ -296,6 +358,7 @@ export function SupplierBalanceCard({ supplierId, readOnly: readOnlyProp, previe
                   <div className="flex flex-wrap gap-2">
                     <Badge variant="outline">Mono: {providers.monobank}</Badge>
                     <Badge variant="outline">LiqPay: {providers.liqpay}</Badge>
+                    <Badge variant="outline">Wallet: {providers.telegram_wallet || "sandbox"}</Badge>
                     {method?.masked_pan && <Badge variant="secondary" className="font-mono">{method.masked_pan}</Badge>}
                   </div>
                   <div className="flex items-center justify-between gap-3">
@@ -328,6 +391,14 @@ export function SupplierBalanceCard({ supplierId, readOnly: readOnlyProp, previe
                     <Label className="text-sm">Отримувач</Label>
                     <Input placeholder="ФОП / власник картки" value={holderName} onChange={(e) => setHolderName(e.target.value)} />
                   </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-sm">Telegram Wallet для авто-виводу</Label>
+                    <Input placeholder="UQ... (залиште порожнім для банку)" value={walletAddress}
+                      onChange={(e) => setWalletAddress(e.target.value)} />
+                    <p className="text-xs text-muted-foreground">
+                      Якщо вказано — авто-вивід іде миттєво в Telegram Wallet ({walletCurrency}), інакше на IBAN.
+                    </p>
+                  </div>
                   {!method?.masked_pan && (
                     <div className="flex items-center gap-2 text-xs text-amber-600 bg-amber-500/10 rounded-lg p-3">
                       <ShieldCheck className="h-4 w-4 shrink-0" />
@@ -339,7 +410,14 @@ export function SupplierBalanceCard({ supplierId, readOnly: readOnlyProp, previe
                   <Button
                     onClick={async () => {
                       const r = await callAction("set_payout_method",
-                        { min_withdraw: Number(minWithdraw || 0), iban: iban.trim() || undefined, holder: holderName.trim() || undefined }, "Налаштування автооплат збережено");
+                        {
+                          min_withdraw: Number(minWithdraw || 0),
+                          iban: iban.trim() || undefined,
+                          holder: holderName.trim() || undefined,
+                          wallet_address: walletAddress.trim() || undefined,
+                          wallet_currency: walletCurrency,
+                          provider: walletAddress.trim() ? "telegram_wallet" : "liqpay",
+                        }, "Налаштування автооплат збережено");
                       if (r) setAutoOpen(false);
                     }}
                     disabled={busy}
