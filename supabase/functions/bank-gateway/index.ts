@@ -597,7 +597,12 @@ serve(async (req) => {
         const available = Number(bal?.available || 0);
         if (available < Number(method.min_withdraw || 0) || available <= 0) continue;
         const provider = method.provider || "liqpay";
-        const result = await providerPayout(provider, available, { iban: method.iban, card_token: method.card_token, holder: method.holder });
+        const result = await providerPayout(provider, available, {
+          iban: method.iban, card_token: method.card_token, holder: method.holder,
+          wallet_address: method.wallet_address, wallet_currency: method.wallet_currency,
+          supplier_id: method.supplier_id,
+        });
+
         if (!result.ok) continue;
         const mv = await applyMovement(supabase, method.supplier_id, {
           type: "withdrawal", amount: -available, provider, external_tx_id: result.tx_id, description: `Авто-вивід (${result.mode})`,
