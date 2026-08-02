@@ -430,7 +430,7 @@ serve(async (req) => {
 
     // ---------------- set_payout_method (supplier/staff) ----------------
     if (action === "set_payout_method") {
-      const { supplier_id, auto_withdraw, auto_charge, min_withdraw, iban, holder } = body;
+      const { supplier_id, auto_withdraw, auto_charge, min_withdraw, iban, holder, provider, wallet_address, wallet_currency } = body;
       if (!supplier_id) return json({ error: "supplier_id required" }, 400);
       {
         const access = await getShopAccess(supabase, profileId, supplier_id, telegramId, isStaff, previewRole);
