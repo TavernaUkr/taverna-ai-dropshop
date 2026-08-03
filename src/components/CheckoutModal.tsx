@@ -27,6 +27,7 @@ import {
 } from './checkout/DeliveryServiceSelect';
 import { DeliveryEstimate } from './checkout/DeliveryEstimate';
 import { WalletPayment } from './checkout/WalletPayment';
+import { useWallet } from '@/hooks/useWallet';
 
 const PROMO_STORAGE_KEY = "taverna_active_promo";
 
@@ -94,6 +95,7 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
   
   // Payment
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
+  const { payWithBalance } = useWallet();
   const [walletOrder, setWalletOrder] = useState<{ id: string; number?: string | null } | null>(null);
   const [orderNotes, setOrderNotes] = useState('');
   
@@ -548,6 +550,16 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
             localStorage.removeItem(PROMO_STORAGE_KEY);
           }
           toast.success(`Замовлення #${data.order.order_number} створено!`);
+          if (paymentMethod === 'taverna_balance') {
+            try {
+              await payWithBalance(data.order.id, true);
+              toast.success('Оплачено з рахунку Taverna');
+            } catch {
+              toast.error('Недостатньо коштів на рахунку');
+            }
+            onOrderComplete(data.order.id);
+            return;
+          }
           if (paymentMethod === 'telegram_wallet') {
             setWalletOrder({ id: data.order.id, number: data.order.order_number });
             return;
@@ -579,6 +591,16 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
 
         if (data?.success && data?.order) {
           toast.success(`Замовлення #${data.order.order_number} створено!`);
+          if (paymentMethod === 'taverna_balance') {
+            try {
+              await payWithBalance(data.order.id, true);
+              toast.success('Оплачено з рахунку Taverna');
+            } catch {
+              toast.error('Недостатньо коштів на рахунку');
+            }
+            onOrderComplete(data.order.id);
+            return;
+          }
           if (paymentMethod === 'telegram_wallet') {
             setWalletOrder({ id: data.order.id, number: data.order.order_number });
             return;
@@ -913,6 +935,7 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
           {paymentMethod === 'applepay' && 'Apple Pay'}
           {paymentMethod === 'googlepay' && 'Google Pay'}
           {paymentMethod === 'telegram_wallet' && 'Telegram Wallet'}
+          {paymentMethod === 'taverna_balance' && 'Рахунок Taverna (баланс + бонуси)'}
         </p>
       </div>
 

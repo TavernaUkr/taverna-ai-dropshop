@@ -2110,6 +2110,165 @@ export type Database = {
           },
         ]
       }
+      wallet_limits: {
+        Row: {
+          created_at: string
+          daily_limit: number
+          eta_text: string | null
+          fee_fixed: number
+          fee_percent: number
+          id: string
+          is_active: boolean
+          max_payout: number
+          min_payout: number
+          provider: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          daily_limit?: number
+          eta_text?: string | null
+          fee_fixed?: number
+          fee_percent?: number
+          id?: string
+          is_active?: boolean
+          max_payout?: number
+          min_payout?: number
+          provider: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          daily_limit?: number
+          eta_text?: string | null
+          fee_fixed?: number
+          fee_percent?: number
+          id?: string
+          is_active?: boolean
+          max_payout?: number
+          min_payout?: number
+          provider?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      wallet_transactions: {
+        Row: {
+          amount: number
+          bonus_amount: number
+          created_at: string
+          description: string | null
+          external_id: string | null
+          id: string
+          order_id: string | null
+          provider: string
+          receipt: Json | null
+          status: string
+          type: string
+          updated_at: string
+          wallet_id: string
+        }
+        Insert: {
+          amount?: number
+          bonus_amount?: number
+          created_at?: string
+          description?: string | null
+          external_id?: string | null
+          id?: string
+          order_id?: string | null
+          provider?: string
+          receipt?: Json | null
+          status?: string
+          type: string
+          updated_at?: string
+          wallet_id: string
+        }
+        Update: {
+          amount?: number
+          bonus_amount?: number
+          created_at?: string
+          description?: string | null
+          external_id?: string | null
+          id?: string
+          order_id?: string | null
+          provider?: string
+          receipt?: Json | null
+          status?: string
+          type?: string
+          updated_at?: string
+          wallet_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_transactions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallet_transactions_wallet_id_fkey"
+            columns: ["wallet_id"]
+            isOneToOne: false
+            referencedRelation: "wallets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wallets: {
+        Row: {
+          auto_withdraw: boolean
+          auto_withdraw_min: number
+          balance: number
+          bonus_balance: number
+          created_at: string
+          currency: string
+          id: string
+          is_connected: boolean
+          owner_id: string
+          owner_type: string
+          payout_provider: string
+          pending: number
+          tg_wallet_address: string | null
+          tg_wallet_currency: string | null
+          updated_at: string
+        }
+        Insert: {
+          auto_withdraw?: boolean
+          auto_withdraw_min?: number
+          balance?: number
+          bonus_balance?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          is_connected?: boolean
+          owner_id: string
+          owner_type: string
+          payout_provider?: string
+          pending?: number
+          tg_wallet_address?: string | null
+          tg_wallet_currency?: string | null
+          updated_at?: string
+        }
+        Update: {
+          auto_withdraw?: boolean
+          auto_withdraw_min?: number
+          balance?: number
+          bonus_balance?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          is_connected?: boolean
+          owner_id?: string
+          owner_type?: string
+          payout_provider?: string
+          pending?: number
+          tg_wallet_address?: string | null
+          tg_wallet_currency?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       profiles_safe: {
