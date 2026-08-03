@@ -3,7 +3,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Banknote, CreditCard, Wallet, Check, Smartphone } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type PaymentMethod = "cash" | "card" | "mono" | "applepay" | "googlepay" | "telegram_wallet";
+export type PaymentMethod = "cash" | "card" | "mono" | "applepay" | "googlepay" | "telegram_wallet" | "taverna_balance";
 
 interface PaymentMethodSelectProps {
   value: PaymentMethod;
@@ -19,6 +19,17 @@ const paymentMethods: {
   disabled?: boolean;
   badge?: string;
 }[] = [
+  {
+    id: "taverna_balance",
+    label: "Рахунок Taverna",
+    description: "Баланс + бонуси в один тап",
+    icon: (
+      <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
+        <Wallet className="h-4 w-4 text-primary-foreground" />
+      </div>
+    ),
+    badge: "1 тап",
+  },
   {
     id: "cash",
     label: "Оплата при отриманні",
