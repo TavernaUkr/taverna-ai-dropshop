@@ -29,6 +29,7 @@ import OrdersHistoryPage from "./pages/OrdersHistoryPage";
 import SupplierStoreOrdersHistory from "./pages/SupplierStoreOrdersHistory";
 import MyShops from "./pages/MyShops";
 import SupplierBalance from "./pages/SupplierBalance";
+import WalletAccount from "./pages/WalletAccount";
 import SupportChat from "./components/SupportChat";
 import NotFound from "./pages/NotFound";
 import OAuthConsent from "./pages/OAuthConsent";
@@ -116,6 +117,8 @@ function AnimatedRoutes() {
             <Route path="/referrals" element={<Referrals />} />
             <Route path="/personal-bonuses" element={<PersonalBonuses />} />
             <Route path="/bonus-account" element={<BonusAccount />} />
+            <Route path="/wallet" element={<WalletAccount />} />
+            <Route path="/wallet/:supplierId" element={<WalletAccount />} />
             <Route path="/store-management" element={<StoreManagement />} />
             <Route path="/store-management/:supplierId" element={<StoreManagement />} />
             <Route path="/store-orders" element={<SupplierStoreOrders />} />
