@@ -5,6 +5,10 @@ import tavernaLogo from "@/assets/taverna-logo.png";
 import { AppInfoModal } from "./AppInfoModal";
 import { LanguageSelectorModal } from "./LanguageSelectorModal";
 import { RegionSelectorModal } from "./RegionSelectorModal";
+import { WalletBadgeCloud } from "./wallet/WalletBadgeCloud";
+import { useWallet } from "@/hooks/useWallet";
+import { useTelegramAuthContext } from "./TelegramAuthProvider";
+
 
 interface HeaderProps {
   cartCount?: number;
