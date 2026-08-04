@@ -186,6 +186,25 @@ export function useWallet({ supplierId, withShops }: UseWalletOptions = {}) {
     [sessionToken, supplierId, applyDemo],
   );
 
+  const fetchShops = useCallback(async () => {
+    try {
+      if (!sessionToken) {
+        if (isPreviewDevEnvironment()) { applyDemoShops(); return; }
+        return;
+      }
+      const { data, error: fnError } = await supabase.functions.invoke("wallet-account", {
+        body: { action: "get_shops_summary", session_token: sessionToken },
+      });
+      if (fnError || data?.error) throw new Error(data?.error || "shops error");
+      const list: ShopSummary[] = data?.shops || [];
+      if (list.length === 0 && isPreviewDevEnvironment()) { applyDemoShops(); return; }
+      setShops(list);
+      setShopsTotals(data?.totals || null);
+    } catch {
+      if (isPreviewDevEnvironment()) applyDemoShops();
+    }
+  }, [sessionToken, applyDemoShops]);
+
   const refetch = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -197,7 +216,8 @@ export function useWallet({ supplierId, withShops }: UseWalletOptions = {}) {
     } finally {
       setIsLoading(false);
     }
-  }, [call, applyDemo]);
+    if (withShops) await fetchShops();
+  }, [call, applyDemo, withShops, fetchShops]);
 
   useEffect(() => {
     if (!isAuthenticated && !isPreviewDevEnvironment()) {
@@ -223,11 +243,15 @@ export function useWallet({ supplierId, withShops }: UseWalletOptions = {}) {
     wallet,
     transactions,
     limits,
+    shops,
+    shopsTotals,
     readOnly,
     mode,
     isLoading,
     error,
     refetch,
+    fetchShops,
+
     connectWallet: (address?: string, currency: "TON" | "USDT" = "USDT") =>
       safe(() => call("connect_wallet", { address, currency }), { is_connected: true, tg_wallet_currency: currency }),
     topUp: (amount: number, provider: string) =>
