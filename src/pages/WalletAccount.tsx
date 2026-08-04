@@ -281,6 +281,10 @@ export default function WalletAccount() {
             </div>
           )}
         </div>
+
+        {!supplierId && <WalletOffers bonusBalance={wallet.bonus_balance} />}
+        </>
+        )}
       </div>
 
       <ConnectWalletSheet open={showConnect} onOpenChange={setShowConnect} onConnect={connectWallet} />
@@ -291,13 +295,17 @@ export default function WalletAccount() {
   );
 }
 
-function Stat({ label, value, accent }: { label: string; value: number; accent?: boolean }) {
+function Stat({ label, value, accent, icon: Icon }: { label: string; value: number; accent?: boolean; icon?: any }) {
   return (
     <div className="rounded-xl bg-card/70 border border-border p-2.5">
-      <p className="text-[11px] text-muted-foreground">{label}</p>
+      <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+        {Icon && <Icon className={cn("h-3 w-3", accent ? "text-rating" : "text-muted-foreground")} />}
+        {label}
+      </p>
       <p className={cn("text-sm font-semibold", accent ? "text-primary" : "text-foreground")}>
         {Number(value).toLocaleString("uk-UA")}₴
       </p>
     </div>
   );
 }
+
