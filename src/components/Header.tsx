@@ -77,13 +77,22 @@ export const Header = ({
 
           {/* Right actions */}
           <div className="flex items-center gap-0.5 z-10">
-            <button
-              onClick={() => navigate("/bonus-account")}
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-primary hover:bg-primary/10 active:scale-95 transition-all"
-              aria-label="Бонусний рахунок">
-              
-              <Wallet className="h-4 w-4" />
-            </button>
+            <div className="relative">
+              <button
+                onClick={() => navigate("/wallet")}
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-primary hover:bg-primary/10 active:scale-95 transition-all"
+                aria-label="Мій рахунок">
+
+                <Wallet className="h-4 w-4" />
+              </button>
+              <WalletBadgeCloud
+                showCash={isSupplierSide}
+                bonusValue={wallet?.bonus_balance ?? 0}
+                cashValue={wallet?.balance ?? 0}
+                onClick={() => navigate("/wallet")}
+              />
+            </div>
+
             <button
               onClick={onRatingsClick}
               className="w-8 h-8 rounded-lg flex items-center justify-center text-rating hover:bg-rating/10 active:scale-95 transition-all"
