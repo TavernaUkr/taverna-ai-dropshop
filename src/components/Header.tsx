@@ -35,6 +35,10 @@ export const Header = ({
   const [isInfoOpen, setIsInfoOpen] = useState(false);
   const [isLangOpen, setIsLangOpen] = useState(false);
   const [isRegionOpen, setIsRegionOpen] = useState(false);
+  const { effectiveRole } = useTelegramAuthContext() as any;
+  const { wallet } = useWallet();
+  const isSupplierSide = ["supplier", "shop_manager", "admin", "moderator"].includes(effectiveRole);
+
   return (
     <>
       <header className="sticky top-0 z-40 bg-card border-b border-border">
