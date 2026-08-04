@@ -134,6 +134,79 @@ serve(async (req) => {
     // ---------------- get_account ----------------
     if (action === "get_account") return json(await loadAccount());
 
+    // ---------------- get_shops_summary ----------------
+    // Агрегований баланс і статистика по всіх магазинах користувача (власник / менеджер / адмін).
+    if (action === "get_shops_summary") {
+      const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", profile.id);
+      const isAdmin = (roles || []).some((r: any) => r.role === "admin" || r.role === "moderator");
+
+      const shopMap = new Map<string, { id: string; shop_name: string; logo_url: string | null; role: "owner" | "manager" }>();
+
+      if (isAdmin) {
+        const { data: all } = await supabase.from("suppliers").select("id, shop_name, logo_url").limit(50);
+        (all || []).forEach((s: any) => shopMap.set(s.id, { ...s, role: "owner" }));
+      }
+      if (profile.telegram_id) {
+        const { data: owned } = await supabase.from("suppliers")
+          .select("id, shop_name, logo_url").eq("telegram_id", profile.telegram_id);
+        (owned || []).forEach((s: any) => shopMap.set(s.id, { ...s, role: "owner" }));
+      }
+      const { data: links } = await supabase.from("shop_manager_links")
+        .select("supplier_id").eq("profile_id", profile.id);
+      for (const l of links || []) {
+        if (shopMap.has(l.supplier_id)) continue;
+        const { data: s } = await supabase.from("suppliers")
+          .select("id, shop_name, logo_url").eq("id", l.supplier_id).maybeSingle();
+        if (s) shopMap.set(s.id, { ...s, role: "manager" });
+      }
+
+      const ids = [...shopMap.keys()];
+      if (ids.length === 0) return json({ success: true, shops: [], totals: { available: 0, pending: 0, lifetime_paid: 0, orders: 0 } });
+
+      const [{ data: balances }, { data: splits }, { data: shopWallets }] = await Promise.all([
+        supabase.from("shop_balances").select("supplier_id, available, pending, lifetime_paid").in("supplier_id", ids),
+        supabase.from("order_splits").select("supplier_id, supplier_amount, platform_commission, split_status, payout_stage").in("supplier_id", ids),
+        supabase.from("wallets").select("owner_id, balance, pending, bonus_balance").eq("owner_type", "supplier").in("owner_id", ids),
+      ]);
+
+      const shops = ids.map((id) => {
+        const meta = shopMap.get(id)!;
+        const b = (balances || []).find((x: any) => x.supplier_id === id);
+        const w = (shopWallets || []).find((x: any) => x.owner_id === id);
+        const rows = (splits || []).filter((x: any) => x.supplier_id === id);
+        const turnover = rows.reduce((s: number, r: any) => s + Number(r.supplier_amount || 0), 0);
+        const commission = rows.reduce((s: number, r: any) => s + Number(r.platform_commission || 0), 0);
+        const awaiting = rows.filter((r: any) => r.payout_stage && r.payout_stage !== "paid").length;
+        return {
+          id,
+          shop_name: meta.shop_name,
+          logo_url: meta.logo_url,
+          role: meta.role,
+          available: Number(w?.balance ?? b?.available ?? 0),
+          pending: Number(w?.pending ?? b?.pending ?? 0),
+          lifetime_paid: Number(b?.lifetime_paid || 0),
+          orders: rows.length,
+          awaiting_payout: awaiting,
+          turnover: Math.round(turnover * 100) / 100,
+          commission: Math.round(commission * 100) / 100,
+        };
+      }).sort((a, b) => b.available - a.available);
+
+      const totals = shops.reduce(
+        (acc, s) => ({
+          available: acc.available + s.available,
+          pending: acc.pending + s.pending,
+          lifetime_paid: acc.lifetime_paid + s.lifetime_paid,
+          orders: acc.orders + s.orders,
+          turnover: acc.turnover + s.turnover,
+        }),
+        { available: 0, pending: 0, lifetime_paid: 0, orders: 0, turnover: 0 },
+      );
+
+      return json({ success: true, mode: SANDBOX ? "sandbox" : "live", shops, totals });
+    }
+
+
     // ---------------- connect_wallet ----------------
     if (action === "connect_wallet") {
       const address = typeof body.address === "string" ? body.address.trim() : "";

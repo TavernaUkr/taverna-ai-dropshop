@@ -99,11 +99,34 @@ export default {
             height: "0",
           },
         },
+        "glow-pulse": {
+          "0%, 100%": { boxShadow: "0 0 0 0 hsl(var(--primary) / 0.45)", transform: "scale(1)" },
+          "50%": { boxShadow: "0 0 14px 4px hsl(var(--primary) / 0.35)", transform: "scale(1.06)" },
+        },
+        "badge-swap": {
+          "0%, 44%": { opacity: "1", transform: "translateY(0) scale(1)" },
+          "50%, 94%": { opacity: "0", transform: "translateY(-4px) scale(0.85)" },
+          "100%": { opacity: "1", transform: "translateY(0) scale(1)" },
+        },
+        "cloud-float": {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-3px)" },
+        },
+        "shine-sweep": {
+          "0%": { backgroundPosition: "-200% 0" },
+          "100%": { backgroundPosition: "200% 0" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "glow-pulse": "glow-pulse 2s ease-in-out infinite",
+        "badge-swap": "badge-swap 3s ease-in-out infinite",
+        "badge-swap-alt": "badge-swap 3s ease-in-out 1.5s infinite",
+        "cloud-float": "cloud-float 2.6s ease-in-out infinite",
+        "shine-sweep": "shine-sweep 2.5s linear infinite",
       },
+
     },
   },
   plugins: [require("tailwindcss-animate")],

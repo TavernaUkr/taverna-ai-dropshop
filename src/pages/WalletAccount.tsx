@@ -2,9 +2,9 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import {
   ChevronLeft, Wallet, Plus, ArrowUpRight, Gift, Clock, Loader2,
-  ArrowDownLeft, ShoppingBag, Settings2, Sparkles, Lock,
+  ArrowDownLeft, ShoppingBag, Settings2, Sparkles, Lock, Star, DollarSign, Store,
 } from "lucide-react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,9 @@ import { ConnectWalletSheet } from "@/components/wallet/ConnectWalletSheet";
 import { TopUpSheet } from "@/components/wallet/TopUpSheet";
 import { PayoutSheet } from "@/components/wallet/PayoutSheet";
 import { ReceiptDialog } from "@/components/wallet/ReceiptDialog";
+import { ShopBalancesList } from "@/components/wallet/ShopBalancesList";
+import { WalletOffers } from "@/components/wallet/WalletOffers";
+import { useTelegramAuthContext } from "@/components/TelegramAuthProvider";
 import { hapticSelection } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
 
@@ -40,11 +43,18 @@ const TX_TITLE: Record<string, string> = {
 export default function WalletAccount() {
   const navigate = useNavigate();
   const { supplierId } = useParams();
-  const {
-    wallet, transactions, limits, readOnly, mode, isLoading, error,
-    connectWallet, topUp, requestPayout, savePayoutSettings,
-  } = useWallet({ supplierId });
+  const [searchParams] = useSearchParams();
+  const { effectiveRole } = useTelegramAuthContext() as any;
+  const hasShops = ["supplier", "shop_manager", "admin", "moderator"].includes(effectiveRole);
 
+  const {
+    wallet, transactions, limits, shops, shopsTotals, readOnly, mode, isLoading, error,
+    connectWallet, topUp, requestPayout, savePayoutSettings,
+  } = useWallet({ supplierId, withShops: hasShops && !supplierId });
+
+  const [tab, setTab] = useState<"personal" | "shops">(
+    !supplierId && hasShops && searchParams.get("tab") === "shops" ? "shops" : "personal",
+  );
   const [showConnect, setShowConnect] = useState(false);
   const [showTopUp, setShowTopUp] = useState(false);
   const [showPayout, setShowPayout] = useState(false);
@@ -92,9 +102,40 @@ export default function WalletAccount() {
             </button>
           )}
         </div>
+
+        {/* Перемикач: особистий рахунок / магазини */}
+        {!supplierId && hasShops && (
+          <div className="px-4 pb-3">
+            <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-muted">
+              {([
+                { id: "personal", label: "Особистий", icon: Wallet },
+                { id: "shops", label: "Магазини", icon: Store },
+              ] as const).map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => { hapticSelection(); setTab(t.id); }}
+                  className={cn(
+                    "flex items-center justify-center gap-1.5 h-9 rounded-lg text-xs font-medium transition-colors",
+                    tab === t.id ? "bg-card text-foreground shadow-sm" : "text-muted-foreground",
+                  )}
+                >
+                  <t.icon className="h-3.5 w-3.5" /> {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="p-4 space-y-4">
+        {tab === "shops" && !supplierId ? (
+          <ShopBalancesList
+            shops={shops}
+            totals={shopsTotals}
+            onOpenShop={(id) => { hapticSelection(); navigate(`/wallet/${id}`); }}
+          />
+        ) : (
+        <>
         {/* Balance card */}
         <motion.div
           initial={{ opacity: 0, y: 8 }}
@@ -107,9 +148,9 @@ export default function WalletAccount() {
           </div>
 
           <div className="grid grid-cols-3 gap-2 mt-4">
-            <Stat label="Доступно" value={wallet.balance} />
-            <Stat label="Бонуси" value={wallet.bonus_balance} accent />
-            <Stat label="В обробці" value={wallet.pending} />
+            <Stat label="Доступно" value={wallet.balance} icon={DollarSign} />
+            <Stat label="Бонуси" value={wallet.bonus_balance} accent icon={Star} />
+            <Stat label="В обробці" value={wallet.pending} icon={Clock} />
           </div>
 
           {!readOnly && (
@@ -130,6 +171,7 @@ export default function WalletAccount() {
             </div>
           )}
         </motion.div>
+
 
         {/* Connect banner */}
         {!wallet.is_connected && !readOnly && (
@@ -239,6 +281,10 @@ export default function WalletAccount() {
             </div>
           )}
         </div>
+
+        {!supplierId && <WalletOffers bonusBalance={wallet.bonus_balance} />}
+        </>
+        )}
       </div>
 
       <ConnectWalletSheet open={showConnect} onOpenChange={setShowConnect} onConnect={connectWallet} />
@@ -249,13 +295,17 @@ export default function WalletAccount() {
   );
 }
 
-function Stat({ label, value, accent }: { label: string; value: number; accent?: boolean }) {
+function Stat({ label, value, accent, icon: Icon }: { label: string; value: number; accent?: boolean; icon?: any }) {
   return (
     <div className="rounded-xl bg-card/70 border border-border p-2.5">
-      <p className="text-[11px] text-muted-foreground">{label}</p>
+      <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+        {Icon && <Icon className={cn("h-3 w-3", accent ? "text-rating" : "text-muted-foreground")} />}
+        {label}
+      </p>
       <p className={cn("text-sm font-semibold", accent ? "text-primary" : "text-foreground")}>
         {Number(value).toLocaleString("uk-UA")}₴
       </p>
     </div>
   );
 }
+
