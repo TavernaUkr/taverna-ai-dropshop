@@ -86,20 +86,69 @@ const demoLimits = (): WalletLimit[] => [
   { provider: "iban", min_payout: 500, max_payout: 400000, daily_limit: 400000, fee_percent: 0, fee_fixed: 0, is_active: true, eta_text: "1-2 банківські дні" },
 ];
 
+export interface ShopSummary {
+  id: string;
+  shop_name: string;
+  logo_url: string | null;
+  role: "owner" | "manager";
+  available: number;
+  pending: number;
+  lifetime_paid: number;
+  orders: number;
+  awaiting_payout: number;
+  turnover: number;
+  commission: number;
+}
+
+export interface ShopsTotals {
+  available: number;
+  pending: number;
+  lifetime_paid: number;
+  orders: number;
+  turnover: number;
+}
+
+const demoShops = (): ShopSummary[] => [
+  { id: "demo-shop-1", shop_name: "TechStore UA", logo_url: null, role: "owner", available: 18450, pending: 4200, lifetime_paid: 132400, orders: 86, awaiting_payout: 4, turnover: 168900, commission: 24300 },
+  { id: "demo-shop-2", shop_name: "TacGear Pro", logo_url: null, role: "owner", available: 9120, pending: 1500, lifetime_paid: 64800, orders: 41, awaiting_payout: 2, turnover: 78400, commission: 11200 },
+  { id: "demo-shop-3", shop_name: "Home Comfort", logo_url: null, role: "manager", available: 3300, pending: 900, lifetime_paid: 21500, orders: 19, awaiting_payout: 1, turnover: 27600, commission: 3900 },
+];
+
 interface UseWalletOptions {
   /** Рахунок магазину замість особистого */
   supplierId?: string;
+  /** Підвантажити зведення по всіх магазинах користувача */
+  withShops?: boolean;
 }
 
-export function useWallet({ supplierId }: UseWalletOptions = {}) {
+export function useWallet({ supplierId, withShops }: UseWalletOptions = {}) {
   const { profile, isAuthenticated, sessionToken } = useTelegramAuthContext() as any;
   const [wallet, setWallet] = useState<WalletState | null>(null);
   const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
   const [limits, setLimits] = useState<WalletLimit[]>([]);
+  const [shops, setShops] = useState<ShopSummary[]>([]);
+  const [shopsTotals, setShopsTotals] = useState<ShopsTotals | null>(null);
   const [readOnly, setReadOnly] = useState(false);
   const [mode, setMode] = useState<"sandbox" | "live">("sandbox");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const applyDemoShops = useCallback(() => {
+    const list = demoShops();
+    setShops(list);
+    setShopsTotals(
+      list.reduce(
+        (a, s) => ({
+          available: a.available + s.available,
+          pending: a.pending + s.pending,
+          lifetime_paid: a.lifetime_paid + s.lifetime_paid,
+          orders: a.orders + s.orders,
+          turnover: a.turnover + s.turnover,
+        }),
+        { available: 0, pending: 0, lifetime_paid: 0, orders: 0, turnover: 0 },
+      ),
+    );
+  }, []);
 
   const applyDemo = useCallback(() => {
     setWallet(demoWallet());
@@ -107,7 +156,9 @@ export function useWallet({ supplierId }: UseWalletOptions = {}) {
     setLimits(demoLimits());
     setMode("sandbox");
     setError(null);
-  }, []);
+    applyDemoShops();
+  }, [applyDemoShops]);
+
 
   const call = useCallback(
     async (action: string, payload: Record<string, unknown> = {}) => {
