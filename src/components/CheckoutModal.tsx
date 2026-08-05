@@ -823,6 +823,7 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
       <PaymentMethodSelect
         value={paymentMethod}
         onChange={setPaymentMethod}
+        allowTavernaBalance={["supplier", "shop_manager", "admin", "moderator"].includes(effectiveRole)}
       />
 
       {/* Discounts & Bonuses Section */}
