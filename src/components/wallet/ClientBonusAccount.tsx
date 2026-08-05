@@ -1,6 +1,5 @@
 import { motion } from "framer-motion";
 import { Star, Gift, ShoppingBag, RotateCcw, CreditCard, ChevronRight } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import { WalletOffers } from "@/components/wallet/WalletOffers";
 import { hapticSelection } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
@@ -22,14 +21,14 @@ interface ClientBonusAccountProps {
   bonusBalance: number;
   transactions: WalletTransaction[];
   onOpenReceipt: (tx: WalletTransaction) => void;
+  onOpenRefund: () => void;
 }
 
 /**
  * Рахунок клієнта: ЛИШЕ бонуси.
  * Без гривневого балансу, без «в обробці», без поповнення та виводу.
  */
-export function ClientBonusAccount({ bonusBalance, transactions, onOpenReceipt }: ClientBonusAccountProps) {
-  const navigate = useNavigate();
+export function ClientBonusAccount({ bonusBalance, transactions, onOpenReceipt, onOpenRefund }: ClientBonusAccountProps) {
 
   const earned = transactions
     .filter((t) => t.type === "bonus_earn" || t.type === "refund")
@@ -71,7 +70,7 @@ export function ClientBonusAccount({ bonusBalance, transactions, onOpenReceipt }
 
       {/* Реквізити для повернення коштів */}
       <button
-        onClick={() => { hapticSelection(); navigate("/profile?settings=refund"); }}
+        onClick={() => { hapticSelection(); onOpenRefund(); }}
         className="w-full rounded-xl border border-border bg-card p-4 flex items-center gap-3 text-left"
       >
         <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">

@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { SettingsMainPage } from "@/components/settings/SettingsMainPage";
 import { PersonalDataPage } from "@/components/settings/PersonalDataPage";
 import { DeliveryAddressesPage } from "@/components/settings/DeliveryAddressesPage";
+import { RefundMethodPage } from "@/components/settings/RefundMethodPage";
 
 interface Profile {
   id: string;
@@ -43,7 +44,7 @@ interface AccountSettingsProps {
   onDeleteAddress: (id: string) => Promise<boolean>;
 }
 
-type SettingsView = 'main' | 'personal' | 'addresses';
+type SettingsView = 'main' | 'personal' | 'addresses' | 'refund';
 
 export const AccountSettings = ({
   profile,
@@ -76,6 +77,10 @@ export const AccountSettings = ({
           onUpdateProfile={onUpdateProfile}
         />
       );
+    }
+
+    if (view === 'refund') {
+      return <RefundMethodPage onBack={() => setView('main')} />;
     }
 
     return (

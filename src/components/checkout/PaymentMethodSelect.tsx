@@ -9,6 +9,8 @@ interface PaymentMethodSelectProps {
   value: PaymentMethod;
   onChange: (value: PaymentMethod) => void;
   error?: string;
+  /** Рахунок Taverna доступний лише для ролей із реальним балансом */
+  allowTavernaBalance?: boolean;
 }
 
 const paymentMethods: {
@@ -98,7 +100,11 @@ export const PaymentMethodSelect = ({
   value,
   onChange,
   error,
+  allowTavernaBalance = false,
 }: PaymentMethodSelectProps) => {
+  const methods = allowTavernaBalance
+    ? paymentMethods
+    : paymentMethods.filter((m) => m.id !== "taverna_balance");
   return (
     <div className="space-y-3">
       <Label className="text-sm font-medium text-foreground">
@@ -111,7 +117,7 @@ export const PaymentMethodSelect = ({
         onValueChange={(val) => onChange(val as PaymentMethod)}
         className="space-y-2"
       >
-        {paymentMethods.map((method) => {
+        {methods.map((method) => {
           const isSelected = value === method.id;
           const isDisabled = method.disabled;
 

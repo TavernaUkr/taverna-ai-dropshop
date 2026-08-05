@@ -1,4 +1,4 @@
-import { ArrowLeft, User, MapPin, ChevronRight, Map } from "lucide-react";
+import { ArrowLeft, User, MapPin, ChevronRight, Map, CreditCard } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { hapticSelection } from "@/lib/haptics";
 
@@ -17,7 +17,7 @@ interface SettingsMainPageProps {
   profile: Profile | null;
   addressCount: number;
   onBack: () => void;
-  onNavigate: (view: 'personal' | 'addresses') => void;
+  onNavigate: (view: 'personal' | 'addresses' | 'refund') => void;
 }
 
 export function SettingsMainPage({ 
@@ -93,7 +93,7 @@ export function SettingsMainPage({
               hapticSelection();
               onNavigate('addresses');
             }}
-            className="w-full flex items-center gap-3 px-4 py-4 hover:bg-muted transition-colors active:scale-[0.99]"
+            className="w-full flex items-center gap-3 px-4 py-4 hover:bg-muted transition-colors border-b border-border active:scale-[0.99]"
           >
             <div className="w-10 h-10 rounded-lg bg-accent/20 flex items-center justify-center">
               <MapPin className="h-5 w-5 text-accent" />
@@ -114,6 +114,24 @@ export function SettingsMainPage({
               </span>
               <ChevronRight className="h-5 w-5 text-muted-foreground" />
             </div>
+          </button>
+
+          {/* Refund method */}
+          <button
+            onClick={() => {
+              hapticSelection();
+              onNavigate('refund');
+            }}
+            className="w-full flex items-center gap-3 px-4 py-4 hover:bg-muted transition-colors active:scale-[0.99]"
+          >
+            <div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center">
+              <CreditCard className="h-5 w-5 text-success" />
+            </div>
+            <div className="flex-1 text-left">
+              <span className="font-medium text-foreground">Картка для повернень</span>
+              <p className="text-xs text-muted-foreground">Куди повертати кошти за замовлення</p>
+            </div>
+            <ChevronRight className="h-5 w-5 text-muted-foreground" />
           </button>
         </div>
 
