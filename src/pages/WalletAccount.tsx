@@ -295,7 +295,7 @@ export default function WalletAccount() {
           )}
         </div>
 
-        {!supplierId && <WalletOffers bonusBalance={wallet.bonus_balance} />}
+        {!supplierId && <div ref={payRef}><WalletOffers bonusBalance={wallet.bonus_balance} /></div>}
         </>
         )}
       </div>
