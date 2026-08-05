@@ -42,12 +42,12 @@ export interface WalletState {
   auto_withdraw_min: number;
 }
 
-const demoWallet = (): WalletState => ({
+const demoWallet = (bonusOnly = false): WalletState => ({
   id: "preview-wallet",
-  balance: 3420,
+  balance: bonusOnly ? 0 : 3420,
   bonus_balance: 1250,
-  pending: 780,
-  total: 4670,
+  pending: bonusOnly ? 0 : 780,
+  total: bonusOnly ? 1250 : 4670,
   currency: "UAH",
   is_connected: false,
   tg_wallet_address: null,
@@ -57,13 +57,13 @@ const demoWallet = (): WalletState => ({
   auto_withdraw_min: 500,
 });
 
-const demoTransactions = (): WalletTransaction[] => {
+const demoTransactions = (bonusOnly = false): WalletTransaction[] => {
   const now = Date.now();
-  const mk = (i: number, t: WalletTransaction["type"], amount: number, provider: string, description: string): WalletTransaction => ({
+  const mk = (i: number, t: WalletTransaction["type"], amount: number, provider: string, description: string, bonus = 0): WalletTransaction => ({
     id: `demo-${i}`,
     type: t,
     amount,
-    bonus_amount: t === "payment" ? 90 : 0,
+    bonus_amount: bonus,
     provider,
     status: "completed",
     order_id: null,
@@ -71,10 +71,18 @@ const demoTransactions = (): WalletTransaction[] => {
     receipt: { amount, provider, at: new Date(now - i * 36e5).toISOString(), mode: "sandbox" },
     created_at: new Date(now - i * 36e5).toISOString(),
   });
+  if (bonusOnly) {
+    return [
+      mk(2, "bonus_earn", 0, "internal", "Бонуси за замовлення TAV-000131", 120),
+      mk(9, "bonus_earn", 0, "internal", "Бонуси за відгук", 50),
+      mk(30, "bonus_spend", 0, "internal", "Оплата бонусами TAV-000128", 90),
+      mk(72, "refund", 0, "internal", "Повернення бонусів за скасоване замовлення", 60),
+    ];
+  }
   return [
     mk(1, "topup", 1500, "telegram_wallet", "Поповнення через Telegram Wallet"),
-    mk(3, "payment", 1290, "internal", "Оплата замовлення TAV-000128"),
-    mk(9, "bonus_earn", 0, "internal", "Бонуси за відгук"),
+    mk(3, "payment", 1290, "internal", "Оплата замовлення TAV-000128", 90),
+    mk(9, "bonus_earn", 0, "internal", "Бонуси за відгук", 50),
     mk(26, "payout", 800, "telegram_wallet", "Вивід на Telegram Wallet"),
     mk(48, "topup", 2000, "mono", "Поповнення Mono Pay"),
   ];
@@ -121,17 +129,25 @@ interface UseWalletOptions {
   withShops?: boolean;
 }
 
+const CASH_ROLES = ["supplier", "shop_manager", "admin", "moderator"];
+
 export function useWallet({ supplierId, withShops }: UseWalletOptions = {}) {
-  const { profile, isAuthenticated, sessionToken } = useTelegramAuthContext() as any;
+  const { profile, isAuthenticated, sessionToken, effectiveRole } = useTelegramAuthContext() as any;
+  const hasCashRole = CASH_ROLES.includes(effectiveRole) || Boolean(supplierId);
   const [wallet, setWallet] = useState<WalletState | null>(null);
   const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
   const [limits, setLimits] = useState<WalletLimit[]>([]);
   const [shops, setShops] = useState<ShopSummary[]>([]);
   const [shopsTotals, setShopsTotals] = useState<ShopsTotals | null>(null);
   const [readOnly, setReadOnly] = useState(false);
+  const [bonusOnly, setBonusOnly] = useState(!hasCashRole);
   const [mode, setMode] = useState<"sandbox" | "live">("sandbox");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setBonusOnly(!hasCashRole);
+  }, [hasCashRole]);
 
   const applyDemoShops = useCallback(() => {
     const list = demoShops();
@@ -151,13 +167,16 @@ export function useWallet({ supplierId, withShops }: UseWalletOptions = {}) {
   }, []);
 
   const applyDemo = useCallback(() => {
-    setWallet(demoWallet());
-    setTransactions(demoTransactions());
-    setLimits(demoLimits());
+    setWallet(demoWallet(!hasCashRole));
+    setTransactions(demoTransactions(!hasCashRole));
+    setLimits(hasCashRole ? demoLimits() : []);
+    setBonusOnly(!hasCashRole);
     setMode("sandbox");
     setError(null);
-    applyDemoShops();
-  }, [applyDemoShops]);
+    if (hasCashRole) applyDemoShops();
+    else { setShops([]); setShopsTotals(null); }
+  }, [applyDemoShops, hasCashRole]);
+
 
 
   const call = useCallback(
@@ -179,6 +198,7 @@ export function useWallet({ supplierId, withShops }: UseWalletOptions = {}) {
         setTransactions(data.transactions || []);
         setLimits(data.limits || []);
         setReadOnly(!!data.read_only);
+        setBonusOnly(!!data.bonus_only);
         setMode(data.mode || "sandbox");
       }
       return data;
@@ -246,6 +266,8 @@ export function useWallet({ supplierId, withShops }: UseWalletOptions = {}) {
     shops,
     shopsTotals,
     readOnly,
+    /** Клієнтський режим: лише бонуси, без реальних коштів */
+    bonusOnly,
     mode,
     isLoading,
     error,

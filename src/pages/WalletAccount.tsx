@@ -15,6 +15,8 @@ import { TopUpSheet } from "@/components/wallet/TopUpSheet";
 import { PayoutSheet } from "@/components/wallet/PayoutSheet";
 import { ReceiptDialog } from "@/components/wallet/ReceiptDialog";
 import { ShopBalancesList } from "@/components/wallet/ShopBalancesList";
+import { ClientBonusAccount } from "@/components/wallet/ClientBonusAccount";
+import { RefundMethodPage } from "@/components/settings/RefundMethodPage";
 import { WalletOffers } from "@/components/wallet/WalletOffers";
 import { useTelegramAuthContext } from "@/components/TelegramAuthProvider";
 import { hapticSelection } from "@/lib/haptics";
@@ -48,7 +50,7 @@ export default function WalletAccount() {
   const hasShops = ["supplier", "shop_manager", "admin", "moderator"].includes(effectiveRole);
 
   const {
-    wallet, transactions, limits, shops, shopsTotals, readOnly, mode, isLoading, error,
+    wallet, transactions, limits, shops, shopsTotals, readOnly, bonusOnly, mode, isLoading, error,
     connectWallet, topUp, requestPayout, savePayoutSettings,
   } = useWallet({ supplierId, withShops: hasShops && !supplierId });
 
@@ -60,19 +62,20 @@ export default function WalletAccount() {
   const [showPayout, setShowPayout] = useState(false);
   const [receipt, setReceipt] = useState<WalletTransaction | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showRefund, setShowRefund] = useState(false);
   const [autoMin, setAutoMin] = useState<string>("");
   const payRef = useRef<HTMLDivElement | null>(null);
 
   const action = searchParams.get("action");
   useEffect(() => {
     if (!action || isLoading) return;
-    if (action === "topup") setShowTopUp(true);
-    if (action === "payout" && !readOnly) setShowPayout(true);
+    if (action === "topup" && !bonusOnly) setShowTopUp(true);
+    if (action === "payout" && !readOnly && !bonusOnly) setShowPayout(true);
     if (action === "pay") {
       setTimeout(() => payRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 200);
     }
     window.history.replaceState({}, "", window.location.pathname);
-  }, [action, isLoading, readOnly]);
+  }, [action, isLoading, readOnly, bonusOnly]);
 
 
   if (isLoading) {
@@ -106,10 +109,10 @@ export default function WalletAccount() {
               {supplierId ? "Рахунок магазину" : "Мій рахунок"}
             </h1>
             <p className="text-xs text-muted-foreground">
-              {mode === "sandbox" ? "Тестовий режим" : "Telegram Wallet підключено"}
+              {bonusOnly ? "Бонусний рахунок клієнта" : mode === "sandbox" ? "Тестовий режим" : "Telegram Wallet підключено"}
             </p>
           </div>
-          {!readOnly && (
+          {!readOnly && !bonusOnly && (
             <button onClick={() => setShowSettings((v) => !v)} className="p-2 rounded-lg hover:bg-muted">
               <Settings2 className="h-5 w-5 text-muted-foreground" />
             </button>
@@ -117,7 +120,7 @@ export default function WalletAccount() {
         </div>
 
         {/* Перемикач: особистий рахунок / магазини */}
-        {!supplierId && hasShops && (
+        {!supplierId && hasShops && !bonusOnly && (
           <div className="px-4 pb-3">
             <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-muted">
               {([
@@ -141,7 +144,14 @@ export default function WalletAccount() {
       </div>
 
       <div className="p-4 space-y-4">
-        {tab === "shops" && !supplierId ? (
+        {bonusOnly && !supplierId ? (
+          <ClientBonusAccount
+            bonusBalance={wallet.bonus_balance}
+            transactions={transactions}
+            onOpenReceipt={setReceipt}
+            onOpenRefund={() => setShowRefund(true)}
+          />
+        ) : tab === "shops" && !supplierId ? (
           <ShopBalancesList
             shops={shops}
             totals={shopsTotals}
@@ -299,6 +309,8 @@ export default function WalletAccount() {
         </>
         )}
       </div>
+
+      {showRefund && <RefundMethodPage onBack={() => setShowRefund(false)} />}
 
       <ConnectWalletSheet open={showConnect} onOpenChange={setShowConnect} onConnect={connectWallet} />
       <TopUpSheet open={showTopUp} onOpenChange={setShowTopUp} limits={limits} mode={mode} onTopUp={topUp} />

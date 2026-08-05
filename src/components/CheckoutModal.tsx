@@ -67,7 +67,7 @@ interface PersonalBonus {
 }
 
 export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: CheckoutModalProps) {
-  const { isAuthenticated, profile, sessionToken, addresses: savedAddresses } = useTelegramAuthContext();
+  const { isAuthenticated, profile, sessionToken, addresses: savedAddresses, effectiveRole } = useTelegramAuthContext() as any;
   
   // Step management
   const [currentStep, setCurrentStep] = useState<CheckoutStep>('contact');
@@ -823,6 +823,7 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
       <PaymentMethodSelect
         value={paymentMethod}
         onChange={setPaymentMethod}
+        allowTavernaBalance={["supplier", "shop_manager", "admin", "moderator"].includes(effectiveRole)}
       />
 
       {/* Discounts & Bonuses Section */}

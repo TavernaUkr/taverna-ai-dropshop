@@ -1167,6 +1167,60 @@ export type Database = {
           },
         ]
       }
+      refund_methods: {
+        Row: {
+          bank_name: string | null
+          created_at: string
+          full_value: string
+          holder: string | null
+          id: string
+          is_default: boolean
+          masked_value: string
+          method_type: string
+          profile_id: string
+          updated_at: string
+        }
+        Insert: {
+          bank_name?: string | null
+          created_at?: string
+          full_value: string
+          holder?: string | null
+          id?: string
+          is_default?: boolean
+          masked_value: string
+          method_type?: string
+          profile_id: string
+          updated_at?: string
+        }
+        Update: {
+          bank_name?: string | null
+          created_at?: string
+          full_value?: string
+          holder?: string | null
+          id?: string
+          is_default?: boolean
+          masked_value?: string
+          method_type?: string
+          profile_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "refund_methods_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "refund_methods_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reports: {
         Row: {
           admin_notes: string | null
