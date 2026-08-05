@@ -67,7 +67,7 @@ interface PersonalBonus {
 }
 
 export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: CheckoutModalProps) {
-  const { isAuthenticated, profile, sessionToken, addresses: savedAddresses } = useTelegramAuthContext();
+  const { isAuthenticated, profile, sessionToken, addresses: savedAddresses, effectiveRole } = useTelegramAuthContext() as any;
   
   // Step management
   const [currentStep, setCurrentStep] = useState<CheckoutStep>('contact');
