@@ -90,6 +90,10 @@ export const Header = ({
                 bonusValue={wallet?.bonus_balance ?? 0}
                 cashValue={wallet?.balance ?? 0}
                 onClick={() => navigate("/wallet")}
+                showPayout={isSupplierSide}
+                onTopUp={() => navigate("/wallet?action=topup")}
+                onPayout={() => navigate("/wallet?action=payout")}
+                onPay={() => (cartCount > 0 ? onCartClick?.() : navigate("/wallet?action=pay"))}
               />
             </div>
 

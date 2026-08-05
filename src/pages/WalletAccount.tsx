@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
   ChevronLeft, Wallet, Plus, ArrowUpRight, Gift, Clock, Loader2,
@@ -61,6 +61,19 @@ export default function WalletAccount() {
   const [receipt, setReceipt] = useState<WalletTransaction | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [autoMin, setAutoMin] = useState<string>("");
+  const payRef = useRef<HTMLDivElement | null>(null);
+
+  const action = searchParams.get("action");
+  useEffect(() => {
+    if (!action || isLoading) return;
+    if (action === "topup") setShowTopUp(true);
+    if (action === "payout" && !readOnly) setShowPayout(true);
+    if (action === "pay") {
+      setTimeout(() => payRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 200);
+    }
+    window.history.replaceState({}, "", window.location.pathname);
+  }, [action, isLoading, readOnly]);
+
 
   if (isLoading) {
     return (
@@ -282,7 +295,7 @@ export default function WalletAccount() {
           )}
         </div>
 
-        {!supplierId && <WalletOffers bonusBalance={wallet.bonus_balance} />}
+        {!supplierId && <div ref={payRef}><WalletOffers bonusBalance={wallet.bonus_balance} /></div>}
         </>
         )}
       </div>
