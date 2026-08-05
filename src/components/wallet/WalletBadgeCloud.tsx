@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { DollarSign, Star } from "lucide-react";
+import { DollarSign, Star, Plus, ArrowUpRight, ShoppingBag } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface WalletBadgeCloudProps {
@@ -9,6 +9,11 @@ interface WalletBadgeCloudProps {
   cashValue?: number;
   onClick?: () => void;
   className?: string;
+  /** Швидкі дії */
+  onTopUp?: () => void;
+  onPayout?: () => void;
+  onPay?: () => void;
+  showPayout?: boolean;
 }
 
 const fmt = (v: number) =>
