@@ -127,26 +127,75 @@ serve(async (req) => {
     const mutating = ["connect_wallet", "create_topup", "pay_with_balance", "request_payout", "set_payout_settings"];
     if (readOnly && mutating.includes(action)) return json({ error: "Менеджеру доступний лише перегляд" }, 403);
 
+    // Режим клієнта: лише бонуси, без реальних коштів, поповнень і виводів.
+    const bonusOnly = ownerType === "profile" && !(await hasCashAccount(supabase, profile));
+    const cashActions = ["connect_wallet", "create_topup", "request_payout", "set_payout_settings"];
+    if (bonusOnly && cashActions.includes(action)) {
+      return json({ error: "Для клієнтського рахунку доступні лише бонуси" }, 403);
+    }
+
     const loadAccount = async () => {
-      const [{ data: fresh }, { data: txs }, { data: limits }] = await Promise.all([
+      const bonusTypes = ["bonus_earn", "bonus_spend", "refund"];
+      let txQuery = supabase.from("wallet_transactions").select("*").eq("wallet_id", wallet.id)
+        .order("created_at", { ascending: false }).limit(60);
+      if (bonusOnly) txQuery = txQuery.in("type", bonusTypes);
+
+      const [{ data: fresh }, { data: txs }, limitsRes] = await Promise.all([
         supabase.from("wallets").select("*").eq("id", wallet.id).maybeSingle(),
-        supabase.from("wallet_transactions").select("*").eq("wallet_id", wallet.id)
-          .order("created_at", { ascending: false }).limit(60),
-        supabase.from("wallet_limits").select("*").order("provider"),
+        txQuery,
+        bonusOnly ? Promise.resolve({ data: [] }) : supabase.from("wallet_limits").select("*").order("provider"),
       ]);
       const w = fresh || wallet;
       return {
         success: true,
         mode: SANDBOX ? "sandbox" : "live",
         read_only: readOnly,
+        bonus_only: bonusOnly,
         wallet: {
           ...w,
-          total: Number(w.balance) + Number(w.bonus_balance),
+          balance: bonusOnly ? 0 : Number(w.balance),
+          pending: bonusOnly ? 0 : Number(w.pending),
+          total: bonusOnly ? Number(w.bonus_balance) : Number(w.balance) + Number(w.bonus_balance),
         },
         transactions: txs || [],
-        limits: limits || [],
+        limits: (limitsRes as any)?.data || [],
       };
     };
+
+    // ---------------- реквізити для повернення коштів (клієнт) ----------------
+    if (action === "get_refund_method") {
+      const { data } = await supabase.from("refund_methods")
+        .select("id, method_type, masked_value, holder, bank_name, is_default, created_at")
+        .eq("profile_id", profile.id).order("created_at", { ascending: false });
+      return json({ success: true, methods: data || [] });
+    }
+
+    if (action === "save_refund_method") {
+      const value = String(body.value || "").replace(/\s+/g, "");
+      const methodType = body.method_type === "iban" ? "iban" : "card";
+      const holder = typeof body.holder === "string" ? body.holder.trim() : null;
+      if (methodType === "card" && !/^\d{12,19}$/.test(value)) return json({ error: "Некоректний номер картки" }, 400);
+      if (methodType === "iban" && !/^UA\d{27}$/i.test(value)) return json({ error: "Некоректний IBAN" }, 400);
+
+      await supabase.from("refund_methods").delete().eq("profile_id", profile.id);
+      const { data, error } = await supabase.from("refund_methods").insert({
+        profile_id: profile.id,
+        method_type: methodType,
+        masked_value: maskValue(value),
+        full_value: value,
+        holder,
+        bank_name: typeof body.bank_name === "string" ? body.bank_name.trim() : null,
+        is_default: true,
+      }).select("id, method_type, masked_value, holder, bank_name, is_default, created_at").single();
+      if (error) return json({ error: error.message }, 400);
+      return json({ success: true, methods: [data] });
+    }
+
+    if (action === "delete_refund_method") {
+      await supabase.from("refund_methods").delete().eq("profile_id", profile.id);
+      return json({ success: true, methods: [] });
+    }
+
 
     // ---------------- get_account ----------------
     if (action === "get_account") return json(await loadAccount());
