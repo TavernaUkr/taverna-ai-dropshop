@@ -198,6 +198,7 @@ export function useWallet({ supplierId, withShops }: UseWalletOptions = {}) {
         setTransactions(data.transactions || []);
         setLimits(data.limits || []);
         setReadOnly(!!data.read_only);
+        setBonusOnly(!!data.bonus_only);
         setMode(data.mode || "sandbox");
       }
       return data;
