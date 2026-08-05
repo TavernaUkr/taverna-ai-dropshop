@@ -77,6 +77,23 @@ async function supplierAccess(supabase: any, profile: any, supplierId: string) {
   return { access: false as const };
 }
 
+// Клієнт має ЛИШЕ бонусний рахунок. Реальні кошти — тільки для постачальників/менеджерів/адмінів.
+async function hasCashAccount(supabase: any, profile: any) {
+  const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", profile.id);
+  if ((roles || []).some((r: any) => ["admin", "moderator", "supplier", "shop_manager"].includes(r.role))) return true;
+  if (profile?.telegram_id) {
+    const { data: owned } = await supabase.from("suppliers").select("id").eq("telegram_id", profile.telegram_id).limit(1);
+    if ((owned || []).length) return true;
+  }
+  const { data: link } = await supabase.from("shop_manager_links").select("id").eq("profile_id", profile.id).limit(1);
+  return (link || []).length > 0;
+}
+
+const maskValue = (v: string) => {
+  const digits = v.replace(/\s+/g, "");
+  return digits.length <= 4 ? `**** ${digits}` : `**** ${digits.slice(-4)}`;
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   const json = (b: any, status = 200) =>
