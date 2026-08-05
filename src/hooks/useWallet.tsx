@@ -129,17 +129,25 @@ interface UseWalletOptions {
   withShops?: boolean;
 }
 
+const CASH_ROLES = ["supplier", "shop_manager", "admin", "moderator"];
+
 export function useWallet({ supplierId, withShops }: UseWalletOptions = {}) {
-  const { profile, isAuthenticated, sessionToken } = useTelegramAuthContext() as any;
+  const { profile, isAuthenticated, sessionToken, effectiveRole } = useTelegramAuthContext() as any;
+  const hasCashRole = CASH_ROLES.includes(effectiveRole) || Boolean(supplierId);
   const [wallet, setWallet] = useState<WalletState | null>(null);
   const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
   const [limits, setLimits] = useState<WalletLimit[]>([]);
   const [shops, setShops] = useState<ShopSummary[]>([]);
   const [shopsTotals, setShopsTotals] = useState<ShopsTotals | null>(null);
   const [readOnly, setReadOnly] = useState(false);
+  const [bonusOnly, setBonusOnly] = useState(!hasCashRole);
   const [mode, setMode] = useState<"sandbox" | "live">("sandbox");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setBonusOnly(!hasCashRole);
+  }, [hasCashRole]);
 
   const applyDemoShops = useCallback(() => {
     const list = demoShops();
@@ -159,13 +167,16 @@ export function useWallet({ supplierId, withShops }: UseWalletOptions = {}) {
   }, []);
 
   const applyDemo = useCallback(() => {
-    setWallet(demoWallet());
-    setTransactions(demoTransactions());
-    setLimits(demoLimits());
+    setWallet(demoWallet(!hasCashRole));
+    setTransactions(demoTransactions(!hasCashRole));
+    setLimits(hasCashRole ? demoLimits() : []);
+    setBonusOnly(!hasCashRole);
     setMode("sandbox");
     setError(null);
-    applyDemoShops();
-  }, [applyDemoShops]);
+    if (hasCashRole) applyDemoShops();
+    else { setShops([]); setShopsTotals(null); }
+  }, [applyDemoShops, hasCashRole]);
+
 
 
   const call = useCallback(
