@@ -266,6 +266,8 @@ export function useWallet({ supplierId, withShops }: UseWalletOptions = {}) {
     shops,
     shopsTotals,
     readOnly,
+    /** Клієнтський режим: лише бонуси, без реальних коштів */
+    bonusOnly,
     mode,
     isLoading,
     error,
