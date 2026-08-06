@@ -31,7 +31,7 @@ const statusConfig: Record<string, { label: string; icon: React.ElementType; col
   cancelled: { label: 'Скасовано', icon: XCircle, color: 'text-red-600', bgColor: 'bg-red-100' },
 };
 
-function OrderCard({ order, onViewDetails }: { order: Order; onViewDetails: (o: Order) => void }) {
+function OrderCard({ order, onViewDetails, refund }: { order: Order; onViewDetails: (o: Order) => void; refund?: OrderRefund | null }) {
   const status = statusConfig[order.status] || statusConfig.pending;
   const StatusIcon = status.icon;
 
