@@ -503,6 +503,112 @@ export type Database = {
           },
         ]
       }
+      order_refunds: {
+        Row: {
+          amount: number
+          bonus_amount: number
+          comment: string | null
+          created_at: string
+          id: string
+          items: Json
+          order_id: string
+          paid_at: string | null
+          processed_by: string | null
+          profile_id: string
+          reason: string
+          refund_method_id: string | null
+          refund_target: string | null
+          rejection_reason: string | null
+          status: string
+          supplier_id: string | null
+          transaction_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          bonus_amount?: number
+          comment?: string | null
+          created_at?: string
+          id?: string
+          items?: Json
+          order_id: string
+          paid_at?: string | null
+          processed_by?: string | null
+          profile_id: string
+          reason: string
+          refund_method_id?: string | null
+          refund_target?: string | null
+          rejection_reason?: string | null
+          status?: string
+          supplier_id?: string | null
+          transaction_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          bonus_amount?: number
+          comment?: string | null
+          created_at?: string
+          id?: string
+          items?: Json
+          order_id?: string
+          paid_at?: string | null
+          processed_by?: string | null
+          profile_id?: string
+          reason?: string
+          refund_method_id?: string | null
+          refund_target?: string | null
+          rejection_reason?: string | null
+          status?: string
+          supplier_id?: string | null
+          transaction_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_refunds_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_refunds_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_refunds_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_refunds_refund_method_id_fkey"
+            columns: ["refund_method_id"]
+            isOneToOne: false
+            referencedRelation: "refund_methods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_refunds_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_refunds_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_splits: {
         Row: {
           balance_movement_id: string | null
