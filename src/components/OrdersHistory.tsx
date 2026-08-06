@@ -582,6 +582,9 @@ function OrderDetailsModal({ order, onClose, refund, onCreateRefund }: {
             </div>
           )}
 
+          {/* Refund status */}
+          {refund && <RefundStatusBlock refund={refund} />}
+
           {/* === ACTIONS SECTION === */}
           <div className="space-y-2 pt-2">
             {/* Receipt */}
