@@ -17,6 +17,9 @@ import { OrderTracking } from './OrderTracking';
 import { toast } from 'sonner';
 import { MOCK_ORDERS, MockOrder } from '@/data/mockOrders';
 import { useRatingRewards } from '@/hooks/useRatingRewards';
+import { useOrderRefunds, type OrderRefund } from '@/hooks/useOrderRefunds';
+import { RefundStatusBlock } from './orders/RefundStatusBlock';
+import { RefundRequestSheet } from './orders/RefundRequestSheet';
 
 type Order = MockOrder;
 
@@ -31,7 +34,7 @@ const statusConfig: Record<string, { label: string; icon: React.ElementType; col
   cancelled: { label: 'Скасовано', icon: XCircle, color: 'text-red-600', bgColor: 'bg-red-100' },
 };
 
-function OrderCard({ order, onViewDetails }: { order: Order; onViewDetails: (o: Order) => void }) {
+function OrderCard({ order, onViewDetails, refund }: { order: Order; onViewDetails: (o: Order) => void; refund?: OrderRefund | null }) {
   const status = statusConfig[order.status] || statusConfig.pending;
   const StatusIcon = status.icon;
 
@@ -84,6 +87,15 @@ function OrderCard({ order, onViewDetails }: { order: Order; onViewDetails: (o: 
         </div>
       </div>
 
+      {refund && (
+        <div className="mb-3 flex items-center gap-2 rounded-lg bg-rose-500/10 px-2.5 py-1.5">
+          <RotateCcw className="h-3.5 w-3.5 text-rose-500" />
+          <span className="text-xs font-medium text-rose-600">
+            {refund.status === 'paid' ? 'Кошти повернуто' : refund.status === 'rejected' ? 'Повернення відхилено' : 'Повернення'} · {refund.amount.toLocaleString()} ₴
+          </span>
+        </div>
+      )}
+
       <div className="flex items-center justify-between pt-3 border-t border-border">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Package className="h-4 w-4" />
@@ -95,7 +107,12 @@ function OrderCard({ order, onViewDetails }: { order: Order; onViewDetails: (o: 
   );
 }
 
-function OrderDetailsModal({ order, onClose }: { order: Order | null; onClose: () => void }) {
+function OrderDetailsModal({ order, onClose, refund, onCreateRefund }: {
+  order: Order | null;
+  onClose: () => void;
+  refund?: OrderRefund | null;
+  onCreateRefund: (payload: { order_id: string; item_ids: string[]; reason: string; comment?: string }) => Promise<unknown>;
+}) {
   const [returnAddress, setReturnAddress] = useState<string | null>(null);
   const [isLoadingAddress, setIsLoadingAddress] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
@@ -106,6 +123,7 @@ function OrderDetailsModal({ order, onClose }: { order: Order | null; onClose: (
   const [complaintText, setComplaintText] = useState('');
   const [alreadyRated, setAlreadyRated] = useState(false);
   const [bonusAwarded, setBonusAwarded] = useState(0);
+  const [showRefundForm, setShowRefundForm] = useState(false);
   const { awardForOrderReview, getOrderRewards, isAwarding } = useRatingRewards();
 
   // Check if order was already rated
@@ -145,7 +163,7 @@ function OrderDetailsModal({ order, onClose }: { order: Order | null; onClose: (
     });
   };
 
-  const handleOpenReturn = () => {
+  const handleOpenReturnChat = () => {
     openAIChatWithContext({
       order_id: order.id,
       order_number: order.order_number,
@@ -324,6 +342,12 @@ function OrderDetailsModal({ order, onClose }: { order: Order | null; onClose: (
                 <div className="flex justify-between font-bold text-base pt-2 border-t border-dashed border-border">
                   <span>ВСЬОГО:</span><span>{order.total.toLocaleString()} ₴</span>
                 </div>
+                {refund && (
+                  <div className="flex justify-between text-rose-600">
+                    <span>{refund.status === 'paid' ? 'Повернуто:' : 'До повернення:'}</span>
+                    <span>-{refund.amount.toLocaleString()} ₴</span>
+                  </div>
+                )}
               </div>
               {order.delivery_address && (
                 <div className="pt-2 border-t border-dashed border-border text-xs text-muted-foreground">
@@ -564,6 +588,9 @@ function OrderDetailsModal({ order, onClose }: { order: Order | null; onClose: (
             </div>
           )}
 
+          {/* Refund status */}
+          {refund && <RefundStatusBlock refund={refund} />}
+
           {/* === ACTIONS SECTION === */}
           <div className="space-y-2 pt-2">
             {/* Receipt */}
@@ -613,10 +640,12 @@ function OrderDetailsModal({ order, onClose }: { order: Order | null; onClose: (
                       <RefreshCw className="h-4 w-4 text-orange-500" />
                       <span>Подати на обмін</span>
                     </Button>
-                    <Button variant="outline" className="w-full justify-start gap-3 h-12" onClick={handleOpenReturn}>
-                      <RotateCcw className="h-4 w-4 text-rose-500" />
-                      <span>Подати на повернення</span>
-                    </Button>
+                    {!refund && (
+                      <Button variant="outline" className="w-full justify-start gap-3 h-12" onClick={() => setShowRefundForm(true)}>
+                        <RotateCcw className="h-4 w-4 text-rose-500" />
+                        <span>Оформити повернення</span>
+                      </Button>
+                    )}
                   </>
                 ) : (
                   <div className="bg-muted/50 border border-border rounded-xl p-3">
@@ -657,6 +686,20 @@ function OrderDetailsModal({ order, onClose }: { order: Order | null; onClose: (
           <Button onClick={onClose} className="w-full">Закрити</Button>
         </div>
       </div>
+
+      {showRefundForm && (
+        <RefundRequestSheet
+          order={{
+            id: order.id,
+            order_number: order.order_number,
+            total: order.total,
+            delivery_cost: order.delivery_cost,
+            items: order.items.map(i => ({ id: i.id, product_name: i.product_name, quantity: i.quantity, total: i.total })),
+          }}
+          onClose={() => setShowRefundForm(false)}
+          onSubmit={onCreateRefund}
+        />
+      )}
     </div>
   );
 }
@@ -689,6 +732,7 @@ export function OrdersHistory({ mode = 'active' }: OrdersHistoryProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [useMockData, setUseMockData] = useState(false);
+  const { getForOrder, createRequest } = useOrderRefunds();
 
   const fetchOrders = async () => {
     if (!isAuthenticated || !sessionToken) {
@@ -835,12 +879,17 @@ export function OrdersHistory({ mode = 'active' }: OrdersHistoryProps) {
       ) : (
         <div className="space-y-3">
           {filteredOrders.map(order => (
-            <OrderCard key={order.id} order={order} onViewDetails={setSelectedOrder} />
+            <OrderCard key={order.id} order={order} onViewDetails={setSelectedOrder} refund={getForOrder(order.id)} />
           ))}
         </div>
       )}
 
-      <OrderDetailsModal order={selectedOrder} onClose={() => setSelectedOrder(null)} />
+      <OrderDetailsModal
+        order={selectedOrder}
+        onClose={() => setSelectedOrder(null)}
+        refund={selectedOrder ? getForOrder(selectedOrder.id) : null}
+        onCreateRefund={createRequest}
+      />
     </div>
   );
 }

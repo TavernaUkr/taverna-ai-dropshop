@@ -31,6 +31,7 @@ import { hapticSelection } from '@/lib/haptics';
 import { DisputesManager } from '@/components/moderator/DisputesManager';
 import { IndividualBonusManager } from '@/components/moderator/IndividualBonusManager';
 import { TechSupportQueue } from '@/components/moderator/TechSupportQueue';
+import { RefundsQueue } from '@/components/moderator/RefundsQueue';
 import { PaymentsManager } from '@/components/admin/PaymentsManager';
 import { ShopBalancesPanel } from '@/components/admin/ShopBalancesPanel';
 
@@ -455,12 +456,14 @@ export default function ModeratorPanel() {
           {/* Payments Tab */}
           <TabsContent value="payments">
             <Tabs defaultValue="balances" className="w-full">
-              <TabsList className="w-full grid grid-cols-2 mb-4">
+              <TabsList className="w-full grid grid-cols-3 mb-4">
                 <TabsTrigger value="balances">Баланси</TabsTrigger>
                 <TabsTrigger value="splits">Виплати</TabsTrigger>
+                <TabsTrigger value="refunds">Повернення</TabsTrigger>
               </TabsList>
               <TabsContent value="balances"><ShopBalancesPanel mode="moderator" /></TabsContent>
               <TabsContent value="splits"><PaymentsManager mode="moderator" /></TabsContent>
+              <TabsContent value="refunds"><RefundsQueue /></TabsContent>
             </Tabs>
           </TabsContent>
 
