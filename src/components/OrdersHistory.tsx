@@ -162,7 +162,7 @@ function OrderDetailsModal({ order, onClose, refund, onCreateRefund }: {
     });
   };
 
-  const handleOpenReturn = () => {
+  const handleOpenReturnChat = () => {
     openAIChatWithContext({
       order_id: order.id,
       order_number: order.order_number,
