@@ -630,10 +630,12 @@ function OrderDetailsModal({ order, onClose, refund, onCreateRefund }: {
                       <RefreshCw className="h-4 w-4 text-orange-500" />
                       <span>Подати на обмін</span>
                     </Button>
-                    <Button variant="outline" className="w-full justify-start gap-3 h-12" onClick={handleOpenReturn}>
-                      <RotateCcw className="h-4 w-4 text-rose-500" />
-                      <span>Подати на повернення</span>
-                    </Button>
+                    {!refund && (
+                      <Button variant="outline" className="w-full justify-start gap-3 h-12" onClick={() => setShowRefundForm(true)}>
+                        <RotateCcw className="h-4 w-4 text-rose-500" />
+                        <span>Оформити повернення</span>
+                      </Button>
+                    )}
                   </>
                 ) : (
                   <div className="bg-muted/50 border border-border rounded-xl p-3">
