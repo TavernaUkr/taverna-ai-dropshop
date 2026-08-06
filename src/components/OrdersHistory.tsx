@@ -87,6 +87,15 @@ function OrderCard({ order, onViewDetails, refund }: { order: Order; onViewDetai
         </div>
       </div>
 
+      {refund && (
+        <div className="mb-3 flex items-center gap-2 rounded-lg bg-rose-500/10 px-2.5 py-1.5">
+          <RotateCcw className="h-3.5 w-3.5 text-rose-500" />
+          <span className="text-xs font-medium text-rose-600">
+            {refund.status === 'paid' ? 'Кошти повернуто' : refund.status === 'rejected' ? 'Повернення відхилено' : 'Повернення'} · {refund.amount.toLocaleString()} ₴
+          </span>
+        </div>
+      )}
+
       <div className="flex items-center justify-between pt-3 border-t border-border">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Package className="h-4 w-4" />
@@ -98,7 +107,12 @@ function OrderCard({ order, onViewDetails, refund }: { order: Order; onViewDetai
   );
 }
 
-function OrderDetailsModal({ order, onClose }: { order: Order | null; onClose: () => void }) {
+function OrderDetailsModal({ order, onClose, refund, onCreateRefund }: {
+  order: Order | null;
+  onClose: () => void;
+  refund?: OrderRefund | null;
+  onCreateRefund: (payload: { order_id: string; item_ids: string[]; reason: string; comment?: string }) => Promise<unknown>;
+}) {
   const [returnAddress, setReturnAddress] = useState<string | null>(null);
   const [isLoadingAddress, setIsLoadingAddress] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
