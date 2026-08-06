@@ -123,6 +123,7 @@ function OrderDetailsModal({ order, onClose, refund, onCreateRefund }: {
   const [complaintText, setComplaintText] = useState('');
   const [alreadyRated, setAlreadyRated] = useState(false);
   const [bonusAwarded, setBonusAwarded] = useState(0);
+  const [showRefundForm, setShowRefundForm] = useState(false);
   const { awardForOrderReview, getOrderRewards, isAwarding } = useRatingRewards();
 
   // Check if order was already rated
