@@ -680,6 +680,20 @@ function OrderDetailsModal({ order, onClose, refund, onCreateRefund }: {
           <Button onClick={onClose} className="w-full">Закрити</Button>
         </div>
       </div>
+
+      {showRefundForm && (
+        <RefundRequestSheet
+          order={{
+            id: order.id,
+            order_number: order.order_number,
+            total: order.total,
+            delivery_cost: order.delivery_cost,
+            items: order.items.map(i => ({ id: i.id, product_name: i.product_name, quantity: i.quantity, total: i.total })),
+          }}
+          onClose={() => setShowRefundForm(false)}
+          onSubmit={onCreateRefund}
+        />
+      )}
     </div>
   );
 }
