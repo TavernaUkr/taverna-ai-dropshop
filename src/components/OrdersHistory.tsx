@@ -706,6 +706,7 @@ export function OrdersHistory({ mode = 'active' }: OrdersHistoryProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [useMockData, setUseMockData] = useState(false);
+  const { getForOrder, createRequest } = useOrderRefunds();
 
   const fetchOrders = async () => {
     if (!isAuthenticated || !sessionToken) {
