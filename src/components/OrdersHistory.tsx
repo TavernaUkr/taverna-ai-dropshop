@@ -852,12 +852,17 @@ export function OrdersHistory({ mode = 'active' }: OrdersHistoryProps) {
       ) : (
         <div className="space-y-3">
           {filteredOrders.map(order => (
-            <OrderCard key={order.id} order={order} onViewDetails={setSelectedOrder} />
+            <OrderCard key={order.id} order={order} onViewDetails={setSelectedOrder} refund={getForOrder(order.id)} />
           ))}
         </div>
       )}
 
-      <OrderDetailsModal order={selectedOrder} onClose={() => setSelectedOrder(null)} />
+      <OrderDetailsModal
+        order={selectedOrder}
+        onClose={() => setSelectedOrder(null)}
+        refund={selectedOrder ? getForOrder(selectedOrder.id) : null}
+        onCreateRefund={createRequest}
+      />
     </div>
   );
 }
