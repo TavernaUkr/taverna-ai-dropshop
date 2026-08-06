@@ -342,6 +342,12 @@ function OrderDetailsModal({ order, onClose, refund, onCreateRefund }: {
                 <div className="flex justify-between font-bold text-base pt-2 border-t border-dashed border-border">
                   <span>ВСЬОГО:</span><span>{order.total.toLocaleString()} ₴</span>
                 </div>
+                {refund && (
+                  <div className="flex justify-between text-rose-600">
+                    <span>{refund.status === 'paid' ? 'Повернуто:' : 'До повернення:'}</span>
+                    <span>-{refund.amount.toLocaleString()} ₴</span>
+                  </div>
+                )}
               </div>
               {order.delivery_address && (
                 <div className="pt-2 border-t border-dashed border-border text-xs text-muted-foreground">
