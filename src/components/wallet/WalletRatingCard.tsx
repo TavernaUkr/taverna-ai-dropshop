@@ -1,5 +1,4 @@
 import { Trophy, Star, TrendingUp } from "lucide-react";
-import { useEffect } from "react";
 import { useBonuses } from "@/hooks/useBonuses";
 import { cn } from "@/lib/utils";
 
