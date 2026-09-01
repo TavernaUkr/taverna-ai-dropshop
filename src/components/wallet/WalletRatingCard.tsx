@@ -23,13 +23,11 @@ function rankOf(points: number) {
 
 /** Рейтингові бали, ранг і множник бонусів — усередині єдиного рахунку. */
 export function WalletRatingCard({ fallbackPoints = 0 }: { fallbackPoints?: number }) {
-  const { bonusData, fetchBonuses } = useBonuses();
+  const { totalEarned, reputationMultiplier, reputationScore } = useBonuses();
 
-  useEffect(() => { fetchBonuses(); }, [fetchBonuses]);
-
-  const points = bonusData?.totalEarned ?? fallbackPoints;
-  const multiplier = bonusData?.reputationMultiplier ?? 1;
-  const score = bonusData?.reputationScore;
+  const points = totalEarned || fallbackPoints;
+  const multiplier = reputationMultiplier ?? 1;
+  const score = reputationScore;
   const { current, next, progress } = rankOf(points);
 
   return (
