@@ -34,19 +34,9 @@ export function WalletOffers({ bonusBalance = 0 }: { bonusBalance?: number }) {
       to: "/promos", tone: "text-live",
     },
     {
-      icon: Gift, title: "Мої бонуси",
-      subtitle: `Доступно ${bonusBalance.toLocaleString("uk-UA")} бонусів`,
-      to: "/personal-bonuses", tone: "text-rating",
-    },
-    {
       icon: Users, title: "Реферальна програма",
       subtitle: "Запрошуй друзів — отримуй бонуси",
       to: "/referrals", tone: "text-primary",
-    },
-    {
-      icon: Trophy, title: "Рейтинги та нагороди",
-      subtitle: "Множники бонусів за відгуки",
-      to: "/?tab=ratings", tone: "text-warning",
     },
   ];
 
