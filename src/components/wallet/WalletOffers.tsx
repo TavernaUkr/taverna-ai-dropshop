@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Tag, Users, Trophy, Gift, ChevronRight, Percent, Sparkles } from "lucide-react";
+import { Tag, Users, ChevronRight, Percent, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { hapticSelection } from "@/lib/haptics";
 
