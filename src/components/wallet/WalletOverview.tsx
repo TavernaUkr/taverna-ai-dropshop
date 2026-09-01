@@ -6,7 +6,7 @@ import { useTelegramAuthContext } from "@/components/TelegramAuthProvider";
 import { isPreviewDevEnvironment } from "@/lib/dev-preview";
 import { hapticSelection } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
-import type { WalletState, ShopBalance, ShopsTotals } from "@/hooks/useWallet";
+import type { WalletState, ShopSummary, ShopsTotals } from "@/hooks/useWallet";
 
 type Period = "day" | "week" | "month" | "year";
 interface SeriesPoint { label: string; turnover: number; commission?: number }
@@ -30,7 +30,7 @@ function demoSeries(period: Period): SeriesPoint[] {
 
 interface WalletOverviewProps {
   wallet: WalletState;
-  shops: ShopBalance[];
+  shops: ShopSummary[];
   totals: ShopsTotals | null;
   onOpenShops: () => void;
 }
@@ -75,7 +75,7 @@ export function WalletOverview({ wallet, shops, totals, onOpenShops }: WalletOve
   const shopsPending = totals?.pending ?? shops.reduce((s, r) => s + Number(r.pending || 0), 0);
   const shopsPaid = totals?.lifetime_paid ?? shops.reduce((s, r) => s + Number(r.lifetime_paid || 0), 0);
   const turnover = totals?.turnover ?? 0;
-  const commission = totals?.commission ?? 0;
+  const commission = shops.reduce((s, r) => s + Number(r.commission || 0), 0);
 
   const grandTotal = useMemo(
     () => Number(wallet.balance || 0) + Number(shopsAvailable || 0),
