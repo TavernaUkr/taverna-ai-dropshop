@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation, Navigate, useParams } from "react-router-dom";
 import { TelegramAuthProvider } from "@/components/TelegramAuthProvider";
 import { CartProvider } from "@/contexts/CartContext";
 import { FavoritesProvider } from "@/components/FavoritesContext";
@@ -21,14 +21,11 @@ import Support from "./pages/Support";
 import Promos from "./pages/Promos";
 import ModeratorPanel from "./pages/ModeratorPanel";
 import Referrals from "./pages/Referrals";
-import PersonalBonuses from "./pages/PersonalBonuses";
-import BonusAccount from "./pages/BonusAccount";
 import StoreManagement from "./pages/StoreManagement";
 import SupplierStoreOrders from "./pages/SupplierStoreOrders";
 import OrdersHistoryPage from "./pages/OrdersHistoryPage";
 import SupplierStoreOrdersHistory from "./pages/SupplierStoreOrdersHistory";
 import MyShops from "./pages/MyShops";
-import SupplierBalance from "./pages/SupplierBalance";
 import WalletAccount from "./pages/WalletAccount";
 import SupportChat from "./components/SupportChat";
 import NotFound from "./pages/NotFound";
@@ -37,6 +34,12 @@ import Login from "./pages/Login";
 import { FloatingDevRoleSwitcher } from "@/components/dev/FloatingDevRoleSwitcher";
 
 const queryClient = new QueryClient();
+
+/** Старий маршрут рахунку магазину → єдиний рахунок */
+function ShopWalletRedirect() {
+  const { supplierId } = useParams();
+  return <Navigate to={supplierId ? `/wallet/${supplierId}` : "/wallet"} replace />;
+}
 
 // Page transition variants
 const pageVariants = {
@@ -115,8 +118,8 @@ function AnimatedRoutes() {
             <Route path="/promos" element={<Promos />} />
             <Route path="/moderator" element={<ModeratorPanel />} />
             <Route path="/referrals" element={<Referrals />} />
-            <Route path="/personal-bonuses" element={<PersonalBonuses />} />
-            <Route path="/bonus-account" element={<BonusAccount />} />
+            <Route path="/personal-bonuses" element={<Navigate to="/wallet" replace />} />
+            <Route path="/bonus-account" element={<Navigate to="/wallet" replace />} />
             <Route path="/wallet" element={<WalletAccount />} />
             <Route path="/wallet/:supplierId" element={<WalletAccount />} />
             <Route path="/store-management" element={<StoreManagement />} />
@@ -124,8 +127,8 @@ function AnimatedRoutes() {
             <Route path="/store-orders" element={<SupplierStoreOrders />} />
             <Route path="/store-orders/:supplierId" element={<SupplierStoreOrders />} />
             <Route path="/my-shops" element={<MyShops />} />
-            <Route path="/supplier-balance" element={<SupplierBalance />} />
-            <Route path="/supplier-balance/:supplierId" element={<SupplierBalance />} />
+            <Route path="/supplier-balance" element={<Navigate to="/wallet" replace />} />
+            <Route path="/supplier-balance/:supplierId" element={<ShopWalletRedirect />} />
             <Route path="/orders-history" element={<OrdersHistoryPage />} />
             <Route path="/store-orders-history" element={<SupplierStoreOrdersHistory />} />
             <Route path="/store-orders-history/:supplierId" element={<SupplierStoreOrdersHistory />} />

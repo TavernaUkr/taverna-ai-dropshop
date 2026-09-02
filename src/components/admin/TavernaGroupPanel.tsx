@@ -195,7 +195,7 @@ export function TavernaGroupPanel() {
           <p className="text-xs text-muted-foreground py-2">Немає магазинів</p>
         ) : shops.map((s) => (
           <Card key={s.supplier_id} className="cursor-pointer hover:border-primary/40 transition-colors"
-            onClick={() => navigate(`/supplier-balance/${s.supplier_id}`)}>
+            onClick={() => navigate(`/wallet/${s.supplier_id}`)}>
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
                 <Avatar className="h-9 w-9">
