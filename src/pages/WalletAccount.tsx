@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
   ChevronLeft, Wallet, Plus, ArrowUpRight, Gift, Clock, Loader2,
-  ArrowDownLeft, ShoppingBag, Settings2, Sparkles, Lock, Star, DollarSign, Store,
+  ArrowDownLeft, ShoppingBag, Settings2, Sparkles, Lock, Star, DollarSign, Store, TrendingUp,
 } from "lucide-react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
