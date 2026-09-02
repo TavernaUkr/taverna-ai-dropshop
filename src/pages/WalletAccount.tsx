@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
   ChevronLeft, Wallet, Plus, ArrowUpRight, Gift, Clock, Loader2,
-  ArrowDownLeft, ShoppingBag, Settings2, Sparkles, Lock, Star, DollarSign, Store,
+  ArrowDownLeft, ShoppingBag, Settings2, Sparkles, Lock, Star, DollarSign, Store, TrendingUp,
 } from "lucide-react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,9 @@ import { ShopBalancesList } from "@/components/wallet/ShopBalancesList";
 import { ClientBonusAccount } from "@/components/wallet/ClientBonusAccount";
 import { RefundMethodPage } from "@/components/settings/RefundMethodPage";
 import { WalletOffers } from "@/components/wallet/WalletOffers";
+import { WalletOverview } from "@/components/wallet/WalletOverview";
+import { WalletActionBar } from "@/components/wallet/WalletActionBar";
+import { WalletRatingCard } from "@/components/wallet/WalletRatingCard";
 import { useTelegramAuthContext } from "@/components/TelegramAuthProvider";
 import { hapticSelection } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
@@ -54,8 +57,11 @@ export default function WalletAccount() {
     connectWallet, topUp, requestPayout, savePayoutSettings,
   } = useWallet({ supplierId, withShops: hasShops && !supplierId });
 
-  const [tab, setTab] = useState<"personal" | "shops">(
-    !supplierId && hasShops && searchParams.get("tab") === "shops" ? "shops" : "personal",
+  const tabParam = searchParams.get("tab");
+  const [tab, setTab] = useState<"overview" | "shops" | "personal">(
+    !supplierId && hasShops
+      ? tabParam === "shops" ? "shops" : tabParam === "personal" ? "personal" : "overview"
+      : "personal",
   );
   const [showConnect, setShowConnect] = useState(false);
   const [showTopUp, setShowTopUp] = useState(false);
@@ -122,10 +128,11 @@ export default function WalletAccount() {
         {/* Перемикач: особистий рахунок / магазини */}
         {!supplierId && hasShops && !bonusOnly && (
           <div className="px-4 pb-3">
-            <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-muted">
+            <div className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-muted">
               {([
-                { id: "personal", label: "Особистий", icon: Wallet },
+                { id: "overview", label: "Загалом", icon: TrendingUp },
                 { id: "shops", label: "Магазини", icon: Store },
+                { id: "personal", label: "Особистий", icon: Wallet },
               ] as const).map((t) => (
                 <button
                   key={t.id}
@@ -150,6 +157,13 @@ export default function WalletAccount() {
             transactions={transactions}
             onOpenReceipt={setReceipt}
             onOpenRefund={() => setShowRefund(true)}
+          />
+        ) : tab === "overview" && !supplierId && hasShops ? (
+          <WalletOverview
+            wallet={wallet}
+            shops={shops}
+            totals={shopsTotals}
+            onOpenShops={() => setTab("shops")}
           />
         ) : tab === "shops" && !supplierId ? (
           <ShopBalancesList
@@ -305,10 +319,25 @@ export default function WalletAccount() {
           )}
         </div>
 
-        {!supplierId && <div ref={payRef}><WalletOffers bonusBalance={wallet.bonus_balance} /></div>}
+        {!supplierId && (
+          <div ref={payRef} className="space-y-4">
+            <WalletRatingCard fallbackPoints={wallet.bonus_balance} />
+            <WalletOffers bonusBalance={wallet.bonus_balance} />
+          </div>
+        )}
         </>
         )}
       </div>
+
+      {!supplierId && (
+        <WalletActionBar
+          showCash={!bonusOnly && !readOnly}
+          canPayout={!readOnly}
+          onTopUp={() => setShowTopUp(true)}
+          onPayout={() => setShowPayout(true)}
+          onPay={() => navigate("/?openCart=1")}
+        />
+      )}
 
       {showRefund && <RefundMethodPage onBack={() => setShowRefund(false)} />}
 

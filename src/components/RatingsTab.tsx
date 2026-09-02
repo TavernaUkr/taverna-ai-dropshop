@@ -873,7 +873,7 @@ export const RatingsTab = () => {
           </div>
         </div>
         <button
-          onClick={() => navigate("/bonus-account", { state: { section: "rating" } })}
+          onClick={() => navigate("/wallet")}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 active:scale-95 transition-all"
         >
           <Trophy className="h-3.5 w-3.5" />

@@ -342,7 +342,7 @@ export function AdminStoreManager({ filter = 'all' }: { filter?: 'all' | 'partne
                               <ArrowRightLeft className="h-3.5 w-3.5" />
                             </Button>
                             <Button variant="outline" size="sm" className="gap-1.5 text-xs"
-                              onClick={() => navigate(`/supplier-balance/${supplier.id}`)}>
+                              onClick={() => navigate(`/wallet/${supplier.id}`)}>
                               <Wallet className="h-3.5 w-3.5" /> Рахунок
                             </Button>
                             <Button variant="ghost" size="sm" className="gap-1.5 text-xs"
@@ -360,7 +360,7 @@ export function AdminStoreManager({ filter = 'all' }: { filter?: 'all' | 'partne
                             <Eye className="h-3.5 w-3.5" /> Переглянути
                           </Button>
                           <Button variant="outline" size="sm" className="gap-1.5 text-xs"
-                            onClick={() => navigate(`/supplier-balance/${supplier.id}`)}>
+                            onClick={() => navigate(`/wallet/${supplier.id}`)}>
                             <Wallet className="h-3.5 w-3.5" /> Рахунок
                           </Button>
                         </>

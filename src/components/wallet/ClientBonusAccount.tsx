@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { Star, Gift, ShoppingBag, RotateCcw, CreditCard, ChevronRight } from "lucide-react";
 import { WalletOffers } from "@/components/wallet/WalletOffers";
+import { WalletRatingCard } from "@/components/wallet/WalletRatingCard";
 import { hapticSelection } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
 import type { WalletTransaction } from "@/hooks/useWallet";
@@ -67,6 +68,9 @@ export function ClientBonusAccount({ bonusBalance, transactions, onOpenReceipt, 
           </div>
         </div>
       </motion.div>
+
+      {/* Рейтинг, ранг і множник бонусів */}
+      <WalletRatingCard fallbackPoints={bonusBalance} />
 
       {/* Реквізити для повернення коштів */}
       <button

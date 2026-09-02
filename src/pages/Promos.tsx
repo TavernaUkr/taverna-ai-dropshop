@@ -169,7 +169,7 @@ export const Promos = () => {
 
           {/* Bonus Account CTA */}
           <button
-            onClick={() => navigate("/bonus-account")}
+            onClick={() => navigate("/wallet")}
             className="w-full mt-3 flex items-center gap-3 bg-primary-foreground/15 backdrop-blur-sm rounded-xl p-3 hover:bg-primary-foreground/25 active:scale-[0.98] transition-all"
           >
             <Wallet className="h-5 w-5 text-primary-foreground" />

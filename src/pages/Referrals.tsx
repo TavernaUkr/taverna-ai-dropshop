@@ -241,7 +241,7 @@ export default function Referrals() {
           {/* Link to Bonus Account */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
             <Button
-              onClick={() => { hapticSelection(); navigate("/bonus-account"); }}
+              onClick={() => { hapticSelection(); navigate("/wallet"); }}
               variant="outline"
               className="w-full gap-2"
               size="lg"
