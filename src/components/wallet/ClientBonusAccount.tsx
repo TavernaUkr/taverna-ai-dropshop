@@ -68,6 +68,9 @@ export function ClientBonusAccount({ bonusBalance, transactions, onOpenReceipt, 
         </div>
       </motion.div>
 
+      {/* Рейтинг, ранг і множник бонусів */}
+      <WalletRatingCard fallbackPoints={bonusBalance} />
+
       {/* Реквізити для повернення коштів */}
       <button
         onClick={() => { hapticSelection(); onOpenRefund(); }}
