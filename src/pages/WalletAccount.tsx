@@ -57,8 +57,11 @@ export default function WalletAccount() {
     connectWallet, topUp, requestPayout, savePayoutSettings,
   } = useWallet({ supplierId, withShops: hasShops && !supplierId });
 
-  const [tab, setTab] = useState<"personal" | "shops">(
-    !supplierId && hasShops && searchParams.get("tab") === "shops" ? "shops" : "personal",
+  const tabParam = searchParams.get("tab");
+  const [tab, setTab] = useState<"overview" | "shops" | "personal">(
+    !supplierId && hasShops
+      ? tabParam === "shops" ? "shops" : tabParam === "personal" ? "personal" : "overview"
+      : "personal",
   );
   const [showConnect, setShowConnect] = useState(false);
   const [showTopUp, setShowTopUp] = useState(false);
