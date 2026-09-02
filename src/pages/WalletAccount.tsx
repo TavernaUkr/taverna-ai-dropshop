@@ -128,10 +128,11 @@ export default function WalletAccount() {
         {/* Перемикач: особистий рахунок / магазини */}
         {!supplierId && hasShops && !bonusOnly && (
           <div className="px-4 pb-3">
-            <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-muted">
+            <div className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-muted">
               {([
-                { id: "personal", label: "Особистий", icon: Wallet },
+                { id: "overview", label: "Загалом", icon: TrendingUp },
                 { id: "shops", label: "Магазини", icon: Store },
+                { id: "personal", label: "Особистий", icon: Wallet },
               ] as const).map((t) => (
                 <button
                   key={t.id}
