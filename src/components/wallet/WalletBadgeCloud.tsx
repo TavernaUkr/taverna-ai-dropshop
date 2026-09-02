@@ -1,38 +1,51 @@
 import { useEffect, useState } from "react";
-import { DollarSign, Star, Plus, ArrowUpRight, ShoppingBag } from "lucide-react";
+import { DollarSign, Star, Plus, ArrowUpRight, ShoppingBag, LogIn, Eye, Gift, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+export type WalletCloudVariant = "guest" | "bonus" | "cash" | "readonly";
+
+export interface WalletCloudAction {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+  tone?: "primary" | "success" | "outline";
+  onClick: () => void;
+}
+
 interface WalletBadgeCloudProps {
-  /** Показувати позначку реальних коштів (для постачальників) */
-  showCash?: boolean;
+  /** Рольовий режим хмаринки */
+  variant?: WalletCloudVariant;
   bonusValue?: number;
   cashValue?: number;
   onClick?: () => void;
   className?: string;
-  /** Швидкі дії */
-  onTopUp?: () => void;
-  onPayout?: () => void;
-  onPay?: () => void;
-  showPayout?: boolean;
+  /** Швидкі дії (набір визначає роль) */
+  actions?: WalletCloudAction[];
 }
 
 const fmt = (v: number) =>
   v >= 1000 ? `${Math.round(v / 100) / 10}k` : String(Math.round(v));
 
+const ICONS = { LogIn, Plus, ArrowUpRight, ShoppingBag, Eye, Gift };
+export const WalletCloudIcons = ICONS;
+
+const toneClass: Record<NonNullable<WalletCloudAction["tone"]>, string> = {
+  primary: "bg-primary text-primary-foreground",
+  success: "border border-success/40 bg-card text-success",
+  outline: "border border-primary/40 bg-card text-primary",
+};
+
 /**
- * Анімована "хмаринка" зі стрілкою до кнопки гаманця:
- * позначки $ (реальні кошти) і ★ (бонуси) блимають по черзі.
+ * Анімована "хмаринка" зі стрілкою до кнопки гаманця.
+ * Вміст і швидкі дії залежать від ролі користувача.
  */
 export function WalletBadgeCloud({
-  showCash = false,
+  variant = "bonus",
   bonusValue = 0,
   cashValue = 0,
   onClick,
   className,
-  onTopUp,
-  onPayout,
-  onPay,
-  showPayout = false,
+  actions = [],
 }: WalletBadgeCloudProps) {
   const [visible, setVisible] = useState(false);
 
@@ -43,7 +56,9 @@ export function WalletBadgeCloud({
 
   if (!visible) return null;
 
-  const hasActions = Boolean(onTopUp || onPayout || onPay);
+  const showCash = variant === "cash" || variant === "readonly";
+  const showBonus = variant !== "guest";
+  const swap = variant === "cash";
 
   return (
     <div
@@ -59,8 +74,14 @@ export function WalletBadgeCloud({
         <span className="relative flex items-center gap-1.5 rounded-full border border-primary/40 bg-card px-2.5 py-1 shadow-[0_4px_14px_-6px_hsl(var(--primary)/0.6)]">
           <span className="absolute inset-0 rounded-full animate-glow-pulse pointer-events-none" />
 
+          {variant === "guest" && (
+            <span className="flex items-center gap-1 text-[10px] font-bold text-primary">
+              <LogIn className="h-2.5 w-2.5" /> Увійти
+            </span>
+          )}
+
           {showCash && (
-            <span className="flex items-center gap-0.5 animate-badge-swap">
+            <span className={cn("flex items-center gap-0.5", swap && "animate-badge-swap")}>
               <span className="w-4 h-4 rounded-full bg-success/15 flex items-center justify-center">
                 <DollarSign className="h-2.5 w-2.5 text-success" />
               </span>
@@ -68,47 +89,39 @@ export function WalletBadgeCloud({
             </span>
           )}
 
-          <span className={cn("flex items-center gap-0.5", showCash && "animate-badge-swap-alt")}>
-            <span className="w-4 h-4 rounded-full bg-rating/15 flex items-center justify-center">
-              <Star className="h-2.5 w-2.5 text-rating fill-rating" />
+          {showBonus && (
+            <span className={cn("flex items-center gap-0.5", swap && "animate-badge-swap-alt")}>
+              <span className="w-4 h-4 rounded-full bg-rating/15 flex items-center justify-center">
+                <Star className="h-2.5 w-2.5 text-rating fill-rating" />
+              </span>
+              <span className="text-[10px] font-bold text-rating">{fmt(bonusValue)}</span>
             </span>
-            <span className="text-[10px] font-bold text-rating">{fmt(bonusValue)}</span>
-          </span>
+          )}
+
+          {variant === "readonly" && (
+            <span className="flex items-center gap-0.5 text-[8px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <Eye className="h-2.5 w-2.5" /> перегляд
+            </span>
+          )}
         </span>
       </button>
 
-      {hasActions && (
+      {actions.length > 0 && (
         <div className="flex items-center gap-1">
-          {onTopUp && (
+          {actions.map((a) => (
             <button
+              key={a.id}
               type="button"
-              onClick={onTopUp}
-              aria-label="Поповнити"
-              className="flex items-center gap-0.5 rounded-full bg-primary text-primary-foreground px-2 py-0.5 text-[9px] font-semibold shadow-sm active:scale-95 transition-transform"
+              onClick={a.onClick}
+              aria-label={a.label}
+              className={cn(
+                "flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[9px] font-semibold shadow-sm active:scale-95 transition-transform",
+                toneClass[a.tone ?? "outline"],
+              )}
             >
-              <Plus className="h-2.5 w-2.5" /> Поповнити
+              <a.icon className="h-2.5 w-2.5" /> {a.label}
             </button>
-          )}
-          {onPayout && showPayout && (
-            <button
-              type="button"
-              onClick={onPayout}
-              aria-label="Вивести"
-              className="flex items-center gap-0.5 rounded-full border border-success/40 bg-card text-success px-2 py-0.5 text-[9px] font-semibold shadow-sm active:scale-95 transition-transform"
-            >
-              <ArrowUpRight className="h-2.5 w-2.5" /> Вивести
-            </button>
-          )}
-          {onPay && (
-            <button
-              type="button"
-              onClick={onPay}
-              aria-label="Оплатити замовлення"
-              className="flex items-center gap-0.5 rounded-full border border-primary/40 bg-card text-primary px-2 py-0.5 text-[9px] font-semibold shadow-sm active:scale-95 transition-transform"
-            >
-              <ShoppingBag className="h-2.5 w-2.5" /> Оплатити
-            </button>
-          )}
+          ))}
         </div>
       )}
     </div>
