@@ -37,7 +37,39 @@ export const Header = ({
   const [isRegionOpen, setIsRegionOpen] = useState(false);
   const { effectiveRole } = useTelegramAuthContext() as any;
   const { wallet } = useWallet();
-  const isSupplierSide = ["supplier", "shop_manager", "admin", "moderator"].includes(effectiveRole);
+
+  const isGuest = !effectiveRole || effectiveRole === "guest";
+  const isManager = effectiveRole === "shop_manager";
+  const isPartner = ["supplier", "admin", "moderator"].includes(effectiveRole);
+
+  const walletVariant: WalletCloudVariant = isGuest
+    ? "guest"
+    : isPartner
+      ? "cash"
+      : isManager
+        ? "readonly"
+        : "bonus";
+
+  const openCart = () => (cartCount > 0 ? onCartClick?.() : navigate("/"));
+
+  const walletActions: WalletCloudAction[] = isGuest
+    ? [{ id: "login", label: "Увійти", icon: LogIn, tone: "primary", onClick: () => navigate("/login") }]
+    : isPartner
+      ? [
+          { id: "topup", label: "Поповнити", icon: Plus, tone: "primary", onClick: () => navigate("/wallet?action=topup") },
+          { id: "payout", label: "Вивести", icon: ArrowUpRight, tone: "success", onClick: () => navigate("/wallet?action=payout") },
+          { id: "pay", label: "Оплатити", icon: ShoppingBag, tone: "outline", onClick: openCart },
+        ]
+      : isManager
+        ? [
+            { id: "account", label: "Рахунок", icon: Eye, tone: "outline", onClick: () => navigate("/wallet?tab=shops") },
+            { id: "pay", label: "Оплатити", icon: ShoppingBag, tone: "outline", onClick: openCart },
+          ]
+        : [
+            { id: "bonus", label: "Бонуси", icon: Gift, tone: "primary", onClick: () => navigate("/wallet?action=bonus") },
+            { id: "pay", label: "Оплатити", icon: ShoppingBag, tone: "outline", onClick: openCart },
+          ];
+
 
   return (
     <>
