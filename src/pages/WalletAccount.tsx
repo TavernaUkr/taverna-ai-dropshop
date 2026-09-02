@@ -158,6 +158,13 @@ export default function WalletAccount() {
             onOpenReceipt={setReceipt}
             onOpenRefund={() => setShowRefund(true)}
           />
+        ) : tab === "overview" && !supplierId && hasShops ? (
+          <WalletOverview
+            wallet={wallet}
+            shops={shops}
+            totals={shopsTotals}
+            onOpenShops={() => setTab("shops")}
+          />
         ) : tab === "shops" && !supplierId ? (
           <ShopBalancesList
             shops={shops}
