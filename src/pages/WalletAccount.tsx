@@ -319,10 +319,25 @@ export default function WalletAccount() {
           )}
         </div>
 
-        {!supplierId && <div ref={payRef}><WalletOffers bonusBalance={wallet.bonus_balance} /></div>}
+        {!supplierId && (
+          <div ref={payRef} className="space-y-4">
+            <WalletRatingCard fallbackPoints={wallet.bonus_balance} />
+            <WalletOffers bonusBalance={wallet.bonus_balance} />
+          </div>
+        )}
         </>
         )}
       </div>
+
+      {!supplierId && (
+        <WalletActionBar
+          showCash={!bonusOnly && !readOnly}
+          canPayout={!readOnly}
+          onTopUp={() => setShowTopUp(true)}
+          onPayout={() => setShowPayout(true)}
+          onPay={() => navigate("/?openCart=1")}
+        />
+      )}
 
       {showRefund && <RefundMethodPage onBack={() => setShowRefund(false)} />}
 
