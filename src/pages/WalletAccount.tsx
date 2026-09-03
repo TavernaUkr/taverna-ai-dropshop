@@ -331,13 +331,15 @@ export default function WalletAccount() {
 
       {!supplierId && (
         <WalletActionBar
-          showCash={!bonusOnly && !readOnly}
-          canPayout={!readOnly}
+          variant={bonusOnly ? "bonus" : readOnly ? "readonly" : "cash"}
           onTopUp={() => setShowTopUp(true)}
           onPayout={() => setShowPayout(true)}
+          onBonuses={() => payRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+          onShops={() => setTab("shops")}
           onPay={() => navigate("/?openCart=1")}
         />
       )}
+
 
       {showRefund && <RefundMethodPage onBack={() => setShowRefund(false)} />}
 
