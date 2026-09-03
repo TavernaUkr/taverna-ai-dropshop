@@ -137,7 +137,7 @@ export default function WalletAccount() {
         </div>
 
         {/* Перемикач: особистий рахунок / магазини */}
-        {!supplierId && hasShops && !bonusOnly && (
+        {!supplierId && hasShops && (
           <div className="px-4 pb-3">
             <div className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-muted">
               {([
@@ -162,7 +162,7 @@ export default function WalletAccount() {
       </div>
 
       <div className="p-4 space-y-4">
-        {bonusOnly && !supplierId ? (
+        {bonusOnly && !supplierId && (!hasShops || tab === "personal") ? (
           <ClientBonusAccount
             bonusBalance={wallet.bonus_balance}
             transactions={transactions}
