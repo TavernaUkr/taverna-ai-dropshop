@@ -23,7 +23,9 @@ import { WalletActionBar } from "@/components/wallet/WalletActionBar";
 import { WalletRatingCard } from "@/components/wallet/WalletRatingCard";
 import { useTelegramAuthContext } from "@/components/TelegramAuthProvider";
 import { hapticSelection } from "@/lib/haptics";
+import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+
 
 const TX_ICON: Record<string, any> = {
   topup: ArrowDownLeft,
@@ -75,13 +77,22 @@ export default function WalletAccount() {
   const action = searchParams.get("action");
   useEffect(() => {
     if (!action || isLoading) return;
-    if (action === "topup" && !bonusOnly) setShowTopUp(true);
-    if (action === "payout" && !readOnly && !bonusOnly) setShowPayout(true);
-    if (action === "pay") {
+    if (action === "topup") {
+      if (bonusOnly) toast({ title: "Поповнення недоступне", description: "Клієнтський рахунок — лише бонуси за замовлення та відгуки." });
+      else if (readOnly) toast({ title: "Немає доступу", description: "Менеджер магазину може лише переглядати надходження." });
+      else setShowTopUp(true);
+    }
+    if (action === "payout") {
+      if (bonusOnly) toast({ title: "Вивід недоступний", description: "Повернення коштів надходять на «Картку для повернень» у налаштуваннях." });
+      else if (readOnly) toast({ title: "Немає доступу", description: "Виводом коштів магазину керує власник." });
+      else setShowPayout(true);
+    }
+    if (action === "pay" || action === "bonus") {
       setTimeout(() => payRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 200);
     }
     window.history.replaceState({}, "", window.location.pathname);
   }, [action, isLoading, readOnly, bonusOnly]);
+
 
 
   if (isLoading) {
@@ -331,13 +342,15 @@ export default function WalletAccount() {
 
       {!supplierId && (
         <WalletActionBar
-          showCash={!bonusOnly && !readOnly}
-          canPayout={!readOnly}
+          variant={bonusOnly ? "bonus" : readOnly ? "readonly" : "cash"}
           onTopUp={() => setShowTopUp(true)}
           onPayout={() => setShowPayout(true)}
+          onBonuses={() => payRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+          onShops={() => setTab("shops")}
           onPay={() => navigate("/?openCart=1")}
         />
       )}
+
 
       {showRefund && <RefundMethodPage onBack={() => setShowRefund(false)} />}
 
