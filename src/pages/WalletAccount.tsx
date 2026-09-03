@@ -23,7 +23,9 @@ import { WalletActionBar } from "@/components/wallet/WalletActionBar";
 import { WalletRatingCard } from "@/components/wallet/WalletRatingCard";
 import { useTelegramAuthContext } from "@/components/TelegramAuthProvider";
 import { hapticSelection } from "@/lib/haptics";
+import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+
 
 const TX_ICON: Record<string, any> = {
   topup: ArrowDownLeft,
