@@ -41,7 +41,7 @@ export const Header = ({
 
   const isGuest = !effectiveRole || effectiveRole === "guest";
   const isManager = effectiveRole === "shop_manager";
-  const isPartner = ["supplier", "admin", "moderator"].includes(effectiveRole);
+  const isPartner = effectiveRole === "supplier";
 
   const walletVariant: WalletCloudVariant = isGuest
     ? "guest"
