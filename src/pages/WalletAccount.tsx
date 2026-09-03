@@ -75,13 +75,22 @@ export default function WalletAccount() {
   const action = searchParams.get("action");
   useEffect(() => {
     if (!action || isLoading) return;
-    if (action === "topup" && !bonusOnly) setShowTopUp(true);
-    if (action === "payout" && !readOnly && !bonusOnly) setShowPayout(true);
-    if (action === "pay") {
+    if (action === "topup") {
+      if (bonusOnly) toast({ title: "Поповнення недоступне", description: "Клієнтський рахунок — лише бонуси за замовлення та відгуки." });
+      else if (readOnly) toast({ title: "Немає доступу", description: "Менеджер магазину може лише переглядати надходження." });
+      else setShowTopUp(true);
+    }
+    if (action === "payout") {
+      if (bonusOnly) toast({ title: "Вивід недоступний", description: "Повернення коштів надходять на «Картку для повернень» у налаштуваннях." });
+      else if (readOnly) toast({ title: "Немає доступу", description: "Виводом коштів магазину керує власник." });
+      else setShowPayout(true);
+    }
+    if (action === "pay" || action === "bonus") {
       setTimeout(() => payRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 200);
     }
     window.history.replaceState({}, "", window.location.pathname);
   }, [action, isLoading, readOnly, bonusOnly]);
+
 
 
   if (isLoading) {
