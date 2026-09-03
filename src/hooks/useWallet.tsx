@@ -129,7 +129,8 @@ interface UseWalletOptions {
   withShops?: boolean;
 }
 
-const CASH_ROLES = ["supplier", "shop_manager", "admin", "moderator"];
+/** Грошовий рахунок мають лише постачальники (менеджер — лише перегляд). Клієнт — тільки бонуси. */
+const CASH_ROLES = ["supplier", "shop_manager"];
 
 export function useWallet({ supplierId, withShops }: UseWalletOptions = {}) {
   const { profile, isAuthenticated, sessionToken, effectiveRole } = useTelegramAuthContext() as any;
