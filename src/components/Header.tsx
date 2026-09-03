@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { ShoppingCart, Search, Heart, Gift, Info, Trophy, Wallet, Globe, Flag } from "lucide-react";
+import { ShoppingCart, Search, Heart, Gift, Info, Trophy, Wallet, Globe, Flag, LogIn, Plus, ArrowUpRight, ShoppingBag, Eye } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import tavernaLogo from "@/assets/taverna-logo.png";
 import { AppInfoModal } from "./AppInfoModal";
 import { LanguageSelectorModal } from "./LanguageSelectorModal";
 import { RegionSelectorModal } from "./RegionSelectorModal";
-import { WalletBadgeCloud } from "./wallet/WalletBadgeCloud";
+import { WalletBadgeCloud, type WalletCloudAction, type WalletCloudVariant } from "./wallet/WalletBadgeCloud";
+
 import { useWallet } from "@/hooks/useWallet";
 import { useTelegramAuthContext } from "./TelegramAuthProvider";
 
