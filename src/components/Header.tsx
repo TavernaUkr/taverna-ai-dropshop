@@ -119,15 +119,13 @@ export const Header = ({
                 <Wallet className="h-4 w-4" />
               </button>
               <WalletBadgeCloud
-                showCash={isSupplierSide}
+                variant={walletVariant}
                 bonusValue={wallet?.bonus_balance ?? 0}
                 cashValue={wallet?.balance ?? 0}
-                onClick={() => navigate("/wallet")}
-                showPayout={isSupplierSide}
-                onTopUp={isSupplierSide ? () => navigate("/wallet?action=topup") : undefined}
-                onPayout={isSupplierSide ? () => navigate("/wallet?action=payout") : undefined}
-                onPay={() => (cartCount > 0 ? onCartClick?.() : navigate("/wallet?action=pay"))}
+                onClick={() => navigate(isGuest ? "/login" : "/wallet")}
+                actions={walletActions}
               />
+
             </div>
 
             <button
