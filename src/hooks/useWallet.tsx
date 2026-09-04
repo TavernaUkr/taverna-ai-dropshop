@@ -193,21 +193,36 @@ export function useWallet({ supplierId, withShops }: UseWalletOptions = {}) {
         throw new Error("Потрібна авторизація");
       }
       const { data, error: fnError } = await supabase.functions.invoke("wallet-account", {
-        body: { action, session_token: sessionToken, supplier_id: supplierId, ...payload },
+        body: {
+          action,
+          session_token: sessionToken,
+          supplier_id: supplierId,
+          preview_role: devRoleOverride || undefined,
+          ...payload,
+        },
       });
       if (fnError) throw fnError;
       if (data?.error) throw new Error(data.error);
       if (data?.wallet) {
-        setWallet(data.wallet);
-        setTransactions(data.transactions || []);
-        setLimits(data.limits || []);
+        // Клієнтська роль ніколи не бачить грошей, навіть якщо сервер повернув інше.
+        const bo = forcedBonusOnly || !!data.bonus_only;
+        setWallet(bo
+          ? { ...data.wallet, balance: 0, pending: 0, total: Number(data.wallet.bonus_balance || 0) }
+          : data.wallet);
+        setTransactions(
+          bo
+            ? (data.transactions || []).filter((t: WalletTransaction) =>
+                ["bonus_earn", "bonus_spend", "refund"].includes(t.type))
+            : data.transactions || [],
+        );
+        setLimits(bo ? [] : data.limits || []);
         setReadOnly(!!data.read_only);
-        setBonusOnly(!!data.bonus_only);
+        setBonusOnly(bo);
         setMode(data.mode || "sandbox");
       }
       return data;
     },
-    [sessionToken, supplierId, applyDemo],
+    [sessionToken, supplierId, applyDemo, devRoleOverride, forcedBonusOnly],
   );
 
   const fetchShops = useCallback(async () => {
