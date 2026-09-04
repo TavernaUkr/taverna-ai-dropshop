@@ -129,12 +129,15 @@ interface UseWalletOptions {
   withShops?: boolean;
 }
 
-/** Грошовий рахунок мають лише постачальники (менеджер — лише перегляд). Клієнт — тільки бонуси. */
-const CASH_ROLES = ["supplier", "shop_manager"];
+/** Грошовий рахунок мають постачальники/адміни (менеджер — лише перегляд). Клієнт — тільки бонуси. */
+const CASH_ROLES = ["supplier", "shop_manager", "admin", "moderator"];
+/** Ролі, для яких грошовий рахунок недоступний у будь-якому разі. */
+const BONUS_ONLY_ROLES = ["customer", "guest", "", null, undefined];
 
 export function useWallet({ supplierId, withShops }: UseWalletOptions = {}) {
-  const { profile, isAuthenticated, sessionToken, effectiveRole } = useTelegramAuthContext() as any;
-  const hasCashRole = CASH_ROLES.includes(effectiveRole) || Boolean(supplierId);
+  const { profile, isAuthenticated, sessionToken, effectiveRole, devRoleOverride } = useTelegramAuthContext() as any;
+  const forcedBonusOnly = BONUS_ONLY_ROLES.includes(effectiveRole);
+  const hasCashRole = !forcedBonusOnly && (CASH_ROLES.includes(effectiveRole) || Boolean(supplierId));
   const [wallet, setWallet] = useState<WalletState | null>(null);
   const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
   const [limits, setLimits] = useState<WalletLimit[]>([]);
