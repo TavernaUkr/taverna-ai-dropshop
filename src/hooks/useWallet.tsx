@@ -106,6 +106,9 @@ export interface ShopSummary {
   awaiting_payout: number;
   turnover: number;
   commission: number;
+  auto_withdraw?: boolean;
+  auto_withdraw_min?: number;
+  payout_provider?: string;
 }
 
 export interface ShopsTotals {
@@ -117,9 +120,9 @@ export interface ShopsTotals {
 }
 
 const demoShops = (): ShopSummary[] => [
-  { id: "demo-shop-1", shop_name: "TechStore UA", logo_url: null, role: "owner", available: 18450, pending: 4200, lifetime_paid: 132400, orders: 86, awaiting_payout: 4, turnover: 168900, commission: 24300 },
-  { id: "demo-shop-2", shop_name: "TacGear Pro", logo_url: null, role: "owner", available: 9120, pending: 1500, lifetime_paid: 64800, orders: 41, awaiting_payout: 2, turnover: 78400, commission: 11200 },
-  { id: "demo-shop-3", shop_name: "Home Comfort", logo_url: null, role: "manager", available: 3300, pending: 900, lifetime_paid: 21500, orders: 19, awaiting_payout: 1, turnover: 27600, commission: 3900 },
+  { id: "demo-shop-1", shop_name: "TechStore UA", logo_url: null, role: "owner", available: 18450, pending: 4200, lifetime_paid: 132400, orders: 86, awaiting_payout: 4, turnover: 168900, commission: 24300, auto_withdraw: true, auto_withdraw_min: 1000, payout_provider: "telegram_wallet" },
+  { id: "demo-shop-2", shop_name: "TacGear Pro", logo_url: null, role: "owner", available: 9120, pending: 1500, lifetime_paid: 64800, orders: 41, awaiting_payout: 2, turnover: 78400, commission: 11200, auto_withdraw: false, auto_withdraw_min: 500, payout_provider: "card" },
+  { id: "demo-shop-3", shop_name: "Home Comfort", logo_url: null, role: "manager", available: 3300, pending: 900, lifetime_paid: 21500, orders: 19, awaiting_payout: 1, turnover: 27600, commission: 3900, auto_withdraw: false, auto_withdraw_min: 500, payout_provider: "iban" },
 ];
 
 interface UseWalletOptions {
@@ -129,12 +132,15 @@ interface UseWalletOptions {
   withShops?: boolean;
 }
 
-/** Грошовий рахунок мають лише постачальники (менеджер — лише перегляд). Клієнт — тільки бонуси. */
-const CASH_ROLES = ["supplier", "shop_manager"];
+/** Грошовий рахунок мають постачальники/адміни (менеджер — лише перегляд). Клієнт — тільки бонуси. */
+const CASH_ROLES = ["supplier", "shop_manager", "admin", "moderator"];
+/** Ролі, для яких грошовий рахунок недоступний у будь-якому разі. */
+const BONUS_ONLY_ROLES = ["customer", "guest", "", null, undefined];
 
 export function useWallet({ supplierId, withShops }: UseWalletOptions = {}) {
-  const { profile, isAuthenticated, sessionToken, effectiveRole } = useTelegramAuthContext() as any;
-  const hasCashRole = CASH_ROLES.includes(effectiveRole) || Boolean(supplierId);
+  const { profile, isAuthenticated, sessionToken, effectiveRole, devRoleOverride } = useTelegramAuthContext() as any;
+  const forcedBonusOnly = BONUS_ONLY_ROLES.includes(effectiveRole);
+  const hasCashRole = !forcedBonusOnly && (CASH_ROLES.includes(effectiveRole) || Boolean(supplierId));
   const [wallet, setWallet] = useState<WalletState | null>(null);
   const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
   const [limits, setLimits] = useState<WalletLimit[]>([]);
@@ -190,21 +196,36 @@ export function useWallet({ supplierId, withShops }: UseWalletOptions = {}) {
         throw new Error("Потрібна авторизація");
       }
       const { data, error: fnError } = await supabase.functions.invoke("wallet-account", {
-        body: { action, session_token: sessionToken, supplier_id: supplierId, ...payload },
+        body: {
+          action,
+          session_token: sessionToken,
+          supplier_id: supplierId,
+          preview_role: devRoleOverride || undefined,
+          ...payload,
+        },
       });
       if (fnError) throw fnError;
       if (data?.error) throw new Error(data.error);
       if (data?.wallet) {
-        setWallet(data.wallet);
-        setTransactions(data.transactions || []);
-        setLimits(data.limits || []);
+        // Клієнтська роль ніколи не бачить грошей, навіть якщо сервер повернув інше.
+        const bo = forcedBonusOnly || !!data.bonus_only;
+        setWallet(bo
+          ? { ...data.wallet, balance: 0, pending: 0, total: Number(data.wallet.bonus_balance || 0) }
+          : data.wallet);
+        setTransactions(
+          bo
+            ? (data.transactions || []).filter((t: WalletTransaction) =>
+                ["bonus_earn", "bonus_spend", "refund"].includes(t.type))
+            : data.transactions || [],
+        );
+        setLimits(bo ? [] : data.limits || []);
         setReadOnly(!!data.read_only);
-        setBonusOnly(!!data.bonus_only);
+        setBonusOnly(bo);
         setMode(data.mode || "sandbox");
       }
       return data;
     },
-    [sessionToken, supplierId, applyDemo],
+    [sessionToken, supplierId, applyDemo, devRoleOverride, forcedBonusOnly],
   );
 
   const fetchShops = useCallback(async () => {
@@ -214,7 +235,7 @@ export function useWallet({ supplierId, withShops }: UseWalletOptions = {}) {
         return;
       }
       const { data, error: fnError } = await supabase.functions.invoke("wallet-account", {
-        body: { action: "get_shops_summary", session_token: sessionToken },
+        body: { action: "get_shops_summary", session_token: sessionToken, preview_role: devRoleOverride || undefined },
       });
       if (fnError || data?.error) throw new Error(data?.error || "shops error");
       const list: ShopSummary[] = data?.shops || [];
@@ -224,7 +245,7 @@ export function useWallet({ supplierId, withShops }: UseWalletOptions = {}) {
     } catch {
       if (isPreviewDevEnvironment()) applyDemoShops();
     }
-  }, [sessionToken, applyDemoShops]);
+  }, [sessionToken, applyDemoShops, devRoleOverride]);
 
   const refetch = useCallback(async () => {
     setIsLoading(true);
@@ -285,5 +306,16 @@ export function useWallet({ supplierId, withShops }: UseWalletOptions = {}) {
       safe(() => call("request_payout", { amount, provider, destination })),
     savePayoutSettings: (patch: Record<string, unknown>) =>
       safe(() => call("set_payout_settings", patch), patch as Partial<WalletState>),
+
+    /** Автовивід для конкретного магазину */
+    saveShopPayoutSettings: async (shopId: string, patch: Record<string, unknown>) => {
+      setShops((prev) => prev.map((s) => (s.id === shopId ? { ...s, ...patch } as ShopSummary : s)));
+      try {
+        await call("set_payout_settings", { ...patch, supplier_id: shopId });
+        await refetch();
+      } catch {
+        if (!isPreviewDevEnvironment()) throw new Error("Не вдалося зберегти автовивід");
+      }
+    },
   };
 }

@@ -123,12 +123,22 @@ serve(async (req) => {
     }
 
     const wallet = await getOrCreateWallet(supabase, ownerType, ownerId);
-    const readOnly = viewerRole === "manager";
+
+    // Тестова роль (лише для адміна/модератора) — щоб у прев'ю бачити рахунок очима іншої ролі.
+    const { data: viewerRoles } = await supabase.from("user_roles").select("role").eq("user_id", profile.id);
+    const viewerIsAdmin = (viewerRoles || []).some((r: any) => r.role === "admin" || r.role === "moderator");
+    const previewRole = (viewerIsAdmin && typeof body.preview_role === "string"
+      && ["guest", "customer", "supplier", "shop_manager", "moderator", "admin"].includes(body.preview_role))
+      ? body.preview_role as string : null;
+
+    const readOnly = viewerRole === "manager" || previewRole === "shop_manager";
     const mutating = ["connect_wallet", "create_topup", "pay_with_balance", "request_payout", "set_payout_settings"];
     if (readOnly && mutating.includes(action)) return json({ error: "Менеджеру доступний лише перегляд" }, 403);
 
     // Режим клієнта: лише бонуси, без реальних коштів, поповнень і виводів.
-    const bonusOnly = ownerType === "profile" && !(await hasCashAccount(supabase, profile));
+    const bonusOnly = previewRole
+      ? (ownerType === "profile" && ["customer", "guest"].includes(previewRole))
+      : ownerType === "profile" && !(await hasCashAccount(supabase, profile));
     const cashActions = ["connect_wallet", "create_topup", "request_payout", "set_payout_settings"];
     if (bonusOnly && cashActions.includes(action)) {
       return json({ error: "Для клієнтського рахунку доступні лише бонуси" }, 403);
@@ -232,7 +242,9 @@ serve(async (req) => {
       const [{ data: balances }, { data: splits }, { data: shopWallets }] = await Promise.all([
         supabase.from("shop_balances").select("supplier_id, available, pending, lifetime_paid").in("supplier_id", ids),
         supabase.from("order_splits").select("supplier_id, supplier_amount, platform_commission, split_status, payout_stage").in("supplier_id", ids),
-        supabase.from("wallets").select("owner_id, balance, pending, bonus_balance").eq("owner_type", "supplier").in("owner_id", ids),
+        supabase.from("wallets")
+          .select("owner_id, balance, pending, bonus_balance, auto_withdraw, auto_withdraw_min, payout_provider")
+          .eq("owner_type", "supplier").in("owner_id", ids),
       ]);
 
       const shops = ids.map((id) => {
@@ -255,6 +267,9 @@ serve(async (req) => {
           awaiting_payout: awaiting,
           turnover: Math.round(turnover * 100) / 100,
           commission: Math.round(commission * 100) / 100,
+          auto_withdraw: !!w?.auto_withdraw,
+          auto_withdraw_min: Number(w?.auto_withdraw_min ?? 500),
+          payout_provider: String(w?.payout_provider || "telegram_wallet"),
         };
       }).sort((a, b) => b.available - a.available);
 
