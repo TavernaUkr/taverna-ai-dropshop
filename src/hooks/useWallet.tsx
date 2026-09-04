@@ -106,6 +106,9 @@ export interface ShopSummary {
   awaiting_payout: number;
   turnover: number;
   commission: number;
+  auto_withdraw?: boolean;
+  auto_withdraw_min?: number;
+  payout_provider?: string;
 }
 
 export interface ShopsTotals {
@@ -117,9 +120,9 @@ export interface ShopsTotals {
 }
 
 const demoShops = (): ShopSummary[] => [
-  { id: "demo-shop-1", shop_name: "TechStore UA", logo_url: null, role: "owner", available: 18450, pending: 4200, lifetime_paid: 132400, orders: 86, awaiting_payout: 4, turnover: 168900, commission: 24300 },
-  { id: "demo-shop-2", shop_name: "TacGear Pro", logo_url: null, role: "owner", available: 9120, pending: 1500, lifetime_paid: 64800, orders: 41, awaiting_payout: 2, turnover: 78400, commission: 11200 },
-  { id: "demo-shop-3", shop_name: "Home Comfort", logo_url: null, role: "manager", available: 3300, pending: 900, lifetime_paid: 21500, orders: 19, awaiting_payout: 1, turnover: 27600, commission: 3900 },
+  { id: "demo-shop-1", shop_name: "TechStore UA", logo_url: null, role: "owner", available: 18450, pending: 4200, lifetime_paid: 132400, orders: 86, awaiting_payout: 4, turnover: 168900, commission: 24300, auto_withdraw: true, auto_withdraw_min: 1000, payout_provider: "telegram_wallet" },
+  { id: "demo-shop-2", shop_name: "TacGear Pro", logo_url: null, role: "owner", available: 9120, pending: 1500, lifetime_paid: 64800, orders: 41, awaiting_payout: 2, turnover: 78400, commission: 11200, auto_withdraw: false, auto_withdraw_min: 500, payout_provider: "card" },
+  { id: "demo-shop-3", shop_name: "Home Comfort", logo_url: null, role: "manager", available: 3300, pending: 900, lifetime_paid: 21500, orders: 19, awaiting_payout: 1, turnover: 27600, commission: 3900, auto_withdraw: false, auto_withdraw_min: 500, payout_provider: "iban" },
 ];
 
 interface UseWalletOptions {
@@ -232,7 +235,7 @@ export function useWallet({ supplierId, withShops }: UseWalletOptions = {}) {
         return;
       }
       const { data, error: fnError } = await supabase.functions.invoke("wallet-account", {
-        body: { action: "get_shops_summary", session_token: sessionToken },
+        body: { action: "get_shops_summary", session_token: sessionToken, preview_role: devRoleOverride || undefined },
       });
       if (fnError || data?.error) throw new Error(data?.error || "shops error");
       const list: ShopSummary[] = data?.shops || [];
@@ -242,7 +245,7 @@ export function useWallet({ supplierId, withShops }: UseWalletOptions = {}) {
     } catch {
       if (isPreviewDevEnvironment()) applyDemoShops();
     }
-  }, [sessionToken, applyDemoShops]);
+  }, [sessionToken, applyDemoShops, devRoleOverride]);
 
   const refetch = useCallback(async () => {
     setIsLoading(true);
