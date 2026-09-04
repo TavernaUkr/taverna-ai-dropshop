@@ -267,6 +267,9 @@ serve(async (req) => {
           awaiting_payout: awaiting,
           turnover: Math.round(turnover * 100) / 100,
           commission: Math.round(commission * 100) / 100,
+          auto_withdraw: !!w?.auto_withdraw,
+          auto_withdraw_min: Number(w?.auto_withdraw_min ?? 500),
+          payout_provider: String(w?.payout_provider || "telegram_wallet"),
         };
       }).sort((a, b) => b.available - a.available);
 
