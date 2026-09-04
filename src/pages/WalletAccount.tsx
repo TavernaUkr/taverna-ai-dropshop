@@ -56,7 +56,7 @@ export default function WalletAccount() {
 
   const {
     wallet, transactions, limits, shops, shopsTotals, readOnly, bonusOnly, mode, isLoading, error,
-    connectWallet, topUp, requestPayout, savePayoutSettings,
+    connectWallet, topUp, requestPayout, savePayoutSettings, saveShopPayoutSettings,
   } = useWallet({ supplierId, withShops: hasShops && !supplierId });
 
   const tabParam = searchParams.get("tab");
@@ -180,6 +180,8 @@ export default function WalletAccount() {
           <ShopBalancesList
             shops={shops}
             totals={shopsTotals}
+            readOnly={readOnly}
+            onSaveAuto={saveShopPayoutSettings}
             onOpenShop={(id) => { hapticSelection(); navigate(`/wallet/${id}`); }}
           />
         ) : (
