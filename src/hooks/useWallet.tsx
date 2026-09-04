@@ -306,5 +306,16 @@ export function useWallet({ supplierId, withShops }: UseWalletOptions = {}) {
       safe(() => call("request_payout", { amount, provider, destination })),
     savePayoutSettings: (patch: Record<string, unknown>) =>
       safe(() => call("set_payout_settings", patch), patch as Partial<WalletState>),
+
+    /** Автовивід для конкретного магазину */
+    saveShopPayoutSettings: async (shopId: string, patch: Record<string, unknown>) => {
+      setShops((prev) => prev.map((s) => (s.id === shopId ? { ...s, ...patch } as ShopSummary : s)));
+      try {
+        await call("set_payout_settings", { ...patch, supplier_id: shopId });
+        await refetch();
+      } catch {
+        if (!isPreviewDevEnvironment()) throw new Error("Не вдалося зберегти автовивід");
+      }
+    },
   };
 }
