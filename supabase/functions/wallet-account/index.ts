@@ -242,7 +242,9 @@ serve(async (req) => {
       const [{ data: balances }, { data: splits }, { data: shopWallets }] = await Promise.all([
         supabase.from("shop_balances").select("supplier_id, available, pending, lifetime_paid").in("supplier_id", ids),
         supabase.from("order_splits").select("supplier_id, supplier_amount, platform_commission, split_status, payout_stage").in("supplier_id", ids),
-        supabase.from("wallets").select("owner_id, balance, pending, bonus_balance").eq("owner_type", "supplier").in("owner_id", ids),
+        supabase.from("wallets")
+          .select("owner_id, balance, pending, bonus_balance, auto_withdraw, auto_withdraw_min, payout_provider")
+          .eq("owner_type", "supplier").in("owner_id", ids),
       ]);
 
       const shops = ids.map((id) => {
