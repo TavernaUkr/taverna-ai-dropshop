@@ -205,41 +205,68 @@ export default function WalletAccount() {
             {shopsInPersonal.length > 0 ? "Загальний баланс (магазини + особистий)" : "Загальний баланс"}
           </p>
           {shopsInPersonal.length > 0 ? (
-            <HoverCard openDelay={80} closeDelay={80}>
-              <HoverCardTrigger asChild>
-                <button className="text-4xl font-bold text-foreground mt-1 flex items-baseline gap-1.5 cursor-help">
-                  {grandTotal.toLocaleString("uk-UA")}<span className="text-2xl">₴</span>
-                  <span className="text-[11px] font-medium text-muted-foreground">розбивка</span>
-                </button>
-              </HoverCardTrigger>
-              <HoverCardContent align="start" className="w-72 p-3">
-                <p className="text-xs font-semibold text-foreground mb-2">Звідки складається баланс</p>
-                <div className="space-y-1.5">
-                  {shopsInPersonal.map((sh) => (
-                    <div key={sh.id} className="flex items-center justify-between gap-2 text-xs">
-                      <span className="text-muted-foreground truncate">{sh.shop_name}</span>
-                      <span className="font-semibold text-foreground shrink-0">
-                        {Number(sh.available).toLocaleString("uk-UA")}₴
-                      </span>
-                    </div>
-                  ))}
-                  <div className="flex items-center justify-between gap-2 text-xs">
-                    <span className="text-muted-foreground">Особистий гаманець</span>
-                    <span className="font-semibold text-foreground">{wallet.balance.toLocaleString("uk-UA")}₴</span>
-                  </div>
-                  <div className="flex items-center justify-between gap-2 text-xs border-t border-border pt-1.5 mt-1.5">
-                    <span className="text-muted-foreground">Разом доступно</span>
-                    <span className="font-bold text-foreground">{grandTotal.toLocaleString("uk-UA")}₴</span>
-                  </div>
-                  {shopsPending > 0 && (
-                    <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
-                      <span>В обробці по магазинах</span>
-                      <span>{shopsPending.toLocaleString("uk-UA")}₴</span>
-                    </div>
-                  )}
-                </div>
-              </HoverCardContent>
-            </HoverCard>
+            <div>
+              <button
+                onClick={() => { hapticSelection(); setBreakdownOpen((v) => !v); }}
+                onMouseEnter={() => setBreakdownOpen(true)}
+                className="w-full text-left text-4xl font-bold text-foreground mt-1 flex items-baseline gap-1.5"
+              >
+                {grandTotal.toLocaleString("uk-UA")}<span className="text-2xl">₴</span>
+                <span className="ml-auto flex items-center gap-1 text-[11px] font-medium text-muted-foreground self-center">
+                  Розбивка
+                  <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", breakdownOpen && "rotate-180")} />
+                </span>
+              </button>
+
+              <AnimatePresence initial={false}>
+                {breakdownOpen && (
+                  <motion.div
+                    key="breakdown"
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.22 }}
+                    className="overflow-hidden"
+                  >
+                    <motion.div
+                      drag="y"
+                      dragConstraints={{ top: 0, bottom: 0 }}
+                      dragElastic={0.25}
+                      onDragEnd={(_, info) => { if (info.offset.y < -40) setBreakdownOpen(false); }}
+                      className="mt-3 rounded-xl border border-border bg-card/70 backdrop-blur p-3"
+                    >
+                      <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-muted-foreground/30" />
+                      <p className="text-xs font-semibold text-foreground mb-2">Звідки складається баланс</p>
+                      <div className="space-y-1.5">
+                        {shopsInPersonal.map((sh) => (
+                          <div key={sh.id} className="flex items-center justify-between gap-2 text-xs">
+                            <span className="text-muted-foreground truncate">{sh.shop_name}</span>
+                            <span className="font-semibold text-foreground shrink-0">
+                              {Number(sh.available).toLocaleString("uk-UA")}₴
+                            </span>
+                          </div>
+                        ))}
+                        <div className="flex items-center justify-between gap-2 text-xs">
+                          <span className="text-muted-foreground">Особистий гаманець</span>
+                          <span className="font-semibold text-foreground">{wallet.balance.toLocaleString("uk-UA")}₴</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-2 text-xs border-t border-border pt-1.5 mt-1.5">
+                          <span className="text-muted-foreground">Разом доступно</span>
+                          <span className="font-bold text-foreground">{grandTotal.toLocaleString("uk-UA")}₴</span>
+                        </div>
+                        {shopsPending > 0 && (
+                          <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+                            <span>В обробці по магазинах</span>
+                            <span>{shopsPending.toLocaleString("uk-UA")}₴</span>
+                          </div>
+                        )}
+                      </div>
+                      <p className="mt-2 text-center text-[10px] text-muted-foreground">Свайпніть вгору, щоб згорнути</p>
+                    </motion.div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           ) : (
             <div className="text-4xl font-bold text-foreground mt-1">
               {wallet.total.toLocaleString("uk-UA")}<span className="text-2xl">₴</span>
