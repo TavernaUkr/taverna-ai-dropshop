@@ -21,6 +21,7 @@ import { WalletOffers } from "@/components/wallet/WalletOffers";
 import { WalletOverview } from "@/components/wallet/WalletOverview";
 import { WalletActionBar } from "@/components/wallet/WalletActionBar";
 import { WalletRatingCard } from "@/components/wallet/WalletRatingCard";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { useTelegramAuthContext } from "@/components/TelegramAuthProvider";
 import { hapticSelection } from "@/lib/haptics";
 import { toast } from "@/hooks/use-toast";
@@ -73,6 +74,14 @@ export default function WalletAccount() {
   const [showRefund, setShowRefund] = useState(false);
   const [autoMin, setAutoMin] = useState<string>("");
   const payRef = useRef<HTMLDivElement | null>(null);
+
+  /** Магазини, чиї кошти входять у загальний баланс постачальника (лише де він власник). */
+  const shopsInPersonal = !supplierId && !readOnly && !bonusOnly
+    ? shops.filter((sh) => sh.role === "owner")
+    : [];
+  const shopsAvailable = shopsInPersonal.reduce((sum, sh) => sum + Number(sh.available || 0), 0);
+  const shopsPending = shopsInPersonal.reduce((sum, sh) => sum + Number(sh.pending || 0), 0);
+  const grandTotal = Math.round((Number(wallet?.balance || 0) + shopsAvailable) * 100) / 100;
 
   const action = searchParams.get("action");
   useEffect(() => {
@@ -192,13 +201,53 @@ export default function WalletAccount() {
           animate={{ opacity: 1, y: 0 }}
           className="rounded-2xl bg-gradient-to-br from-primary/15 via-primary/5 to-transparent border border-border p-5"
         >
-          <p className="text-xs text-muted-foreground">Загальний баланс</p>
-          <div className="text-4xl font-bold text-foreground mt-1">
-            {wallet.total.toLocaleString("uk-UA")}<span className="text-2xl">₴</span>
-          </div>
+          <p className="text-xs text-muted-foreground">
+            {shopsInPersonal.length > 0 ? "Загальний баланс (магазини + особистий)" : "Загальний баланс"}
+          </p>
+          {shopsInPersonal.length > 0 ? (
+            <HoverCard openDelay={80} closeDelay={80}>
+              <HoverCardTrigger asChild>
+                <button className="text-4xl font-bold text-foreground mt-1 flex items-baseline gap-1.5 cursor-help">
+                  {grandTotal.toLocaleString("uk-UA")}<span className="text-2xl">₴</span>
+                  <span className="text-[11px] font-medium text-muted-foreground">розбивка</span>
+                </button>
+              </HoverCardTrigger>
+              <HoverCardContent align="start" className="w-72 p-3">
+                <p className="text-xs font-semibold text-foreground mb-2">Звідки складається баланс</p>
+                <div className="space-y-1.5">
+                  {shopsInPersonal.map((sh) => (
+                    <div key={sh.id} className="flex items-center justify-between gap-2 text-xs">
+                      <span className="text-muted-foreground truncate">{sh.shop_name}</span>
+                      <span className="font-semibold text-foreground shrink-0">
+                        {Number(sh.available).toLocaleString("uk-UA")}₴
+                      </span>
+                    </div>
+                  ))}
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <span className="text-muted-foreground">Особистий гаманець</span>
+                    <span className="font-semibold text-foreground">{wallet.balance.toLocaleString("uk-UA")}₴</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2 text-xs border-t border-border pt-1.5 mt-1.5">
+                    <span className="text-muted-foreground">Разом доступно</span>
+                    <span className="font-bold text-foreground">{grandTotal.toLocaleString("uk-UA")}₴</span>
+                  </div>
+                  {shopsPending > 0 && (
+                    <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+                      <span>В обробці по магазинах</span>
+                      <span>{shopsPending.toLocaleString("uk-UA")}₴</span>
+                    </div>
+                  )}
+                </div>
+              </HoverCardContent>
+            </HoverCard>
+          ) : (
+            <div className="text-4xl font-bold text-foreground mt-1">
+              {wallet.total.toLocaleString("uk-UA")}<span className="text-2xl">₴</span>
+            </div>
+          )}
 
           <div className="grid grid-cols-3 gap-2 mt-4">
-            <Stat label="Доступно" value={wallet.balance} icon={DollarSign} />
+            <Stat label="Особистий" value={wallet.balance} icon={DollarSign} />
             <Stat label="Бонуси" value={wallet.bonus_balance} accent icon={Star} />
             <Stat label="В обробці" value={wallet.pending} icon={Clock} />
           </div>

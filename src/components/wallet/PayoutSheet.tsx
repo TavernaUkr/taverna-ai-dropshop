@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { WalletLimit, WalletState } from "@/hooks/useWallet";
+import { calcPayoutFees, PLATFORM_PAYOUT_FEE_PERCENT, PLATFORM_PAYOUT_FEE_MIN } from "@/lib/payoutFees";
 
 const PAYOUT_PROVIDERS = [
   { id: "telegram_wallet", label: "Telegram Wallet", placeholder: "UQ... / USDT адреса" },
@@ -30,13 +31,13 @@ export function PayoutSheet({ open, onOpenChange, wallet, limits, onPayout }: Pa
 
   const limit = useMemo(() => limits.find((l) => l.provider === provider), [limits, provider]);
   const value = Number(amount) || 0;
-  const fee = limit ? Math.round((value * limit.fee_percent / 100 + limit.fee_fixed) * 100) / 100 : 0;
-  const net = Math.max(0, Math.round((value - fee) * 100) / 100);
+  const { platformFee, providerFee, totalFee, net } = useMemo(() => calcPayoutFees(value, limit), [value, limit]);
 
   const submit = async () => {
     if (!value) return toast.error("Вкажіть суму виводу");
     if (value > wallet.balance) return toast.error("Недостатньо коштів");
     if (limit && value < limit.min_payout) return toast.error(`Мінімум ${limit.min_payout}₴`);
+    if (net <= 0) return toast.error("Сума менша за комісію виводу");
     setIsBusy(true);
     try {
       await onPayout(value, provider, destination);
@@ -96,30 +97,44 @@ export function PayoutSheet({ open, onOpenChange, wallet, limits, onPayout }: Pa
             />
           </div>
 
-          {limit && (
-            <div className="rounded-xl border border-border p-3 text-xs space-y-1">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Ліміти</span>
-                <span className="text-foreground">{limit.min_payout}₴ – {limit.max_payout.toLocaleString("uk-UA")}₴</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Добовий ліміт</span>
-                <span className="text-foreground">{limit.daily_limit.toLocaleString("uk-UA")}₴</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Комісія</span>
-                <span className="text-foreground">{fee}₴</span>
-              </div>
-              <div className="flex justify-between font-semibold">
-                <span className="text-muted-foreground">До зарахування</span>
-                <span className="text-foreground">{net}₴</span>
-              </div>
+          <div className="rounded-xl border border-border p-3 text-xs space-y-1">
+            {limit && (
+              <>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Ліміти</span>
+                  <span className="text-foreground">{limit.min_payout}₴ – {limit.max_payout.toLocaleString("uk-UA")}₴</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Добовий ліміт</span>
+                  <span className="text-foreground">{limit.daily_limit.toLocaleString("uk-UA")}₴</span>
+                </div>
+              </>
+            )}
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">
+                Комісія платформи ({PLATFORM_PAYOUT_FEE_PERCENT}%, мін. {PLATFORM_PAYOUT_FEE_MIN}₴)
+              </span>
+              <span className="text-foreground">−{platformFee.toLocaleString("uk-UA")}₴</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Комісія методу</span>
+              <span className="text-foreground">−{providerFee.toLocaleString("uk-UA")}₴</span>
+            </div>
+            <div className="flex justify-between border-t border-border pt-1 mt-1">
+              <span className="text-muted-foreground">Разом комісія</span>
+              <span className="text-foreground">−{totalFee.toLocaleString("uk-UA")}₴</span>
+            </div>
+            <div className="flex justify-between font-semibold text-sm">
+              <span className="text-muted-foreground">Отримаєте на руки</span>
+              <span className="text-success">{net.toLocaleString("uk-UA")}₴</span>
+            </div>
+            {limit && (
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Термін</span>
                 <span className="text-foreground">{limit.eta_text || "—"}</span>
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           <Button className="w-full h-12" onClick={submit} disabled={isBusy}>
             {isBusy ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ArrowUpRight className="h-4 w-4 mr-2" />}

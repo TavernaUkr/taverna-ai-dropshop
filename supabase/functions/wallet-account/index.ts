@@ -428,8 +428,15 @@ serve(async (req) => {
         if (used + amount > Number(limit.daily_limit))
           return json({ error: `Добовий ліміт ${limit.daily_limit}₴ вичерпано` }, 400);
       }
-      const fee = limit ? Math.round((amount * Number(limit.fee_percent) / 100 + Number(limit.fee_fixed)) * 100) / 100 : 0;
-      const net = Math.round((amount - fee) * 100) / 100;
+      // Комісія платформи + комісія платіжного методу
+      const PLATFORM_FEE_PERCENT = 1.5;
+      const PLATFORM_FEE_MIN = 5;
+      const r2 = (v: number) => Math.round(v * 100) / 100;
+      const platformFee = r2(Math.max(PLATFORM_FEE_MIN, amount * PLATFORM_FEE_PERCENT / 100));
+      const providerFee = limit ? r2(amount * Number(limit.fee_percent) / 100 + Number(limit.fee_fixed)) : 0;
+      const fee = r2(platformFee + providerFee);
+      const net = r2(amount - fee);
+      if (net <= 0) return json({ error: "Сума виводу менша за комісію" }, 400);
 
       let txId = fakeId("PAYOUT");
       let status = "pending";
@@ -454,7 +461,7 @@ serve(async (req) => {
       await supabase.from("wallet_transactions").insert({
         wallet_id: wallet.id, type: "payout", amount, provider, status, external_id: txId,
         description: `Вивід коштів (${provider})`,
-        receipt: { amount, fee, net, provider, destination: destination || w.tg_wallet_address, at: new Date().toISOString() },
+        receipt: { amount, fee, platform_fee: platformFee, provider_fee: providerFee, net, provider, destination: destination || w.tg_wallet_address, at: new Date().toISOString() },
       });
 
       return json(await loadAccount());
