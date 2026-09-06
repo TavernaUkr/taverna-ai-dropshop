@@ -1,73 +1,26 @@
-# Welcome to your Lovable project
+# Taverna Drop Hub
 
-## Project info
+Так. Привіт. Я тут вперше тому пишу тобі таким чином. Щоб ти повністю ознайомився з моїм проєктом - хочу щоб ти спочатку прочитав мою переписку з AI - "GlobalPlan.txt". Після того прочитав мій репо на GitHub (я його підєднав в налаштуваннях) + надсилаю посилання: https://github.com/TavernaUkr/taverna-bot . Хочу щоб ти ще додатково подивився файли, які я надсилаю (.html) мого MiniApp додатку (початкового). Що я хочу? Спочатку щоб ти проаналізував все це та дав свої рекомендації та зміни до візуалу та кнопок (самі кнопки їх візуал мені більш менш підходить) - але як виглядає товар чи категорії чи щось інше - так собі. Хочу щоб в цьому телеграм дроп-боті було так: - знизу зліва - Каталог (а в ньому будуть автостворені категорії товерів підключеним в проект Gemini AI який при реєстрації користувача постачальника - буде створювати ці категорії товарів (зараз тестуємо одного постачальника з MyDrop - категорія "Military")). Коли натискаєш на цю категорію (вона буде ще підв'язана до каналу з гілками в телеграм) - мають туди парситись товари з .xml файлу (який додає користувач-постачальник чи читає telehoon з телеграм поста у каналі постачальника) та видає товар у відповідну категорію товару. + потрібно налаштувати фільтр (AI також має розподіляти категорію товару, назву товару, по його опису і що головне (моделі, тип, бренд і так далі) ціну, розміри чи кольори і так далі (різноманітний товар має бути)) та має бути кнопка - Переглянути Всі Товари Taverna (якось скорочена назва і зрозуміла) далі знизу зліва по центру - Мої Замовлення (тут будуть висвічуватись всі замовлення які продав постачальник/чи купив користувач-клієнт) - знизу по центру мають бути синім виділені дві кнопки (так як є зараз зліва кнопка новин - так само має бути зліва кнопка Live - тут буде показуватись хто реєструється, хто купляє товар чи робить обмін/повернення і на які суми (згідно конфіденційності яку ми також добавимо)) далі зправа по центру мають бути акції як для постачальників так і для клієнтів - далі зліва внизу має бути кнопка аккауну (реального з всіма налаштуваннями безпеки в телеграм Mini App реєстрації / рефералок / ліцензії та умов користувача мого телеграм-бот-дроп-магазину (це все ще також я придумаю)) - ну і всі інші налаштування аккаунту (фото аватарнки, нікнейм і так далі). - тобто хочу щоб ти з того що є - зробив гарну конфетку магазин для дроп продажів від мене - як від посередника для того, щоб я міг це гарно керувати (+ функція для мого аккаунту телеграм розробника - аккаунт адміна даної програми - я там буду добавляти різні налаштування в подальшому. Наприклад самореєстрація мною постачальників з можливістю передачі їм їх аккаунтів чи налаштування акцій по цінах які я виставляю чи нових промо кодів для бонусів чи якихось розіграшів чи таке інше.). + потрібно створити кнопку малу зверху - ("Стати партнером дроп-магазину Taverna Group").  Де буде створена реєстрація постачальника (фіз особа чи юр особа, контактні дані, ІПН/код ЄДРПОУ - назва компанії - назва дроп-магазину в проєкті - і таке інше - видумай гарне але щоб виконувались Закони України (перевір інтернет щодо надання послуг чи продажу товарів - я ФОП 2 група ) чи таке інше). Вопшем Дивись, перевіряй та створюй - для тебе це пісочниця. Надсилаю файли:
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+This project was built with [Lovable](https://lovable.dev).
 
-## How can I edit this code?
+**Live app**: https://taverna-ai-dropshop.lovable.app
 
-There are several ways of editing your application.
+## Build with Lovable
 
-**Use Lovable**
+Continue developing this project in the [Lovable editor](https://lovable.dev/projects/1843c65c-f7d4-49dc-b518-ba1c8a6f3f8e).
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+- **Ship faster**: describe what you want to build and Lovable handles the code.
+- **Stay in sync**: every change made in Lovable is committed straight to this repository.
+- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
 
-Changes made via Lovable will be committed automatically to this repo.
+## Development
 
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
+git clone <this-repository-url>
+cd <repository-name>
 npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
 npm run dev
 ```
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
