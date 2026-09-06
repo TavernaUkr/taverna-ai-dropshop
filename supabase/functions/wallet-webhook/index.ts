@@ -56,10 +56,33 @@ serve(async (req) => {
       const externalId = payload.externalId ? String(payload.externalId) : null;
       if (!walletId && !externalId) continue;
 
+      // 1) Поповнення балансу гаманця (wallet_transactions.type = 'topup')
+      let txQ = supabase.from("wallet_transactions").select("*").eq("type", "topup");
+      txQ = walletId ? txQ.eq("external_id", walletId) : txQ.eq("id", externalId!);
+      const { data: topupTx } = await txQ.limit(1).maybeSingle();
+      if (topupTx) {
+        if (type === "ORDER_PAID") {
+          const { data: claimed } = await supabase.from("wallet_transactions")
+            .update({ status: "completed", receipt: { ...(topupTx.receipt || {}), payload } })
+            .eq("id", topupTx.id).eq("status", "pending").select("id").maybeSingle();
+          if (claimed) {
+            const { data: w } = await supabase.from("wallets").select("balance").eq("id", topupTx.wallet_id).maybeSingle();
+            await supabase.from("wallets")
+              .update({ balance: Number(w?.balance || 0) + Number(topupTx.amount) }).eq("id", topupTx.wallet_id);
+          }
+        } else if (type === "ORDER_FAILED" || type === "ORDER_EXPIRED") {
+          await supabase.from("wallet_transactions")
+            .update({ status: type === "ORDER_EXPIRED" ? "expired" : "failed" })
+            .eq("id", topupTx.id).eq("status", "pending");
+        }
+        continue;
+      }
+
       let q = supabase.from("wallet_invoices").select("*");
       q = walletId ? q.eq("wallet_invoice_id", walletId) : q.eq("order_id", externalId);
       const { data: inv } = await q.order("created_at", { ascending: false }).limit(1).maybeSingle();
       if (!inv) { console.error("wallet-webhook: invoice not found", walletId, externalId); continue; }
+
 
       if (type === "ORDER_PAID") {
         if (inv.status === "paid") continue; // idempotent
