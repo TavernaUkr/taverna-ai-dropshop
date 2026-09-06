@@ -57,7 +57,7 @@ export default function WalletAccount() {
 
   const {
     wallet, transactions, limits, shops, shopsTotals, readOnly, bonusOnly, mode, isLoading, error,
-    connectWallet, topUp, requestPayout, savePayoutSettings, saveShopPayoutSettings,
+    connectWallet, topUp, checkTopUp, requestPayout, savePayoutSettings, saveShopPayoutSettings,
   } = useWallet({ supplierId, withShops: hasShops && !supplierId });
 
   const tabParam = searchParams.get("tab");
