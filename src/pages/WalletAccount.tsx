@@ -434,7 +434,7 @@ export default function WalletAccount() {
       {showRefund && <RefundMethodPage onBack={() => setShowRefund(false)} />}
 
       <ConnectWalletSheet open={showConnect} onOpenChange={setShowConnect} onConnect={connectWallet} />
-      <TopUpSheet open={showTopUp} onOpenChange={setShowTopUp} limits={limits} mode={mode} onTopUp={topUp} />
+      <TopUpSheet open={showTopUp} onOpenChange={setShowTopUp} limits={limits} mode={mode} onTopUp={topUp} onCheckTopUp={checkTopUp} />
       <PayoutSheet open={showPayout} onOpenChange={setShowPayout} wallet={wallet} limits={limits} onPayout={requestPayout} />
       <ReceiptDialog transaction={receipt} onOpenChange={() => setReceipt(null)} />
     </div>
