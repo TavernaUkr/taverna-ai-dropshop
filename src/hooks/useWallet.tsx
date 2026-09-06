@@ -300,6 +300,9 @@ export function useWallet({ supplierId, withShops }: UseWalletOptions = {}) {
       safe(() => call("connect_wallet", { address, currency }), { is_connected: true, tg_wallet_currency: currency }),
     topUp: (amount: number, provider: string) =>
       safe(() => call("create_topup", { amount, provider })),
+    /** Перевірка статусу поповнення (після оплати в Telegram Wallet) */
+    checkTopUp: (transactionId: string) => call("check_topup", { transaction_id: transactionId }),
+
     payWithBalance: (orderId: string, useBonus = true) =>
       call("pay_with_balance", { order_id: orderId, use_bonus: useBonus }),
     requestPayout: (amount: number, provider: string, destination?: string) =>

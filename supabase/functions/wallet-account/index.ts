@@ -350,6 +350,52 @@ serve(async (req) => {
       return json({ ...account, transaction_id: tx.id, pay_link: payLink });
     }
 
+    // ---------------- check_topup: миттєве зарахування після оплати в Telegram Wallet ----------------
+    if (action === "check_topup") {
+      const txId = String(body.transaction_id || "");
+      if (!txId) return json({ error: "transaction_id required" }, 400);
+
+      const { data: tx } = await supabase.from("wallet_transactions")
+        .select("*").eq("id", txId).eq("wallet_id", wallet.id).maybeSingle();
+      if (!tx) return json({ error: "Транзакцію не знайдено" }, 404);
+
+      if (tx.status === "completed") {
+        return json({ ...(await loadAccount()), topup_status: "completed" });
+      }
+
+      let paid = false;
+      if (!SANDBOX && tx.provider === "telegram_wallet" && tx.external_id) {
+        const res = await fetch(
+          `https://pay.wallet.tg/wpay/store-api/v1/order/preview?id=${encodeURIComponent(tx.external_id)}`,
+          { headers: { "Wpay-Store-Api-Key": WALLET_API_KEY } },
+        );
+        const out = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          console.error("wallet-account check_topup failed", res.status, JSON.stringify(out));
+          return json({ error: "Wallet Pay недоступний", details: out }, 502);
+        }
+        const status = String(out?.data?.status || "");
+        paid = status === "PAID";
+        if (["EXPIRED", "CANCELLED"].includes(status)) {
+          await supabase.from("wallet_transactions").update({ status: "failed" }).eq("id", tx.id);
+          return json({ ...(await loadAccount()), topup_status: "failed" });
+        }
+      }
+
+      if (!paid) return json({ ...(await loadAccount()), topup_status: tx.status });
+
+      // Атомарно: зараховуємо лише якщо транзакція ще pending
+      const { data: claimed } = await supabase.from("wallet_transactions")
+        .update({ status: "completed" }).eq("id", tx.id).eq("status", "pending").select("id").maybeSingle();
+      if (claimed) {
+        const { data: fresh } = await supabase.from("wallets").select("balance").eq("id", wallet.id).maybeSingle();
+        await supabase.from("wallets")
+          .update({ balance: Number(fresh?.balance || 0) + Number(tx.amount) }).eq("id", wallet.id);
+      }
+      return json({ ...(await loadAccount()), topup_status: "completed" });
+    }
+
+
     // ---------------- pay_with_balance ----------------
     if (action === "pay_with_balance") {
       const { order_id, use_bonus = true } = body;
