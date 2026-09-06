@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
-  ChevronLeft, Wallet, Plus, ArrowUpRight, Gift, Clock, Loader2,
+  ChevronLeft, ChevronDown, Wallet, Plus, ArrowUpRight, Gift, Clock, Loader2,
   ArrowDownLeft, ShoppingBag, Settings2, Sparkles, Lock, Star, DollarSign, Store, TrendingUp,
 } from "lucide-react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
@@ -21,7 +21,7 @@ import { WalletOffers } from "@/components/wallet/WalletOffers";
 import { WalletOverview } from "@/components/wallet/WalletOverview";
 import { WalletActionBar } from "@/components/wallet/WalletActionBar";
 import { WalletRatingCard } from "@/components/wallet/WalletRatingCard";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+
 import { useTelegramAuthContext } from "@/components/TelegramAuthProvider";
 import { hapticSelection } from "@/lib/haptics";
 import { toast } from "@/hooks/use-toast";
@@ -73,6 +73,7 @@ export default function WalletAccount() {
   const [showSettings, setShowSettings] = useState(false);
   const [showRefund, setShowRefund] = useState(false);
   const [autoMin, setAutoMin] = useState<string>("");
+  const [breakdownOpen, setBreakdownOpen] = useState(false);
   const payRef = useRef<HTMLDivElement | null>(null);
 
   /** Магазини, чиї кошти входять у загальний баланс постачальника (лише де він власник). */
