@@ -24,17 +24,41 @@ interface TopUpSheetProps {
   limits: WalletLimit[];
   mode: "sandbox" | "live";
   onTopUp: (amount: number, provider: string) => Promise<any>;
+  /** Перевірка статусу оплати в Telegram Wallet — щоб баланс оновився миттєво */
+  onCheckTopUp?: (transactionId: string) => Promise<any>;
 }
 
 const QUICK = [200, 500, 1000, 2000];
 
-export function TopUpSheet({ open, onOpenChange, limits, mode, onTopUp }: TopUpSheetProps) {
+export function TopUpSheet({ open, onOpenChange, limits, mode, onTopUp, onCheckTopUp }: TopUpSheetProps) {
   const [amount, setAmount] = useState("500");
   const [provider, setProvider] = useState("telegram_wallet");
   const [isBusy, setIsBusy] = useState(false);
 
   const isProviderLive = (id: string) =>
     mode === "sandbox" || limits.find((l) => l.provider === id)?.is_active !== false;
+
+  /** Опитуємо статус, поки Wallet не підтвердить оплату (миттєве зарахування) */
+  const waitForPayment = async (transactionId: string) => {
+    if (!onCheckTopUp || !transactionId) return;
+    for (let i = 0; i < 20; i++) {
+      await new Promise((r) => setTimeout(r, 1500));
+      try {
+        const res = await onCheckTopUp(transactionId);
+        if (res?.topup_status === "completed") {
+          toast.success("Баланс поповнено");
+          return;
+        }
+        if (res?.topup_status === "failed" || res?.topup_status === "expired") {
+          toast.error("Оплату не завершено");
+          return;
+        }
+      } catch {
+        /* повторимо на наступній ітерації */
+      }
+    }
+    toast.info("Очікуємо підтвердження оплати від Telegram Wallet");
+  };
 
   const submit = async () => {
     const value = Number(amount);
@@ -44,8 +68,19 @@ export function TopUpSheet({ open, onOpenChange, limits, mode, onTopUp }: TopUpS
       const res = await onTopUp(value, provider);
       if (res?.pay_link) {
         const tg = (window as any).Telegram?.WebApp;
-        if (tg?.openInvoice) tg.openInvoice(res.pay_link);
-        else window.open(res.pay_link, "_blank", "noopener");
+        if (tg?.openInvoice) {
+          tg.openInvoice(res.pay_link, (status: string) => {
+            if (status === "paid") {
+              toast.loading("Зараховуємо поповнення…", { id: "topup-check", duration: 2000 });
+              void waitForPayment(res.transaction_id);
+            } else if (status === "cancelled" || status === "failed") {
+              toast.error("Оплату скасовано");
+            }
+          });
+        } else {
+          window.open(res.pay_link, "_blank", "noopener");
+          void waitForPayment(res.transaction_id);
+        }
       } else {
         toast.success(mode === "sandbox" ? "Тестове поповнення зараховано" : "Поповнення створено");
       }
@@ -56,6 +91,7 @@ export function TopUpSheet({ open, onOpenChange, limits, mode, onTopUp }: TopUpS
       setIsBusy(false);
     }
   };
+
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
