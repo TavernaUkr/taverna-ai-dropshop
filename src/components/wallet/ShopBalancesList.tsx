@@ -135,14 +135,32 @@ export function ShopBalancesList({
         </motion.div>
       )}
 
-      {shops.map((shop, i) => (
+      {shops.map((shop, i) => {
+        const debt = debtOf(shop);
+        const blocked = isShopBlocked(debt);
+        const free = withdrawableOf({ id: shop.id, name: shop.shop_name, available: shop.available });
+        return (
         <motion.div
           key={shop.id}
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.04 * i }}
-          className="rounded-xl border border-border bg-card p-3.5"
+          className={cn(
+            "rounded-xl border p-3.5 backdrop-blur",
+            blocked ? "border-destructive/60 bg-destructive/5 ring-1 ring-destructive/30" : "border-border bg-card",
+          )}
         >
+          {blocked && (
+            <div className="mb-3 rounded-lg bg-destructive/10 border border-destructive/40 p-2.5">
+              <p className="text-[11px] font-semibold text-destructive flex items-center gap-1.5">
+                <EyeOff className="h-3.5 w-3.5" /> Магазин приховано з каталогу через заборгованість
+              </p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Борг {uah(debt)} ≥ ліміту {uah(DEBT_BLOCK_THRESHOLD)}. Погасіть його, щоб відновити продажі та вивід коштів.
+              </p>
+            </div>
+          )}
+
           <button onClick={() => onOpenShop(shop.id)} className="w-full text-left active:scale-[0.99] transition-transform">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-muted overflow-hidden flex items-center justify-center shrink-0">
@@ -168,7 +186,7 @@ export function ShopBalancesList({
               </div>
               <div className="text-right shrink-0">
                 <p className="text-base font-bold text-foreground">{uah(shop.available)}</p>
-                <p className="text-[10px] text-muted-foreground">доступно</p>
+                <p className="text-[10px] text-muted-foreground">баланс</p>
               </div>
               <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
             </div>
@@ -178,7 +196,51 @@ export function ShopBalancesList({
               <Chip icon={TrendingUp} label="Виплачено" value={uah(shop.lifetime_paid)} />
               <Chip icon={Clock} label="Очікує виплат" value={String(shop.awaiting_payout)} highlight={shop.awaiting_payout > 0} />
             </div>
+
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              До виводу: <span className="font-semibold text-success">{uah(free)}</span> · {uah(SHOP_RESERVE)} зарезервовано платформою
+            </p>
           </button>
+
+          {/* Борг магазину */}
+          {debt > 0 && (
+            <div className={cn(
+              "mt-3 rounded-lg border p-2.5",
+              blocked ? "border-destructive/40 bg-destructive/5" : "border-warning/40 bg-warning/5",
+            )}>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                  <AlertTriangle className={cn("h-3.5 w-3.5", blocked ? "text-destructive" : "text-warning")} />
+                  Борг перед платформою
+                </p>
+                <p className={cn("text-sm font-bold", blocked ? "text-destructive" : "text-warning")}>{uah(debt)}</p>
+              </div>
+
+              {readOnly || shop.role === "manager" ? (
+                <p className="mt-1.5 text-[11px] text-muted-foreground flex items-center gap-1">
+                  <Lock className="h-3 w-3" /> Погашення доступне лише власнику
+                </p>
+              ) : (
+                <div className="grid grid-cols-2 gap-2 mt-2">
+                  <Button
+                    size="sm"
+                    className="h-9 text-[11px]"
+                    onClick={() => { hapticSelection(); setPayShop(shop); }}
+                  >
+                    <CreditCard className="h-3.5 w-3.5 mr-1" /> Оплатити карткою
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-9 text-[11px]"
+                    onClick={() => { hapticSelection(); setTransferShop(shop); }}
+                  >
+                    <ArrowLeftRight className="h-3.5 w-3.5 mr-1" /> З іншого магазину
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Автовивід для конкретного магазину */}
           {readOnly || shop.role === "manager" ? (
@@ -194,7 +256,29 @@ export function ShopBalancesList({
             />
           )}
         </motion.div>
-      ))}
+        );
+      })}
+
+      <ShopDebtPayDialog
+        shop={payShop}
+        debt={payShop ? debtOf(payShop) : 0}
+        onOpenChange={(o) => !o && setPayShop(null)}
+        onConfirm={(amount) => {
+          if (payShop) onSettleDebt?.(payShop.id, amount, { type: "card" });
+          setPayShop(null);
+        }}
+      />
+      <ShopDebtTransferDialog
+        shop={transferShop}
+        debt={transferShop ? debtOf(transferShop) : 0}
+        donors={shops}
+        onOpenChange={(o) => !o && setTransferShop(null)}
+        onConfirm={(fromShopId, amount) => {
+          if (transferShop) onSettleDebt?.(transferShop.id, amount, { type: "shop", fromShopId });
+          setTransferShop(null);
+        }}
+      />
+
     </div>
   );
 }
