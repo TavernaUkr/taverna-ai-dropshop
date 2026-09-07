@@ -3,11 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { Gift, Sparkles, ChevronRight, Crown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { hapticSelection } from "@/lib/haptics";
+import { PersonalBonusDialog } from "@/components/promos/PersonalBonusDialog";
 
 /** Преміальний банер акцій + окрема кнопка персонального бонусу на головній. */
 export const PromoHeroBanner = () => {
   const navigate = useNavigate();
   const [promoCount, setPromoCount] = useState(0);
+  const [bonusOpen, setBonusOpen] = useState(false);
 
   useEffect(() => {
     supabase
@@ -51,7 +53,7 @@ export const PromoHeroBanner = () => {
       </button>
 
       <button
-        onClick={() => go("/wallet?action=bonus")}
+        onClick={() => { hapticSelection(); setBonusOpen(true); }}
         aria-label="Персональний бонус"
         className="relative w-full overflow-hidden rounded-2xl p-3.5 text-left text-primary-foreground bg-gradient-to-r from-warning via-rating to-primary shadow-lg active:scale-[0.985] transition-transform duration-150"
       >
@@ -67,6 +69,8 @@ export const PromoHeroBanner = () => {
           <ChevronRight className="h-4 w-4 opacity-80" />
         </div>
       </button>
+
+      <PersonalBonusDialog open={bonusOpen} onOpenChange={setBonusOpen} />
     </section>
   );
 };
