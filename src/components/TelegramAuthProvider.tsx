@@ -140,16 +140,10 @@ export function TelegramAuthProvider({ children }: TelegramAuthProviderProps) {
   }, [auth.isAuthenticated, auth.profile?.id, auth.sessionToken]);
 
   const isRealAdmin = realRoles.includes('admin');
-  
-  // IMPORTANT: In Lovable.dev - ALWAYS show switcher for testing
-  // In production/local - only show for real admins
+
+  // The role switcher is visible ONLY for verified admins, in every environment.
   const canUseDevRoleSwitcher = useMemo(() => {
-    // Always available in Lovable.dev sandbox for testing
-    if (isLovableDevEnvironment()) {
-      return true;
-    }
-    // In other dev environments or production - only for real admins
-    return isDevEnv() && isRealAdmin;
+    return isRealAdmin;
   }, [isRealAdmin]);
 
   // Load stored override only when allowed

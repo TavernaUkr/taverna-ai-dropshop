@@ -7,6 +7,8 @@ import { useMemo, useState } from "react";
 import { hapticImpact } from "@/lib/haptics";
 import { toast } from "sonner";
 import { EmptyState } from "./ui/empty-state";
+import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 
 export interface CartItem {
   id: string;
@@ -44,6 +46,12 @@ export const CartModal = ({
 }: CartModalProps) => {
   const [localVariants, setLocalVariants] = useState<Record<string, { size?: string; color?: string }>>({});
   const [savedAddress, setSavedAddress] = useState<any>(null);
+  const navigate = useNavigate();
+
+  const handleBrowseCatalog = () => {
+    onClose();
+    navigate("/");
+  };
   
   const totalPrice = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
@@ -119,11 +127,20 @@ export const CartModal = ({
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4">
           {items.length === 0 ? (
-            <EmptyState
-              type="cart"
-              title="Кошик порожній"
-              description="Додайте товари з каталогу, щоб оформити замовлення"
-            />
+            <div className="flex flex-col items-center">
+              <EmptyState
+                type="cart"
+                title="Кошик порожній"
+                description="Додайте товари з каталогу, щоб оформити замовлення"
+              />
+              <Button
+                onClick={handleBrowseCatalog}
+                className="w-full max-w-xs -mt-2 mb-8"
+                size="lg"
+              >
+                Додати товари
+              </Button>
+            </div>
           ) : (
             <div className="space-y-4">
               {/* Multi-supplier warning */}
