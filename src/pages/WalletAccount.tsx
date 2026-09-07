@@ -172,7 +172,7 @@ export default function WalletAccount() {
       </div>
 
       <div className="p-4 space-y-4">
-        {bonusOnly && !supplierId && (!hasShops || tab === "personal") ? (
+        {bonusOnly && !supplierId ? (
           <ClientBonusAccount
             bonusBalance={wallet.bonus_balance}
             transactions={transactions}
