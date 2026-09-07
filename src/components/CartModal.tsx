@@ -46,6 +46,12 @@ export const CartModal = ({
 }: CartModalProps) => {
   const [localVariants, setLocalVariants] = useState<Record<string, { size?: string; color?: string }>>({});
   const [savedAddress, setSavedAddress] = useState<any>(null);
+  const navigate = useNavigate();
+
+  const handleBrowseCatalog = () => {
+    onClose();
+    navigate("/");
+  };
   
   const totalPrice = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
