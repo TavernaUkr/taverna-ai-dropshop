@@ -195,6 +195,7 @@ export const Header = ({
       <AppInfoModal isOpen={isInfoOpen} onClose={() => setIsInfoOpen(false)} />
       <LanguageSelectorModal isOpen={isLangOpen} onClose={() => setIsLangOpen(false)} />
       <RegionSelectorModal isOpen={isRegionOpen} onClose={() => setIsRegionOpen(false)} />
+      <ReferralSheet open={isReferralsOpen} onOpenChange={setIsReferralsOpen} />
     </>);
 
 };
