@@ -16,7 +16,7 @@ import { CheckoutSteps, CheckoutStep } from './checkout/CheckoutSteps';
 import { PhoneInput } from './checkout/PhoneInput';
 import { CitySearch } from './checkout/CitySearch';
 import { WarehouseSelect } from './checkout/WarehouseSelect';
-import { PaymentMethodSelect, PaymentMethod } from './checkout/PaymentMethodSelect';
+import { PaymentMethodSelect, PaymentMethod, PaymentType } from './checkout/PaymentMethodSelect';
 import { OrderSummary } from './checkout/OrderSummary';
 import { CheckoutDiscounts } from './checkout/CheckoutDiscounts';
 import { 
