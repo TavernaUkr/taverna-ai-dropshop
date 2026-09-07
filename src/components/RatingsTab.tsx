@@ -858,6 +858,265 @@ const BadgeRules = () => {
   );
 };
 
+// ============ Мій рейтинг ============
+
+const myTiers = [
+  { name: "Новачок", min: 0, color: "text-muted-foreground", bg: "bg-muted" },
+  { name: "Бронзовий", min: 1000, color: "text-amber-600", bg: "bg-amber-600/15" },
+  { name: "Срібний", min: 3000, color: "text-slate-400", bg: "bg-slate-400/15" },
+  { name: "Золотий", min: 7000, color: "text-yellow-500", bg: "bg-yellow-500/15" },
+  { name: "Легенда", min: 15000, color: "text-violet-400", bg: "bg-violet-400/15" },
+];
+
+const myPerks = [
+  { icon: Gift, label: "Знижка", value: "-5%", tone: "text-primary", bg: "bg-primary/10", active: true },
+  { icon: Zap, label: "Множник бонусів", value: "×1.5", tone: "text-live", bg: "bg-live/10", active: true },
+  { icon: ShoppingBag, label: "Безкоштовна доставка", value: "від 999₴", tone: "text-success", bg: "bg-success/10", active: true },
+  { icon: Crown, label: "VIP-підтримка", value: "Золотий рівень", tone: "text-yellow-500", bg: "bg-yellow-500/10", active: false },
+  { icon: Award, label: "Кредити на публікації", value: "2 / міс", tone: "text-violet-400", bg: "bg-violet-400/10", active: false },
+  { icon: Diamond, label: "Ексклюзивні дропи", value: "Легенда", tone: "text-violet-400", bg: "bg-violet-400/10", active: false },
+];
+
+const MyRatingSection = ({ points = 4380 }: { points?: number }) => {
+  const navigate = useNavigate();
+  const tierIndex = Math.max(0, myTiers.map((t) => points >= t.min).lastIndexOf(true));
+  const tier = myTiers[tierIndex];
+  const next = myTiers[tierIndex + 1];
+  const progress = next
+    ? Math.min(100, ((points - tier.min) / (next.min - tier.min)) * 100)
+    : 100;
+
+  return (
+    <div className="space-y-3">
+      <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-primary/10 via-card to-card p-4">
+        <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full bg-primary/10 blur-2xl" />
+        <div className="relative flex items-center gap-3">
+          <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center text-lg font-bold", tier.bg, tier.color)}>
+            ТИ
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <p className="text-base font-bold text-foreground truncate">{tier.name} клієнт</p>
+              <Badge variant="secondary" className={cn("text-[10px]", tier.color)}>{tierIndex + 1} рівень</Badge>
+            </div>
+            <p className="text-xs text-muted-foreground">{points.toLocaleString("uk-UA")} рейтингових балів</p>
+          </div>
+          <button
+            onClick={() => navigate("/wallet")}
+            className="shrink-0 w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center active:scale-95 transition-transform"
+            aria-label="Рахунок"
+          >
+            <Wallet className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="relative mt-4">
+          <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1">
+            <span>{tier.name}</span>
+            <span>{next ? `${next.name} · ще ${(next.min - points).toLocaleString("uk-UA")} балів` : "Максимальний рівень"}</span>
+          </div>
+          <div className="h-2 rounded-full bg-muted overflow-hidden">
+            <div className="h-full rounded-full bg-gradient-to-r from-primary to-live transition-all" style={{ width: `${progress}%` }} />
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <p className="text-xs font-semibold text-muted-foreground mb-2 px-0.5">Мої переваги</p>
+        <div className="grid grid-cols-2 gap-2">
+          {myPerks.map((p) => (
+            <div
+              key={p.label}
+              className={cn(
+                "rounded-xl border p-3 transition-all",
+                p.active ? "border-border bg-card" : "border-dashed border-border bg-muted/30 opacity-60"
+              )}
+            >
+              <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center mb-2", p.bg)}>
+                <p.icon className={cn("h-4 w-4", p.tone)} />
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-tight">{p.label}</p>
+              <p className={cn("text-sm font-bold", p.active ? "text-foreground" : "text-muted-foreground")}>{p.value}</p>
+              {!p.active && <p className="text-[10px] text-muted-foreground mt-0.5">Відкриється на вищому рівні</p>}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ============ ТОП продавців ============
+
+interface TopSeller {
+  shopName: string;
+  initials: string;
+  gradient: string;
+  rating: number;
+  sales: number;
+  positive: number;
+  negative: number;
+}
+
+const topSellersByPeriod: Record<Period, TopSeller[]> = {
+  day: [
+    { shopName: "Tactical Pro", initials: "TP", gradient: "from-emerald-500/30 to-lime-400/20", rating: 4.9, sales: 18, positive: 17, negative: 1 },
+    { shopName: "Military Store", initials: "MS", gradient: "from-sky-500/30 to-cyan-400/20", rating: 4.8, sales: 14, positive: 13, negative: 1 },
+    { shopName: "Urban Gear", initials: "UG", gradient: "from-amber-500/30 to-orange-400/20", rating: 4.6, sales: 11, positive: 10, negative: 1 },
+    { shopName: "Alpha Gear", initials: "AG", gradient: "from-violet-500/30 to-fuchsia-400/20", rating: 4.5, sales: 8, positive: 7, negative: 1 },
+    { shopName: "Ranger Shop", initials: "RS", gradient: "from-rose-500/30 to-pink-400/20", rating: 4.4, sales: 6, positive: 5, negative: 1 },
+  ],
+  week: [
+    { shopName: "Tactical Pro", initials: "TP", gradient: "from-emerald-500/30 to-lime-400/20", rating: 4.9, sales: 96, positive: 91, negative: 5 },
+    { shopName: "Urban Gear", initials: "UG", gradient: "from-amber-500/30 to-orange-400/20", rating: 4.7, sales: 78, positive: 73, negative: 5 },
+    { shopName: "Military Store", initials: "MS", gradient: "from-sky-500/30 to-cyan-400/20", rating: 4.7, sales: 71, positive: 66, negative: 5 },
+    { shopName: "Alpha Gear", initials: "AG", gradient: "from-violet-500/30 to-fuchsia-400/20", rating: 4.5, sales: 54, positive: 49, negative: 5 },
+    { shopName: "Ranger Shop", initials: "RS", gradient: "from-rose-500/30 to-pink-400/20", rating: 4.3, sales: 41, positive: 36, negative: 5 },
+  ],
+  month: [
+    { shopName: "Tactical Pro", initials: "TP", gradient: "from-emerald-500/30 to-lime-400/20", rating: 4.8, sales: 412, positive: 389, negative: 23 },
+    { shopName: "Military Store", initials: "MS", gradient: "from-sky-500/30 to-cyan-400/20", rating: 4.7, sales: 337, positive: 312, negative: 25 },
+    { shopName: "Urban Gear", initials: "UG", gradient: "from-amber-500/30 to-orange-400/20", rating: 4.6, sales: 289, positive: 264, negative: 25 },
+    { shopName: "Alpha Gear", initials: "AG", gradient: "from-violet-500/30 to-fuchsia-400/20", rating: 4.5, sales: 214, positive: 192, negative: 22 },
+    { shopName: "Ranger Shop", initials: "RS", gradient: "from-rose-500/30 to-pink-400/20", rating: 4.4, sales: 178, positive: 156, negative: 22 },
+  ],
+  year: [
+    { shopName: "Tactical Pro", initials: "TP", gradient: "from-emerald-500/30 to-lime-400/20", rating: 4.8, sales: 4820, positive: 4553, negative: 267 },
+    { shopName: "Military Store", initials: "MS", gradient: "from-sky-500/30 to-cyan-400/20", rating: 4.7, sales: 3945, positive: 3688, negative: 257 },
+    { shopName: "Urban Gear", initials: "UG", gradient: "from-amber-500/30 to-orange-400/20", rating: 4.6, sales: 3312, positive: 3061, negative: 251 },
+    { shopName: "Alpha Gear", initials: "AG", gradient: "from-violet-500/30 to-fuchsia-400/20", rating: 4.5, sales: 2488, positive: 2260, negative: 228 },
+    { shopName: "Ranger Shop", initials: "RS", gradient: "from-rose-500/30 to-pink-400/20", rating: 4.4, sales: 1974, positive: 1770, negative: 204 },
+  ],
+  alltime: [
+    { shopName: "Tactical Pro", initials: "TP", gradient: "from-emerald-500/30 to-lime-400/20", rating: 4.9, sales: 18420, positive: 17604, negative: 816 },
+    { shopName: "Military Store", initials: "MS", gradient: "from-sky-500/30 to-cyan-400/20", rating: 4.8, sales: 15230, positive: 14468, negative: 762 },
+    { shopName: "Urban Gear", initials: "UG", gradient: "from-amber-500/30 to-orange-400/20", rating: 4.7, sales: 12885, positive: 12112, negative: 773 },
+    { shopName: "Alpha Gear", initials: "AG", gradient: "from-violet-500/30 to-fuchsia-400/20", rating: 4.6, sales: 9640, positive: 8965, negative: 675 },
+    { shopName: "Ranger Shop", initials: "RS", gradient: "from-rose-500/30 to-pink-400/20", rating: 4.5, sales: 7315, positive: 6730, negative: 585 },
+  ],
+};
+
+const PeriodPills = ({ period, onChange }: { period: Period; onChange: (p: Period) => void }) => (
+  <div className="flex gap-1.5 overflow-x-auto pb-0.5 -mx-0.5 px-0.5">
+    {(["day", "week", "month", "year", "alltime"] as Period[]).map((p) => (
+      <button
+        key={p}
+        onClick={() => onChange(p)}
+        className={cn(
+          "shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-all active:scale-95",
+          period === p
+            ? "bg-primary text-primary-foreground border-primary shadow-sm"
+            : "bg-transparent text-muted-foreground border-border hover:text-foreground"
+        )}
+      >
+        {periodLabels[p]}
+      </button>
+    ))}
+  </div>
+);
+
+const SellerCard = ({ seller, rank }: { seller: TopSeller; rank: number }) => {
+  const total = seller.positive + seller.negative;
+  const positiveShare = total ? (seller.positive / total) * 100 : 0;
+  const isTop3 = rank <= 3;
+
+  return (
+    <div className="rounded-2xl border border-border bg-card overflow-hidden">
+      <div className={cn("relative h-14 bg-gradient-to-r", seller.gradient)}>
+        <div
+          className={cn(
+            "absolute top-2 left-2 min-w-[26px] h-[26px] px-1.5 rounded-full flex items-center justify-center text-xs font-bold backdrop-blur-sm",
+            isTop3 ? cn(rankBgs[rank - 1], rankColors[rank - 1], "bg-card/80") : "bg-card/80 text-muted-foreground"
+          )}
+        >
+          {isTop3 ? <Crown className="h-3.5 w-3.5" /> : rank}
+        </div>
+      </div>
+
+      <div className="px-3 pb-3 -mt-6">
+        <div className="flex items-end gap-2.5">
+          <div className="w-12 h-12 rounded-xl bg-card border-2 border-card shadow-sm flex items-center justify-center text-sm font-bold text-foreground ring-1 ring-border">
+            {seller.initials}
+          </div>
+          <div className="min-w-0 flex-1 pb-0.5">
+            <p className="text-sm font-bold text-foreground truncate">{seller.shopName}</p>
+            <StarRating rating={seller.rating} />
+          </div>
+        </div>
+
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <div className="rounded-lg bg-muted/50 px-2.5 py-1.5">
+            <p className="text-[10px] text-muted-foreground">Продажів</p>
+            <p className="text-sm font-bold text-foreground">{seller.sales.toLocaleString("uk-UA")}</p>
+          </div>
+          <div className="rounded-lg bg-muted/50 px-2.5 py-1.5">
+            <p className="text-[10px] text-muted-foreground">Позитивних</p>
+            <p className="text-sm font-bold text-success">{positiveShare.toFixed(1)}%</p>
+          </div>
+        </div>
+
+        <div className="mt-2 h-1.5 rounded-full overflow-hidden flex">
+          <div className="bg-success h-full" style={{ width: `${positiveShare}%` }} />
+          <div className="bg-destructive h-full" style={{ width: `${100 - positiveShare}%` }} />
+        </div>
+        <div className="mt-1 flex items-center justify-between text-[10px] text-muted-foreground">
+          <span>👍 {seller.positive.toLocaleString("uk-UA")}</span>
+          <span>👎 {seller.negative.toLocaleString("uk-UA")}</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+type SellerView = "leaders" | "suppliers" | "customers" | "reviews";
+
+const sellerViews: { id: SellerView; label: string }[] = [
+  { id: "leaders", label: "Лідери" },
+  { id: "suppliers", label: "Продавці" },
+  { id: "customers", label: "Клієнти" },
+  { id: "reviews", label: "Відгуки" },
+];
+
+const TopSellersSection = () => {
+  const [period, setPeriod] = useState<Period>("month");
+  const [view, setView] = useState<SellerView>("leaders");
+  const sellers = topSellersByPeriod[period];
+
+  return (
+    <div className="space-y-3">
+      <div className="flex gap-1 bg-muted rounded-lg p-0.5">
+        {sellerViews.map((v) => (
+          <button
+            key={v.id}
+            onClick={() => setView(v.id)}
+            className={cn(
+              "flex-1 text-[11px] font-medium py-1.5 rounded-md transition-all",
+              view === v.id ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+            )}
+          >
+            {v.label}
+          </button>
+        ))}
+      </div>
+
+      {view === "leaders" && (
+        <>
+          <PeriodPills period={period} onChange={setPeriod} />
+          <div className="space-y-2.5">
+            {sellers.map((s, i) => (
+              <SellerCard key={s.shopName} seller={s} rank={i + 1} />
+            ))}
+          </div>
+        </>
+      )}
+
+      {view === "suppliers" && <SupplierRankings />}
+      {view === "customers" && <CustomerRankings />}
+      {view === "reviews" && <AllReviews />}
+    </div>
+  );
+};
+
 export const RatingsTab = () => {
   const navigate = useNavigate();
 
@@ -881,35 +1140,27 @@ export const RatingsTab = () => {
         </button>
       </div>
 
-      {/* Badge rules */}
-      <BadgeRules />
-
-      <Tabs defaultValue="customers" className="w-full">
-        <TabsList className="grid grid-cols-3 w-full">
-          <TabsTrigger value="customers" className="text-[10px] px-1">
-            <Users className="h-3 w-3 mr-0.5" />
-            Клієнти
+      <Tabs defaultValue="my" className="w-full">
+        <TabsList className="grid grid-cols-2 w-full">
+          <TabsTrigger value="my" className="text-xs">
+            <Crown className="h-3.5 w-3.5 mr-1" />
+            Мій рейтинг
           </TabsTrigger>
-          <TabsTrigger value="suppliers" className="text-[10px] px-1">
-            <TrendingUp className="h-3 w-3 mr-0.5" />
-            Продавці
-          </TabsTrigger>
-          <TabsTrigger value="reviews" className="text-[10px] px-1">
-            <Star className="h-3 w-3 mr-0.5" />
-            Всі відгуки
+          <TabsTrigger value="top" className="text-xs">
+            <Trophy className="h-3.5 w-3.5 mr-1" />
+            ТОП продавців
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="customers" className="mt-3">
-          <CustomerRankings />
+        <TabsContent value="my" className="mt-3 space-y-3">
+          <MyRatingSection />
+          <BadgeRules />
         </TabsContent>
-        <TabsContent value="suppliers" className="mt-3">
-          <SupplierRankings />
-        </TabsContent>
-        <TabsContent value="reviews" className="mt-3">
-          <AllReviews />
+        <TabsContent value="top" className="mt-3">
+          <TopSellersSection />
         </TabsContent>
       </Tabs>
     </div>
   );
 };
+
