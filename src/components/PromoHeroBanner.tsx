@@ -1,15 +1,17 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Gift, Sparkles, ChevronRight, Crown } from "lucide-react";
+import { Gift, Sparkles, ChevronRight, Crown, Package } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { hapticSelection } from "@/lib/haptics";
 import { PersonalBonusDialog } from "@/components/promos/PersonalBonusDialog";
+import { MyBonusesInventorySheet } from "@/components/promos/MyBonusesInventorySheet";
 
 /** Преміальний банер акцій + окрема кнопка персонального бонусу на головній. */
 export const PromoHeroBanner = () => {
   const navigate = useNavigate();
   const [promoCount, setPromoCount] = useState(0);
   const [bonusOpen, setBonusOpen] = useState(false);
+  const [inventoryOpen, setInventoryOpen] = useState(false);
 
   useEffect(() => {
     supabase
@@ -70,7 +72,23 @@ export const PromoHeroBanner = () => {
         </div>
       </button>
 
+      <button
+        onClick={() => { hapticSelection(); setInventoryOpen(true); }}
+        aria-label="Мої бонуси"
+        className="w-full flex items-center gap-3 rounded-2xl border border-border bg-card p-3 text-left active:scale-[0.985] transition-transform duration-150"
+      >
+        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+          <Package className="h-5 w-5 text-primary" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[14px] font-bold text-foreground leading-tight">Мої бонуси</p>
+          <p className="text-[11px] text-muted-foreground truncate">Доступні нагороди та історія використання</p>
+        </div>
+        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+      </button>
+
       <PersonalBonusDialog open={bonusOpen} onOpenChange={setBonusOpen} />
+      <MyBonusesInventorySheet open={inventoryOpen} onOpenChange={setInventoryOpen} />
     </section>
   );
 };

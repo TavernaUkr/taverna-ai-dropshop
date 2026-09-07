@@ -259,19 +259,10 @@ const CustomerRankings = () => {
             customer.rank <= 3 ? `${rankBgs[customer.rank - 1]} border-transparent` : "border-border bg-card"
           )}>
             <div className="flex items-center gap-3 mb-2">
-              {customer.rank <= 3 ? (
-                <div className={cn("w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0", periodBadgeColors[period].bg, customer.rank === 1 && periodBadgeColors[period].glow)}>
-                  <BadgeCheck className={cn("h-5 w-5", periodBadgeColors[period].text)} />
-                </div>
-              ) : customer.rank <= 10 ? (
-                <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 bg-emerald-500/15">
-                  <BadgeCheck className="h-5 w-5 text-emerald-500" />
-                </div>
-              ) : (
-                <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 bg-muted text-muted-foreground">
-                  {customer.rank}
-                </div>
-              )}
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <RankCheckmark rank={customer.rank} period={period} />
+                <RankCup rank={customer.rank} size="sm" />
+              </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
                   <p className={cn("font-semibold text-sm", customer.rank === 1 ? periodBadgeColors[period].shimmer : "text-foreground")}>{customer.name}</p>
@@ -360,19 +351,10 @@ const SupplierRankings = () => {
             supplier.rank <= 3 ? `${rankBgs[supplier.rank - 1]} border-transparent` : "border-border bg-card"
           )}>
             <div className="flex items-center gap-3 mb-2">
-              {supplier.rank <= 3 ? (
-                <div className={cn("w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0", periodBadgeColors[period].bg, supplier.rank === 1 && periodBadgeColors[period].glow)}>
-                  <BadgeCheck className={cn("h-5 w-5", periodBadgeColors[period].text)} />
-                </div>
-              ) : supplier.rank <= 10 ? (
-                <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 bg-emerald-500/15">
-                  <BadgeCheck className="h-5 w-5 text-emerald-500" />
-                </div>
-              ) : (
-                <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 bg-muted text-muted-foreground">
-                  {supplier.rank}
-                </div>
-              )}
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <RankCheckmark rank={supplier.rank} period={period} />
+                <RankCup rank={supplier.rank} size="sm" />
+              </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
                   <p className={cn("font-semibold text-sm", supplier.rank === 1 ? periodBadgeColors[period].shimmer : "text-foreground")}>{supplier.shopName}</p>
@@ -418,21 +400,116 @@ const SupplierRankings = () => {
   );
 };
 
-// All Reviews — Shop reviews + Product reviews combined
+interface MutualReview {
+  id: string;
+  direction: "client_to_shop" | "shop_to_client";
+  author: string;
+  target: string;
+  rating: number;
+  text: string;
+  date: string;
+  orderId: string;
+  pending?: boolean;
+}
+
+const mutualReviewsMock: MutualReview[] = [
+  { id: "r1", direction: "client_to_shop", author: "Олекс***", target: "Tactical Pro", rating: 5, text: "Швидка відправка, товар відповідає опису. Рекомендую!", date: "07.09.2026", orderId: "#1042-A" },
+  { id: "r2", direction: "shop_to_client", author: "Tactical Pro", target: "Олекс***", rating: 5, text: "Уважний клієнт, оплата вчасно, без зайвих питань.", date: "07.09.2026", orderId: "#1042-A" },
+  { id: "r3", direction: "client_to_shop", author: "Мар***", target: "Urban Gear", rating: 4, text: "Все добре, але доставка зайняла на день довше.", date: "05.09.2026", orderId: "#1038-C" },
+  { id: "r4", direction: "shop_to_client", author: "Urban Gear", target: "Дмит***", rating: 3, text: "Замовлення забрано на 5 день, прохання забирати швидше.", date: "03.09.2026", orderId: "#1030-B" },
+  { id: "r5", direction: "shop_to_client", author: "Military Store", target: "Ірин***", rating: 0, text: "Очікує вашої оцінки клієнта — 14 днів після доставки.", date: "02.09.2026", orderId: "#1026-D", pending: true },
+];
+
+/** Стрічка взаємних відгуків: клієнт → магазин та магазин → клієнт. */
+const MutualReviews = () => {
+  const [rated, setRated] = useState<string[]>([]);
+
+  return (
+    <div className="space-y-2">
+      <div className="rounded-xl border border-primary/20 bg-primary/5 p-2.5">
+        <p className="text-[10px] text-muted-foreground">
+          Продавець може оцінити клієнта протягом 14 днів після доставки. Оцінки впливають на рейтинг обох сторін.
+        </p>
+      </div>
+
+      {mutualReviewsMock.map((r) => {
+        const isClient = r.direction === "client_to_shop";
+        const done = rated.includes(r.id);
+        return (
+          <div key={r.id} className="rounded-xl border border-border bg-card p-3">
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className={cn(
+                "text-[9px] font-semibold px-2 py-0.5 rounded-full",
+                isClient ? "bg-primary/15 text-primary" : "bg-warning/15 text-warning",
+              )}>
+                {isClient ? "Клієнт → Магазин" : "Магазин → Клієнт"}
+              </span>
+              <span className="text-[10px] text-muted-foreground">{r.orderId}</span>
+              <span className="ml-auto text-[10px] text-muted-foreground">{r.date}</span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-semibold text-foreground truncate">{r.author}</p>
+              <span className="text-[10px] text-muted-foreground">про</span>
+              <p className="text-xs text-muted-foreground truncate">{r.target}</p>
+            </div>
+
+            {r.pending || done ? (
+              <div className="mt-2 flex items-center gap-2">
+                <p className="text-[11px] text-muted-foreground flex-1">
+                  {done ? "Оцінку надіслано, дякуємо!" : r.text}
+                </p>
+                {!done && (
+                  <button
+                    onClick={() => setRated((p) => [...p, r.id])}
+                    className="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-primary text-primary-foreground active:scale-95 transition-all"
+                  >
+                    Оцінити клієнта
+                  </button>
+                )}
+              </div>
+            ) : (
+              <>
+                <div className="mt-1">
+                  <StarRating rating={r.rating} />
+                </div>
+                <p className="mt-1 text-[11px] text-muted-foreground leading-snug">{r.text}</p>
+              </>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+// All Reviews — Shop / Product / Mutual reviews
 const AllReviews = () => {
-  const [subTab, setSubTab] = useState<"shops" | "products">("shops");
+  const [subTab, setSubTab] = useState<"mutual" | "shops" | "products">("mutual");
+
+  const tabs: { id: typeof subTab; label: string }[] = [
+    { id: "mutual", label: "💬 Взаємні" },
+    { id: "shops", label: "🏪 Магазини" },
+    { id: "products", label: "📦 Товари" },
+  ];
 
   return (
     <div className="space-y-3">
       <div className="flex gap-0.5 bg-muted rounded-lg p-0.5">
-        <button onClick={() => setSubTab("shops")} className={cn("flex-1 text-xs font-medium py-1.5 px-2 rounded-md transition-all", subTab === "shops" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
-          🏪 Магазини
-        </button>
-        <button onClick={() => setSubTab("products")} className={cn("flex-1 text-xs font-medium py-1.5 px-2 rounded-md transition-all", subTab === "products" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
-          📦 Товари
-        </button>
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setSubTab(t.id)}
+            className={cn(
+              "flex-1 text-[11px] font-medium py-1.5 px-2 rounded-md transition-all",
+              subTab === t.id ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
-      {subTab === "shops" ? <ShopReviews /> : <ProductReviews />}
+      {subTab === "mutual" ? <MutualReviews /> : subTab === "shops" ? <ShopReviews /> : <ProductReviews />}
     </div>
   );
 };
@@ -924,7 +1001,7 @@ export const RatingsTab = () => {
           </TabsTrigger>
           <TabsTrigger value="top" className="text-xs">
             <Trophy className="h-3.5 w-3.5 mr-1" />
-            ТОП продавців
+            ТОП Рейтингів
           </TabsTrigger>
         </TabsList>
 

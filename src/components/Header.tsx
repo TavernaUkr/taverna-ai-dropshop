@@ -7,6 +7,7 @@ import { LanguageSelectorModal } from "./LanguageSelectorModal";
 import { RegionSelectorModal } from "./RegionSelectorModal";
 import { WalletBadgeCloud, type WalletCloudAction, type WalletCloudVariant } from "./wallet/WalletBadgeCloud";
 import { CartBadgeCloud } from "./cart/CartBadgeCloud";
+import { ReferralSheet } from "./referrals/ReferralSheet";
 
 import { useWallet } from "@/hooks/useWallet";
 import { useTelegramAuthContext } from "./TelegramAuthProvider";
@@ -37,6 +38,7 @@ export const Header = ({
   const [isInfoOpen, setIsInfoOpen] = useState(false);
   const [isLangOpen, setIsLangOpen] = useState(false);
   const [isRegionOpen, setIsRegionOpen] = useState(false);
+  const [isReferralsOpen, setIsReferralsOpen] = useState(false);
   const { effectiveRole } = useTelegramAuthContext() as any;
   const { wallet } = useWallet();
 
@@ -144,7 +146,7 @@ export const Header = ({
               <Gift className="h-4 w-4" />
             </button>
             <button
-              onClick={() => navigate("/referrals")}
+              onClick={() => setIsReferralsOpen(true)}
               className="w-8 h-8 rounded-lg flex items-center justify-center text-primary hover:bg-primary/10 active:scale-95 transition-all"
               aria-label="Реферальна програма">
 
@@ -193,6 +195,7 @@ export const Header = ({
       <AppInfoModal isOpen={isInfoOpen} onClose={() => setIsInfoOpen(false)} />
       <LanguageSelectorModal isOpen={isLangOpen} onClose={() => setIsLangOpen(false)} />
       <RegionSelectorModal isOpen={isRegionOpen} onClose={() => setIsRegionOpen(false)} />
+      <ReferralSheet open={isReferralsOpen} onOpenChange={setIsReferralsOpen} />
     </>);
 
 };
