@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
-import { Star, Gift, ShoppingBag, RotateCcw, CreditCard, ChevronRight } from "lucide-react";
+import { Star, Gift, ShoppingBag, RotateCcw, CreditCard, ChevronRight, HelpCircle } from "lucide-react";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { WalletOffers } from "@/components/wallet/WalletOffers";
 import { WalletRatingCard } from "@/components/wallet/WalletRatingCard";
 import { hapticSelection } from "@/lib/haptics";
