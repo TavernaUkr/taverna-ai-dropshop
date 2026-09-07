@@ -7,6 +7,8 @@ import { isPreviewDevEnvironment } from "@/lib/dev-preview";
 import { hapticSelection } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
 import type { WalletState, ShopSummary, ShopsTotals } from "@/hooks/useWallet";
+import { SupplierDebtCard, useDebtControls } from "@/components/wallet/SupplierDebtCard";
+import { UsdtPayoutCard } from "@/components/wallet/UsdtPayoutCard";
 
 type Period = "day" | "week" | "month" | "year";
 interface SeriesPoint { label: string; turnover: number; commission?: number }
