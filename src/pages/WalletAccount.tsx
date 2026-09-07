@@ -223,9 +223,19 @@ export default function WalletAccount() {
             shops={shops}
             totals={shopsTotals}
             readOnly={readOnly}
+            debts={debts}
+            onSettleDebt={settleDebt}
             onSaveAuto={saveShopPayoutSettings}
             onOpenShop={(id) => { hapticSelection(); navigate(`/wallet/${id}`); }}
           />
+        ) : tab === "bonus" && !supplierId && hasShops ? (
+          <ClientBonusAccount
+            bonusBalance={wallet.bonus_balance}
+            transactions={transactions}
+            onOpenReceipt={setReceipt}
+            onOpenRefund={() => setShowRefund(true)}
+          />
+
         ) : (
         <>
         {/* Balance card */}
