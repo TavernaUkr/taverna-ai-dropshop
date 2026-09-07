@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import type { WalletState, ShopSummary, ShopsTotals } from "@/hooks/useWallet";
 import { SupplierDebtCard, useDebtControls } from "@/components/wallet/SupplierDebtCard";
 import { UsdtPayoutCard } from "@/components/wallet/UsdtPayoutCard";
+import { FinancialDetailsSheet, type FinancialTab } from "@/components/wallet/FinancialDetailsSheet";
 
 type Period = "day" | "week" | "month" | "year";
 interface SeriesPoint { label: string; turnover: number; commission?: number }
@@ -85,6 +86,9 @@ export function WalletOverview({ wallet, shops, totals, onOpenShops, onWithdraw,
   const commission = shops.reduce((s, r) => s + Number(r.commission || 0), 0);
 
   const grandTotal = useMemo(() => Number(shopsAvailable || 0), [shopsAvailable]);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [detailsTab, setDetailsTab] = useState<FinancialTab>("income");
+  const openDetails = (tab: FinancialTab) => { setDetailsTab(tab); setDetailsOpen(true); };
 
 
   return (
@@ -100,6 +104,7 @@ export function WalletOverview({ wallet, shops, totals, onOpenShops, onWithdraw,
         onPayDebt={debtCtl.payDebt}
         onWithdraw={onWithdraw}
         readOnly={readOnly}
+        onOpenDetails={openDetails}
       />
 
       {/* USDT / Telegram Wallet */}
@@ -186,6 +191,13 @@ export function WalletOverview({ wallet, shops, totals, onOpenShops, onWithdraw,
           <p className="text-xs text-muted-foreground">{shops.length} магазин(ів) · деталі та статистика кожного</p>
         </div>
       </button>
+
+      <FinancialDetailsSheet
+        key={detailsTab}
+        open={detailsOpen}
+        onOpenChange={setDetailsOpen}
+        initialTab={detailsTab}
+      />
     </div>
   );
 }

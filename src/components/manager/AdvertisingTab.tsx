@@ -44,7 +44,7 @@ import { PromotionPreviewDialog } from "./PromotionPreviewDialog";
 import { ProductMultiSelector } from "./ProductMultiSelector";
 import { ShopPickerInline } from "./ShopPickerInline";
 import { PostMediaUploader } from "./PostMediaUploader";
-import { PromotionStepper, StepNav, type StepDef } from "./PromotionStepper";
+import { PromotionStepper, StepNav, PromoCodeField, type StepDef } from "./PromotionStepper";
 import { Store, Package, Layers } from "lucide-react";
 
 interface Product {
@@ -195,6 +195,7 @@ export function AdvertisingTab({
   const [mediaImages, setMediaImages] = useState<string[]>([]);
   const [mediaVideo, setMediaVideo] = useState<string | null>(null);
   const [step, setStep] = useState(initialStep ?? 1);
+  const [promoPercent, setPromoPercent] = useState(0);
   const hasShopSelection = (selectedShopIds?.length || 0) > 0;
 
   const AD_STEPS: StepDef[] = [
@@ -353,6 +354,7 @@ export function AdvertisingTab({
   };
 
   const totalCost = calculateTotalCost();
+  const finalAdCost = Math.round(totalCost * (1 - promoPercent / 100));
 
   // Group platforms
   const categories = ["social", "messenger", "marketplace", "search"];
@@ -841,27 +843,30 @@ export function AdvertisingTab({
         onBack={() => setStep((s) => Math.max(1, s - 1))}
         onNext={() => setStep((s) => Math.min(4, s + 1))}
         finalSlot={
-          <Button
-            className="w-full"
-            size="lg"
-            onClick={handleSubmitAd}
-            disabled={
-              !hasSelection ||
-              selectedPlatforms.length === 0 ||
-              !aiText ||
-              adStatus === "pending_review" ||
-              adStatus === "active"
-            }
-          >
-            {adStatus === "pending_review" ? (
-              <Loader2 className="h-5 w-5 animate-spin mr-2" />
-            ) : (
-              <Megaphone className="h-5 w-5 mr-2" />
-            )}
-            {adStatus === "pending_review"
-              ? "Модерація..."
-              : `Оплатити ${totalCost} ₴ та запустити рекламу`}
-          </Button>
+          <div className="space-y-2">
+            <PromoCodeField cost={totalCost} onDiscountChange={(p) => setPromoPercent(p)} />
+            <Button
+              className="w-full"
+              size="lg"
+              onClick={handleSubmitAd}
+              disabled={
+                !hasSelection ||
+                selectedPlatforms.length === 0 ||
+                !aiText ||
+                adStatus === "pending_review" ||
+                adStatus === "active"
+              }
+            >
+              {adStatus === "pending_review" ? (
+                <Loader2 className="h-5 w-5 animate-spin mr-2" />
+              ) : (
+                <Megaphone className="h-5 w-5 mr-2" />
+              )}
+              {adStatus === "pending_review"
+                ? "Модерація..."
+                : `Оплатити ${finalAdCost} ₴ та запустити рекламу`}
+            </Button>
+          </div>
         }
       />
 
@@ -869,7 +874,7 @@ export function AdvertisingTab({
       <PaymentModal
         open={showPaymentModal}
         onOpenChange={setShowPaymentModal}
-        amount={totalCost}
+        amount={finalAdCost}
         description={`Рекламна кампанія: ${useAllProducts ? "усі товари" : selectedProducts.length > 1 ? `${selectedProducts.length} товарів` : (sampleProduct?.name || "товар")} на ${selectedPlatforms.length} платформах`}
         type="advertising"
         onSuccess={handlePaymentSuccess}

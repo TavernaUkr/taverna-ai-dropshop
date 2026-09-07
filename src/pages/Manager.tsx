@@ -26,6 +26,7 @@ import {
   Pause,
   Play,
   Trash2,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -507,10 +508,10 @@ export default function Manager() {
               <p className="text-xs text-muted-foreground">Постинг та реклама</p>
             </div>
           </div>
-          <Button variant="outline" size="sm" onClick={generateInviteLink}>
-            <Plus className="h-4 w-4 mr-1" />
-            Запросити
-          </Button>
+          <div className="flex items-center gap-1.5 rounded-full border border-warning/40 bg-warning/10 px-2.5 py-1.5 select-none">
+            <Sparkles className="w-3 h-3 text-warning" />
+            <span className="text-[11px] font-medium text-foreground whitespace-nowrap">Ваші бафи: 2 безк. пости</span>
+          </div>
         </div>
 
         {/* Multi-Shop Selector */}

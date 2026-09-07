@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +7,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -143,6 +142,7 @@ export function AutoQueueDialog({
   const [activeStart, setActiveStart] = useState(9);
   const [activeEnd, setActiveEnd] = useState(21);
   const [productSearch, setProductSearch] = useState("");
+  const [entitySearch, setEntitySearch] = useState("");
   const [productResults, setProductResults] = useState<ProductRow[]>([]);
   const [searchingProducts, setSearchingProducts] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -292,7 +292,21 @@ export function AutoQueueDialog({
     }
   };
 
+  useEffect(() => {
+    if (!open) {
+      setEntitySearch("");
+      setProductSearch("");
+    }
+  }, [open]);
+
   const shopName = (id: string) => availableShops.find(s => s.id === id)?.shop_name || "";
+
+
+  const filteredShops = useMemo(() => {
+    const q = entitySearch.trim().toLowerCase();
+    if (!q) return availableShops;
+    return availableShops.filter((s) => s.shop_name.toLowerCase().includes(q));
+  }, [availableShops, entitySearch]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -301,8 +315,21 @@ export function AutoQueueDialog({
           <DialogTitle>{initialData?.id ? "Редагувати авто-чергу" : "Нова авто-черга"}</DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 pr-3">
+        <div className="flex-1 max-h-[65vh] overflow-y-auto pr-1">
           <div className="space-y-5 py-2">
+            {/* Universal search */}
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                value={entitySearch}
+                onChange={(e) => {
+                  setEntitySearch(e.target.value);
+                  setProductSearch(e.target.value);
+                }}
+                placeholder="Пошук магазину чи товару..."
+                className="pl-8"
+              />
+            </div>
             {/* Name */}
             <div className="space-y-1.5">
               <Label htmlFor="queue-name">Назва черги</Label>
@@ -347,9 +374,11 @@ export function AutoQueueDialog({
             <div className="space-y-1.5">
               <Label>Магазини ({supplierIds.length})</Label>
               <div className="border rounded-md p-2 max-h-40 overflow-y-auto space-y-1">
-                {availableShops.length === 0 ? (
-                  <p className="text-xs text-muted-foreground p-2">Немає доступних магазинів</p>
-                ) : availableShops.map(shop => (
+                {filteredShops.length === 0 ? (
+                  <p className="text-xs text-muted-foreground p-2">
+                    {availableShops.length === 0 ? "Немає доступних магазинів" : "Нічого не знайдено"}
+                  </p>
+                ) : filteredShops.map(shop => (
                   <label key={shop.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer">
                     <Checkbox checked={supplierIds.includes(shop.id)} onCheckedChange={() => toggleShop(shop.id)} />
                     <span className="text-sm">{shop.shop_name}</span>
@@ -499,7 +528,7 @@ export function AutoQueueDialog({
               )}
             </div>
           </div>
-        </ScrollArea>
+        </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Скасувати</Button>

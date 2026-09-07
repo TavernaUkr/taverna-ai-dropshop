@@ -1,8 +1,89 @@
-import { Check } from "lucide-react";
+import { useState } from "react";
+import { Check, Ticket, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import { ArrowLeft, ArrowRight } from "lucide-react";
+
+/** Демо-промокоди для симуляції знижки на вартість просування. */
+const PROMO_CODES: Record<string, number> = {
+  TAVERNA10: 10,
+  BOOST20: 20,
+  PARTNER30: 30,
+};
+
+interface PromoCodeFieldProps {
+  /** Базова вартість просування, ₴ */
+  cost: number;
+  onDiscountChange?: (percent: number, finalCost: number) => void;
+}
+
+/** Поле промокоду на фінальному кроці запуску. */
+export function PromoCodeField({ cost, onDiscountChange }: PromoCodeFieldProps) {
+  const [code, setCode] = useState("");
+  const [applied, setApplied] = useState<{ code: string; percent: number } | null>(null);
+
+  const finalCost = applied ? Math.round(cost * (1 - applied.percent / 100)) : cost;
+
+  const apply = () => {
+    const key = code.trim().toUpperCase();
+    const percent = PROMO_CODES[key];
+    if (!percent) {
+      toast.error("Промокод не знайдено", { description: "Перевірте код і спробуйте ще раз" });
+      return;
+    }
+    setApplied({ code: key, percent });
+    onDiscountChange?.(percent, Math.round(cost * (1 - percent / 100)));
+    toast.success(`Промокод ${key} застосовано`, { description: `Знижка −${percent}% на просування` });
+  };
+
+  const reset = () => {
+    setApplied(null);
+    setCode("");
+    onDiscountChange?.(0, cost);
+  };
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-3 space-y-2">
+      <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+        <Ticket className="h-3.5 w-3.5 text-primary" /> Промокод
+      </p>
+
+      {applied ? (
+        <div className="flex items-center gap-2">
+          <span className="flex items-center gap-1 rounded-full bg-success/15 text-success px-2.5 py-1 text-xs font-semibold">
+            <Check className="h-3 w-3" /> {applied.code} · −{applied.percent}%
+          </span>
+          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={reset}>
+            <X className="h-3 w-3 mr-1" /> Скасувати
+          </Button>
+        </div>
+      ) : (
+        <div className="flex gap-2">
+          <Input
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            placeholder="Ввести промокод"
+            className="h-9"
+          />
+          <Button variant="outline" size="sm" className="h-9 shrink-0" onClick={apply} disabled={!code.trim()}>
+            Застосувати
+          </Button>
+        </div>
+      )}
+
+      <div className="flex items-center justify-between text-xs">
+        <span className="text-muted-foreground">Вартість просування</span>
+        <span className="flex items-center gap-1.5">
+          {applied && <span className="text-muted-foreground line-through">{cost.toLocaleString("uk-UA")}₴</span>}
+          <span className="text-sm font-bold text-foreground">{finalCost.toLocaleString("uk-UA")}₴</span>
+        </span>
+      </div>
+    </div>
+  );
+}
 
 export interface StepDef {
   id: number;
