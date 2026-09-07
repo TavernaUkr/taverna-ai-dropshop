@@ -53,7 +53,7 @@ export const PromoHeroBanner = () => {
       <button
         onClick={() => go("/wallet?action=bonus")}
         aria-label="Персональний бонус"
-        className="relative w-full overflow-hidden rounded-2xl p-3.5 text-left text-primary-foreground bg-gradient-to-r from-warning via-rating to-brand-royal shadow-lg active:scale-[0.985] transition-transform duration-150"
+        className="relative w-full overflow-hidden rounded-2xl p-3.5 text-left text-primary-foreground bg-gradient-to-r from-warning via-rating to-primary shadow-lg active:scale-[0.985] transition-transform duration-150"
       >
         <span className="pointer-events-none absolute -right-8 -bottom-10 w-28 h-28 rounded-full bg-primary-foreground/10" />
         <div className="relative z-10 flex items-center gap-3">
