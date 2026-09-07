@@ -7,6 +7,8 @@ import { useMemo, useState } from "react";
 import { hapticImpact } from "@/lib/haptics";
 import { toast } from "sonner";
 import { EmptyState } from "./ui/empty-state";
+import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 
 export interface CartItem {
   id: string;
