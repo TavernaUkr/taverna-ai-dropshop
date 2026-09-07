@@ -1034,7 +1034,7 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
             <WalletPayment
               orderId={walletOrder.id}
               orderNumber={walletOrder.number}
-              amount={total}
+              amount={amountToPayNow}
               sessionToken={sessionToken}
               onPaid={(id) => { setWalletOrder(null); onOrderComplete(id); }}
               onCancel={() => { const id = walletOrder.id; setWalletOrder(null); onOrderComplete(id); }}
