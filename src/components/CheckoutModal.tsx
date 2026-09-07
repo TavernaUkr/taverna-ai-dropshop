@@ -902,6 +902,8 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
         personalBonusDiscount={personalBonusDiscount}
         personalBonusName={selectedPersonalBonus?.title}
         promoCode={promoApplied ? promoCode : undefined}
+        paymentType={paymentType}
+        amountToPayNow={amountToPayNow}
       />
 
       {/* Contact Info */}
