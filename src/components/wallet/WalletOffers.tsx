@@ -1,17 +1,19 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Tag, Users, ChevronRight, Info, Sparkles } from "lucide-react";
+import { Tag, Users, ChevronRight, Info, Sparkles, Gift } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { hapticSelection } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
+import { ReferralSheet } from "@/components/referrals/ReferralSheet";
+import { MyBonusesInventorySheet } from "@/components/promos/MyBonusesInventorySheet";
 
 interface OfferCard {
   icon: any;
   title: string;
   subtitle: string;
   badge?: string;
-  to: string;
+  action: () => void;
   gradient: string;
 }
 
@@ -19,6 +21,8 @@ interface OfferCard {
 export function WalletOffers({ bonusBalance = 0 }: { bonusBalance?: number }) {
   const navigate = useNavigate();
   const [promoCount, setPromoCount] = useState(0);
+  const [referralsOpen, setReferralsOpen] = useState(false);
+  const [bonusesOpen, setBonusesOpen] = useState(false);
 
   useEffect(() => {
     supabase
@@ -30,18 +34,26 @@ export function WalletOffers({ bonusBalance = 0 }: { bonusBalance?: number }) {
 
   const cards: OfferCard[] = [
     {
+      icon: Gift,
+      title: "Мої бонуси",
+      subtitle: "Персональні нагороди та акції",
+      badge: "Інвентар",
+      action: () => setBonusesOpen(true),
+      gradient: "from-warning via-warning/85 to-primary",
+    },
+    {
       icon: Tag,
       title: "Промокоди та знижки",
       subtitle: "Активні пропозиції на замовлення",
       badge: promoCount > 0 ? `${promoCount} активних` : undefined,
-      to: "/promos",
+      action: () => navigate("/promos"),
       gradient: "from-live via-live/85 to-warning",
     },
     {
       icon: Users,
       title: "Реферальна програма",
       subtitle: "Запрошуй друзів — отримуй бонуси",
-      to: "/referrals",
+      action: () => setReferralsOpen(true),
       gradient: "from-primary via-primary/85 to-accent",
     },
   ];
@@ -73,7 +85,7 @@ export function WalletOffers({ bonusBalance = 0 }: { bonusBalance?: number }) {
         {cards.map((c) => (
           <button
             key={c.title}
-            onClick={() => { hapticSelection(); navigate(c.to); }}
+            onClick={() => { hapticSelection(); c.action(); }}
             className={cn(
               "w-full relative overflow-hidden rounded-2xl p-4 text-left text-primary-foreground",
               "bg-gradient-to-br", c.gradient,
@@ -101,6 +113,9 @@ export function WalletOffers({ bonusBalance = 0 }: { bonusBalance?: number }) {
           </button>
         ))}
       </div>
+
+      <ReferralSheet open={referralsOpen} onOpenChange={setReferralsOpen} />
+      <MyBonusesInventorySheet open={bonusesOpen} onOpenChange={setBonusesOpen} />
     </div>
   );
 }
