@@ -1,6 +1,9 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Star, Gift, ShoppingBag, RotateCcw, CreditCard, ChevronRight, HelpCircle } from "lucide-react";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Button } from "@/components/ui/button";
+import { BonusRulesSheet } from "@/components/wallet/BonusRulesSheet";
 import { WalletOffers } from "@/components/wallet/WalletOffers";
 import { WalletRatingCard } from "@/components/wallet/WalletRatingCard";
 import { hapticSelection } from "@/lib/haptics";
