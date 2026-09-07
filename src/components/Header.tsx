@@ -10,7 +10,6 @@ import { CartBadgeCloud } from "./cart/CartBadgeCloud";
 
 import { useWallet } from "@/hooks/useWallet";
 import { useTelegramAuthContext } from "./TelegramAuthProvider";
-import { cn } from "@/lib/utils";
 
 
 interface HeaderProps {
