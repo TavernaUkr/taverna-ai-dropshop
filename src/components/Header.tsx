@@ -38,6 +38,7 @@ export const Header = ({
   const [isInfoOpen, setIsInfoOpen] = useState(false);
   const [isLangOpen, setIsLangOpen] = useState(false);
   const [isRegionOpen, setIsRegionOpen] = useState(false);
+  const [isReferralsOpen, setIsReferralsOpen] = useState(false);
   const { effectiveRole } = useTelegramAuthContext() as any;
   const { wallet } = useWallet();
 
