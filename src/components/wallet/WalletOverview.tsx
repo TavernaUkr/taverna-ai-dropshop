@@ -42,7 +42,9 @@ interface WalletOverviewProps {
 
 /** «Загалом»: зведення всіх магазинів + особисті кошти + графік по періодах. */
 export function WalletOverview({ wallet, shops, totals, onOpenShops, onWithdraw, onConnectWallet, readOnly }: WalletOverviewProps) {
-  const debtCtl = useDebtControls(Number((wallet as any).platform_debt ?? 0));
+  const debtCtl = useDebtControls(
+    Number(wallet.platform_debt ?? (isPreviewDevEnvironment() ? 4820 : 0)),
+  );
   const auth = useTelegramAuthContext() as any;
   const sessionToken = auth?.sessionToken;
   const devRoleOverride = auth?.devRoleOverride;
