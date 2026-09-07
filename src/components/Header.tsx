@@ -53,7 +53,7 @@ export const Header = ({
         ? "readonly"
         : "bonus";
 
-  const openCart = () => (cartCount > 0 ? onCartClick?.() : navigate("/"));
+  const openCart = () => onCartClick?.();
 
   const walletActions: WalletCloudAction[] = isGuest
     ? [{ id: "login", label: "Увійти", icon: LogIn, tone: "primary", onClick: () => navigate("/login") }]
