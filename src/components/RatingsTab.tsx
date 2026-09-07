@@ -1156,6 +1156,8 @@ const TopSellersSection = () => {
 
 export const RatingsTab = () => {
   const navigate = useNavigate();
+  const [rulesOpen, setRulesOpen] = useState(false);
+
 
   return (
     <div className="space-y-4 pb-28 animate-fade-in">
