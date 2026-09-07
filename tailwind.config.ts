@@ -131,6 +131,7 @@ export default {
         "badge-swap-alt": "badge-swap 3s ease-in-out 1.5s infinite",
         "cloud-float": "cloud-float 2.6s ease-in-out infinite",
         "shine-sweep": "shine-sweep 2.5s linear infinite",
+        "cup-beat": "cup-beat 1.6s ease-in-out infinite",
       },
 
     },
