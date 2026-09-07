@@ -874,7 +874,7 @@ export function AdvertisingTab({
       <PaymentModal
         open={showPaymentModal}
         onOpenChange={setShowPaymentModal}
-        amount={totalCost}
+        amount={finalAdCost}
         description={`Рекламна кампанія: ${useAllProducts ? "усі товари" : selectedProducts.length > 1 ? `${selectedProducts.length} товарів` : (sampleProduct?.name || "товар")} на ${selectedPlatforms.length} платформах`}
         type="advertising"
         onSuccess={handlePaymentSuccess}
