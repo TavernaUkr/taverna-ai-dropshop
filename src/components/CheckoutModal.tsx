@@ -942,8 +942,13 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
         <div className="text-sm font-medium text-foreground flex items-center gap-2">
           💳 Оплата
         </div>
+        <p className="text-sm text-foreground font-medium">
+          {paymentType === 'full_prepayment' && 'Повна оплата'}
+          {paymentType === 'markup_only' && 'Часткова оплата (Лише націнка)'}
+          {paymentType === 'cod' && 'При отриманні (Накладений платіж)'}
+        </p>
         <p className="text-sm text-muted-foreground">
-          {paymentMethod === 'cash' && 'Оплата при отриманні (Накладений платіж)'}
+          {paymentMethod === 'cash' && 'Оплата при отриманні на пошті'}
           {paymentMethod === 'card' && 'Картка Visa/Mastercard'}
           {paymentMethod === 'mono' && 'MonoPay'}
           {paymentMethod === 'applepay' && 'Apple Pay'}
@@ -951,12 +956,17 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
           {paymentMethod === 'telegram_wallet' && 'Telegram Wallet'}
           {paymentMethod === 'taverna_balance' && 'Рахунок Taverna (баланс + бонуси)'}
         </p>
+        {paymentType === 'markup_only' && (
+          <p className="text-xs text-primary">
+            Решту {Math.max(0, total - amountToPayNow).toLocaleString()}₴ сплатите при отриманні накладним платежем
+          </p>
+        )}
       </div>
 
       {/* Total highlight */}
       <div className="bg-primary/10 border border-primary/20 rounded-xl p-4 flex items-center justify-between">
-        <span className="font-semibold text-foreground">До сплати:</span>
-        <span className="text-xl font-bold text-primary">{total}₴</span>
+        <span className="font-semibold text-foreground">Сума до сплати зараз:</span>
+        <span className="text-xl font-bold text-primary">{amountToPayNow.toLocaleString()}₴</span>
       </div>
 
       <div className="flex gap-3">
