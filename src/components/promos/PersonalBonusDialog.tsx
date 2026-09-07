@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Crown, Gift, Loader2, Sparkles, X } from "lucide-react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { hapticNotification, hapticSelection } from "@/lib/haptics";
@@ -47,9 +47,9 @@ export function PersonalBonusDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        hideClose
-        className="max-w-[360px] p-0 border-0 overflow-hidden rounded-3xl"
+        className="max-w-[360px] p-0 border-0 overflow-hidden rounded-3xl [&>button:last-child]:hidden"
       >
+        <DialogTitle className="sr-only">Ваш персональний бонус</DialogTitle>
         <div className="relative bg-gradient-to-br from-primary via-accent to-warning text-primary-foreground p-6 text-center">
           {/* світіння */}
           <span className="pointer-events-none absolute -top-20 left-1/2 -translate-x-1/2 w-64 h-64 rounded-full bg-primary-foreground/20 blur-3xl" />
