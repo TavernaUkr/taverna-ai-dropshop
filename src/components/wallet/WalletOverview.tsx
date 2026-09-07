@@ -90,6 +90,29 @@ export function WalletOverview({ wallet, shops, totals, onOpenShops, onWithdraw,
 
   return (
     <div className="space-y-4">
+      {/* Дохід vs борг перед платформою */}
+      <SupplierDebtCard
+        earnings={grandTotal}
+        debt={debtCtl.debt}
+        autoRepay={debtCtl.autoRepay}
+        autoRepayPercent={debtCtl.percent}
+        onAutoRepayChange={debtCtl.setAutoRepay}
+        onAutoRepayPercentChange={debtCtl.setPercent}
+        onPayDebt={debtCtl.payDebt}
+        onWithdraw={onWithdraw}
+        readOnly={readOnly}
+      />
+
+      {/* USDT / Telegram Wallet */}
+      {!readOnly && onConnectWallet && (
+        <UsdtPayoutCard
+          connected={!!wallet.is_connected}
+          address={wallet.tg_wallet_address}
+          currency={wallet.tg_wallet_currency}
+          onConnect={onConnectWallet}
+        />
+      )}
+
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
