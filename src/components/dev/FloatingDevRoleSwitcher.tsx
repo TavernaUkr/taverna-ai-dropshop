@@ -14,7 +14,7 @@ export const FloatingDevRoleSwitcher = () => {
   if (!canUseDevRoleSwitcher) return null;
 
   return (
-    <div className="fixed bottom-28 right-3 z-[60]">
+    <div className="fixed top-16 right-3 z-[60] scale-90 origin-top-right opacity-70 hover:opacity-100 focus-within:opacity-100 active:opacity-100 transition-opacity">
       <DevRoleSwitcher
         currentRole={effectiveRole as TestRole}
         onRoleChange={(r) => setDevRoleOverride(r as TestRole)}

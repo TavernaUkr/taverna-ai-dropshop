@@ -55,7 +55,7 @@ export function WalletOffers({ bonusBalance = 0 }: { bonusBalance?: number }) {
             <TooltipTrigger asChild>
               <button
                 type="button"
-                aria-label="Як використовувати бонуси"
+                aria-label="Про програми бонусів"
                 className="text-muted-foreground active:opacity-60"
                 onClick={(e) => e.preventDefault()}
               >
@@ -63,7 +63,7 @@ export function WalletOffers({ bonusBalance = 0 }: { bonusBalance?: number }) {
               </button>
             </TooltipTrigger>
             <TooltipContent side="top" className="max-w-[240px] text-xs leading-relaxed">
-              Бонусами можна оплатити до 7% вартості кошика — решта оплачується карткою або Telegram Wallet.
+              Інформація щодо різних акційних, персональних, рейтингових і реферальних програм застосунку.
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
