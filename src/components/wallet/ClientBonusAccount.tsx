@@ -34,6 +34,8 @@ interface ClientBonusAccountProps {
  * Без гривневого балансу, без «в обробці», без поповнення та виводу.
  */
 export function ClientBonusAccount({ bonusBalance, transactions, onOpenReceipt, onOpenRefund }: ClientBonusAccountProps) {
+  const navigate = useNavigate();
+  const [rulesOpen, setRulesOpen] = useState(false);
 
   const earned = transactions
     .filter((t) => t.type === "bonus_earn" || t.type === "refund")
