@@ -1,4 +1,5 @@
-import { Trophy, Star, TrendingUp } from "lucide-react";
+import { Trophy, Star, TrendingUp, ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useBonuses } from "@/hooks/useBonuses";
 import { cn } from "@/lib/utils";
 
@@ -22,7 +23,10 @@ function rankOf(points: number) {
 }
 
 /** Рейтингові бали, ранг і множник бонусів — усередині єдиного рахунку. */
-export function WalletRatingCard({ fallbackPoints = 0 }: { fallbackPoints?: number }) {
+export function WalletRatingCard({
+  fallbackPoints = 0,
+  onGoToRatings,
+}: { fallbackPoints?: number; onGoToRatings?: () => void }) {
   const { totalEarned, reputationMultiplier, reputationScore } = useBonuses();
 
   const points = totalEarned || fallbackPoints;
@@ -52,7 +56,28 @@ export function WalletRatingCard({ fallbackPoints = 0 }: { fallbackPoints?: numb
           </p>
           <p className="text-sm font-bold text-primary">×{multiplier.toFixed(1)}</p>
         </div>
+        {onGoToRatings && (
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Всі рівні рейтингу"
+            onClick={onGoToRatings}
+            className="shrink-0 -mr-1 text-muted-foreground"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </Button>
+        )}
       </div>
+
+      {onGoToRatings && (
+        <button
+          onClick={onGoToRatings}
+          className="mt-2 text-[11px] font-medium text-primary active:opacity-60"
+        >
+          Детальніше про рейтинг · всі рівні
+        </button>
+      )}
+
 
       <div className="mt-3">
         <div className="h-1.5 rounded-full bg-muted overflow-hidden">
