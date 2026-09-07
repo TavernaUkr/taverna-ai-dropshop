@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { SupplierBadge, getSupplierBadge, getCustomerBadge, type SupplierBadgeInfo } from "@/components/ui/supplier-badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RankCheckmark, RankCup, getRankBadge } from "@/components/ratings/RatingBadges";
+import { RatingRulesSheet } from "@/components/ratings/RatingRulesSheet";
 
 type Period = "day" | "week" | "month" | "year" | "alltime";
 type RankFilter = "all" | "top3" | "top10" | "4-10";
