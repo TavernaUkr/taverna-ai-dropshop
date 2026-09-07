@@ -832,6 +832,8 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
       <PaymentMethodSelect
         value={paymentMethod}
         onChange={setPaymentMethod}
+        paymentType={paymentType}
+        onPaymentTypeChange={setPaymentType}
         allowTavernaBalance={["supplier", "shop_manager", "admin", "moderator"].includes(effectiveRole)}
       />
 
