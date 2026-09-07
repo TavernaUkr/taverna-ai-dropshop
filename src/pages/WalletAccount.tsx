@@ -147,7 +147,7 @@ export default function WalletAccount() {
         </div>
 
         {/* Перемикач: особистий рахунок / магазини */}
-        {!supplierId && hasShops && (
+        {!supplierId && hasShops && !bonusOnly && (
           <div className="px-4 pb-3">
             <div className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-muted">
               {([
