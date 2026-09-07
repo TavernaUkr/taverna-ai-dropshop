@@ -1117,7 +1117,7 @@ const sellerViews: { id: SellerView; label: string }[] = [
 const TopSellersSection = () => {
   const [period, setPeriod] = useState<Period>("month");
   const [view, setView] = useState<SellerView>("leaders");
-  const sellers = topSellersByPeriod[period];
+  const sellers = useMemo(() => buildSellers(period), [period]);
 
   return (
     <div className="space-y-3">
