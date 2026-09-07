@@ -1,13 +1,17 @@
+import { useEffect } from "react";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Banknote, CreditCard, Wallet, Check, Smartphone } from "lucide-react";
+import { Banknote, CreditCard, Wallet, Check, Smartphone, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type PaymentMethod = "cash" | "card" | "mono" | "applepay" | "googlepay" | "telegram_wallet" | "taverna_balance";
+export type PaymentType = "full_prepayment" | "markup_only" | "cod";
 
 interface PaymentMethodSelectProps {
   value: PaymentMethod;
   onChange: (value: PaymentMethod) => void;
+  paymentType: PaymentType;
+  onPaymentTypeChange: (value: PaymentType) => void;
   error?: string;
   /** Рахунок Taverna доступний лише для ролей із реальним балансом */
   allowTavernaBalance?: boolean;
@@ -20,6 +24,7 @@ const paymentMethods: {
   icon: React.ReactNode;
   disabled?: boolean;
   badge?: string;
+  online?: boolean;
 }[] = [
   {
     id: "taverna_balance",
@@ -31,12 +36,14 @@ const paymentMethods: {
       </div>
     ),
     badge: "1 тап",
+    online: true,
   },
   {
     id: "cash",
     label: "Оплата при отриманні",
     description: "Готівкою або карткою на пошті",
     icon: <Banknote className="h-6 w-6" />,
+    online: false,
   },
   {
     id: "card",
@@ -45,6 +52,7 @@ const paymentMethods: {
     icon: <CreditCard className="h-6 w-6" />,
     disabled: true,
     badge: "Скоро",
+    online: true,
   },
   {
     id: "mono",
@@ -57,6 +65,7 @@ const paymentMethods: {
     ),
     disabled: true,
     badge: "Скоро",
+    online: true,
   },
   {
     id: "applepay",
@@ -69,6 +78,7 @@ const paymentMethods: {
     ),
     disabled: true,
     badge: "Скоро",
+    online: true,
   },
   {
     id: "googlepay",
@@ -81,6 +91,7 @@ const paymentMethods: {
     ),
     disabled: true,
     badge: "Скоро",
+    online: true,
   },
   {
     id: "telegram_wallet",
@@ -92,88 +103,190 @@ const paymentMethods: {
       </div>
     ),
     badge: "Миттєво",
+    online: true,
   },
+];
 
+const paymentTypeOptions: {
+  id: PaymentType;
+  label: string;
+  description: string;
+}[] = [
+  {
+    id: "full_prepayment",
+    label: "Повна оплата",
+    description: "Оплатіть 100% вартості зараз",
+  },
+  {
+    id: "markup_only",
+    label: "Часткова оплата (Лише націнка)",
+    description: "Оплатіть лише націнку платформи. Решту — накладним платежем при отриманні",
+  },
+  {
+    id: "cod",
+    label: "При отриманні (Накладений платіж)",
+    description: "Оплатіть повну суму на пошті при отриманні",
+  },
 ];
 
 export const PaymentMethodSelect = ({
   value,
   onChange,
+  paymentType,
+  onPaymentTypeChange,
   error,
   allowTavernaBalance = false,
 }: PaymentMethodSelectProps) => {
-  const methods = allowTavernaBalance
-    ? paymentMethods
-    : paymentMethods.filter((m) => m.id !== "taverna_balance");
-  return (
-    <div className="space-y-3">
-      <Label className="text-sm font-medium text-foreground">
-        Спосіб оплати
-        <span className="text-destructive ml-1">*</span>
-      </Label>
-      
-      <RadioGroup
-        value={value}
-        onValueChange={(val) => onChange(val as PaymentMethod)}
-        className="space-y-2"
-      >
-        {methods.map((method) => {
-          const isSelected = value === method.id;
-          const isDisabled = method.disabled;
+  // Keep payment method in sync with payment type
+  useEffect(() => {
+    if (paymentType === "cod" && value !== "cash") {
+      onChange("cash");
+    } else if (paymentType === "markup_only" && value === "cash") {
+      onChange("telegram_wallet");
+    }
+  }, [paymentType, value, onChange]);
 
-          return (
-            <label
-              key={method.id}
-              className={cn(
-                "flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all relative overflow-hidden",
-                isSelected
-                  ? "border-primary bg-primary/5 ring-1 ring-primary"
-                  : "border-border hover:border-primary/50",
-                isDisabled && "opacity-60 cursor-not-allowed"
-              )}
-            >
-              <RadioGroupItem
-                value={method.id}
-                disabled={isDisabled}
-                className="sr-only"
-              />
-              
-              {/* Icon */}
-              <div
+  const visibleMethods = paymentType === "cod"
+    ? paymentMethods.filter((m) => m.id === "cash")
+    : paymentMethods.filter((m) => {
+        if (m.id === "taverna_balance" && !allowTavernaBalance) return false;
+        if (paymentType === "markup_only" && m.id === "cash") return false;
+        return true;
+      });
+
+  return (
+    <div className="space-y-5">
+      {/* Payment Type Selection */}
+      <div className="space-y-3">
+        <Label className="text-sm font-medium text-foreground">
+          Вид оплати
+          <span className="text-destructive ml-1">*</span>
+        </Label>
+        <RadioGroup
+          value={paymentType}
+          onValueChange={(val) => onPaymentTypeChange(val as PaymentType)}
+          className="space-y-2"
+        >
+          {paymentTypeOptions.map((option) => {
+            const isSelected = paymentType === option.id;
+            return (
+              <label
+                key={option.id}
                 className={cn(
-                  "w-11 h-11 rounded-xl flex items-center justify-center shrink-0",
-                  isSelected ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"
+                  "flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all",
+                  isSelected
+                    ? "border-primary bg-primary/5 ring-1 ring-primary"
+                    : "border-border hover:border-primary/50"
                 )}
               >
-                {method.icon}
-              </div>
-              
-              {/* Content */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-foreground">{method.label}</span>
-                  {method.badge && (
-                    <span className="text-[10px] font-medium bg-warning/20 text-warning px-1.5 py-0.5 rounded-full">
-                      {method.badge}
-                    </span>
+                <RadioGroupItem
+                  value={option.id}
+                  className="sr-only"
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-foreground text-sm">{option.label}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                    {option.description}
+                  </p>
+                </div>
+                {isSelected && (
+                  <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center shrink-0 mt-0.5">
+                    <Check className="h-3 w-3 text-primary-foreground" />
+                  </div>
+                )}
+              </label>
+            );
+          })}
+        </RadioGroup>
+      </div>
+
+      {/* Payment Method Selection */}
+      <div className="space-y-3">
+        <Label className="text-sm font-medium text-foreground">
+          Спосіб оплати
+          <span className="text-destructive ml-1">*</span>
+        </Label>
+
+        {paymentType === "cod" ? (
+          <div className="flex items-center gap-3 p-3 rounded-xl border border-primary/20 bg-primary/5 ring-1 ring-primary">
+            <div className="w-11 h-11 rounded-xl bg-primary/20 text-primary flex items-center justify-center shrink-0">
+              <Banknote className="h-6 w-6" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <span className="font-medium text-foreground text-sm">Оплата при отриманні на пошті</span>
+              <p className="text-xs text-muted-foreground truncate">Готівкою або карткою у відділенні</p>
+            </div>
+            <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center shrink-0">
+              <Check className="h-4 w-4 text-primary-foreground" />
+            </div>
+          </div>
+        ) : (
+          <RadioGroup
+            value={value}
+            onValueChange={(val) => onChange(val as PaymentMethod)}
+            className="space-y-2"
+          >
+            {visibleMethods.map((method) => {
+              const isSelected = value === method.id;
+              const isDisabled = method.disabled;
+
+              return (
+                <label
+                  key={method.id}
+                  className={cn(
+                    "flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all relative overflow-hidden",
+                    isSelected
+                      ? "border-primary bg-primary/5 ring-1 ring-primary"
+                      : "border-border hover:border-primary/50",
+                    isDisabled && "opacity-60 cursor-not-allowed"
                   )}
-                </div>
-                <p className="text-xs text-muted-foreground truncate">{method.description}</p>
-              </div>
-              
-              {/* Selection indicator */}
-              {isSelected && (
-                <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center shrink-0">
-                  <Check className="h-4 w-4 text-primary-foreground" />
-                </div>
-              )}
-            </label>
-          );
-        })}
-      </RadioGroup>
+                >
+                  <RadioGroupItem
+                    value={method.id}
+                    disabled={isDisabled}
+                    className="sr-only"
+                  />
+
+                  {/* Icon */}
+                  <div
+                    className={cn(
+                      "w-11 h-11 rounded-xl flex items-center justify-center shrink-0",
+                      isSelected ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"
+                    )}
+                  >
+                    {method.icon}
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-foreground text-sm">{method.label}</span>
+                      {method.badge && (
+                        <span className="text-[10px] font-medium bg-warning/20 text-warning px-1.5 py-0.5 rounded-full">
+                          {method.badge}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground truncate">{method.description}</p>
+                  </div>
+
+                  {/* Selection indicator */}
+                  {isSelected && (
+                    <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center shrink-0">
+                      <Check className="h-4 w-4 text-primary-foreground" />
+                    </div>
+                  )}
+                </label>
+              );
+            })}
+          </RadioGroup>
+        )}
+      </div>
 
       {error && <p className="text-xs text-destructive mt-2">{error}</p>}
-      
+
       {/* Payment Security Badge */}
       <div className="flex items-center justify-center gap-2 pt-2">
         <svg viewBox="0 0 24 24" className="h-4 w-4 text-success fill-current">
