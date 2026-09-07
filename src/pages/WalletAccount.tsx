@@ -84,6 +84,24 @@ export default function WalletAccount() {
   const shopsPending = shopsInPersonal.reduce((sum, sh) => sum + Number(sh.pending || 0), 0);
   const grandTotal = Math.round((Number(wallet?.balance || 0) + shopsAvailable) * 100) / 100;
 
+  /** Джерела для виводу: кожен магазин-власник + особистий гаманець */
+  const payoutSources = shopsInPersonal.length > 0
+    ? [
+        ...shopsInPersonal.map((sh) => ({
+          id: sh.id,
+          name: sh.shop_name,
+          available: Number(sh.available || 0),
+          pending: Number(sh.pending || 0),
+        })),
+        {
+          id: null,
+          name: "Особистий гаманець",
+          available: Number(wallet?.balance || 0),
+          pending: Number(wallet?.pending || 0),
+        },
+      ]
+    : [];
+
   const action = searchParams.get("action");
   useEffect(() => {
     if (!action || isLoading) return;
