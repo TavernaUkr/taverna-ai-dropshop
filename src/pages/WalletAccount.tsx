@@ -61,10 +61,10 @@ export default function WalletAccount() {
   } = useWallet({ supplierId, withShops: hasShops && !supplierId });
 
   const tabParam = searchParams.get("tab");
-  const [tab, setTab] = useState<"overview" | "shops" | "personal">(
+  const [tab, setTab] = useState<"overview" | "shops" | "bonus">(
     !supplierId && hasShops
-      ? tabParam === "shops" ? "shops" : tabParam === "personal" ? "personal" : "overview"
-      : "personal",
+      ? tabParam === "shops" ? "shops" : tabParam === "bonus" || tabParam === "personal" ? "bonus" : "overview"
+      : "overview",
   );
   const [showConnect, setShowConnect] = useState(false);
   const [showTopUp, setShowTopUp] = useState(false);
@@ -74,33 +74,44 @@ export default function WalletAccount() {
   const [showRefund, setShowRefund] = useState(false);
   const [autoMin, setAutoMin] = useState<string>("");
   const [breakdownOpen, setBreakdownOpen] = useState(false);
+  const [debtOverrides, setDebtOverrides] = useState<Record<string, number>>({});
   const payRef = useRef<HTMLDivElement | null>(null);
 
-  /** Магазини, чиї кошти входять у загальний баланс постачальника (лише де він власник). */
+  /** Магазини, чиї кошти входять у загальний дохід постачальника (лише де він власник). */
   const shopsInPersonal = !supplierId && !readOnly && !bonusOnly
     ? shops.filter((sh) => sh.role === "owner")
     : [];
   const shopsAvailable = shopsInPersonal.reduce((sum, sh) => sum + Number(sh.available || 0), 0);
   const shopsPending = shopsInPersonal.reduce((sum, sh) => sum + Number(sh.pending || 0), 0);
-  const grandTotal = Math.round((Number(wallet?.balance || 0) + shopsAvailable) * 100) / 100;
+  const grandTotal = Math.round(shopsAvailable * 100) / 100;
 
-  /** Джерела для виводу: кожен магазин-власник + особистий гаманець */
-  const payoutSources = shopsInPersonal.length > 0
-    ? [
-        ...shopsInPersonal.map((sh) => ({
-          id: sh.id,
-          name: sh.shop_name,
-          available: Number(sh.available || 0),
-          pending: Number(sh.pending || 0),
-        })),
-        {
-          id: null,
-          name: "Особистий гаманець",
-          available: Number(wallet?.balance || 0),
-          pending: Number(wallet?.pending || 0),
-        },
-      ]
-    : [];
+  const debts: Record<string, number> = Object.fromEntries(
+    shops.map((sh) => [sh.id, debtOverrides[sh.id] ?? Number(sh.debt || 0)]),
+  );
+
+  const settleDebt = (shopId: string, amount: number, source: { type: "card" } | { type: "shop"; fromShopId: string }) => {
+    setDebtOverrides((prev) => {
+      const current = prev[shopId] ?? Number(shops.find((s) => s.id === shopId)?.debt || 0);
+      return { ...prev, [shopId]: Math.max(0, Math.round((current - amount) * 100) / 100) };
+    });
+    const shopName = shops.find((s) => s.id === shopId)?.shop_name || "магазин";
+    toast({
+      title: "Борг погашено",
+      description: source.type === "card"
+        ? `Списано ${amount.toLocaleString("uk-UA")}₴ карткою для «${shopName}»`
+        : `Переказано ${amount.toLocaleString("uk-UA")}₴ з «${shops.find((s) => s.id === source.fromShopId)?.shop_name}» на «${shopName}»`,
+    });
+  };
+
+  /** Джерела для виводу: лише магазини-власники (особистого фіат-балансу немає) */
+  const payoutSources = shopsInPersonal.map((sh) => ({
+    id: sh.id,
+    name: sh.shop_name,
+    available: Number(sh.available || 0),
+    pending: Number(sh.pending || 0),
+    debt: debts[sh.id] ?? 0,
+  }));
+
 
   const action = searchParams.get("action");
   useEffect(() => {
@@ -169,9 +180,9 @@ export default function WalletAccount() {
           <div className="px-4 pb-3">
             <div className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-muted">
               {([
-                { id: "overview", label: "Загалом", icon: TrendingUp },
+                { id: "overview", label: "Зведення", icon: TrendingUp },
                 { id: "shops", label: "Магазини", icon: Store },
-                { id: "personal", label: "Особистий", icon: Wallet },
+                { id: "bonus", label: "Бонуси", icon: Star },
               ] as const).map((t) => (
                 <button
                   key={t.id}
@@ -212,9 +223,19 @@ export default function WalletAccount() {
             shops={shops}
             totals={shopsTotals}
             readOnly={readOnly}
+            debts={debts}
+            onSettleDebt={settleDebt}
             onSaveAuto={saveShopPayoutSettings}
             onOpenShop={(id) => { hapticSelection(); navigate(`/wallet/${id}`); }}
           />
+        ) : tab === "bonus" && !supplierId && hasShops ? (
+          <ClientBonusAccount
+            bonusBalance={wallet.bonus_balance}
+            transactions={transactions}
+            onOpenReceipt={setReceipt}
+            onOpenRefund={() => setShowRefund(true)}
+          />
+
         ) : (
         <>
         {/* Balance card */}
