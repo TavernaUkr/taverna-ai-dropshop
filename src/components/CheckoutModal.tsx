@@ -126,6 +126,13 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
     : selectedPersonalBonus?.discountAmount || 0;
   const total = Math.max(0, subtotal + deliveryCost - promoDiscount - bonusesToUse - personalBonusDiscount);
 
+  // Amount to pay now depends on selected payment type
+  const amountToPayNow = paymentType === 'full_prepayment'
+    ? total
+    : paymentType === 'markup_only'
+    ? Math.round(total * 0.25)
+    : 0;
+
   // Load personal bonuses for checkout
   useEffect(() => {
     const loadPersonalBonuses = async () => {
