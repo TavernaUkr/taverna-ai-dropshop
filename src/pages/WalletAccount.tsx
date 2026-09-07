@@ -180,9 +180,9 @@ export default function WalletAccount() {
           <div className="px-4 pb-3">
             <div className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-muted">
               {([
-                { id: "overview", label: "Загалом", icon: TrendingUp },
+                { id: "overview", label: "Зведення", icon: TrendingUp },
                 { id: "shops", label: "Магазини", icon: Store },
-                { id: "personal", label: "Особистий", icon: Wallet },
+                { id: "bonus", label: "Бонуси", icon: Star },
               ] as const).map((t) => (
                 <button
                   key={t.id}
