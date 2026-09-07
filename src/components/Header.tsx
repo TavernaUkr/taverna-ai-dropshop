@@ -146,7 +146,7 @@ export const Header = ({
               <Gift className="h-4 w-4" />
             </button>
             <button
-              onClick={() => navigate("/referrals")}
+              onClick={() => setIsReferralsOpen(true)}
               className="w-8 h-8 rounded-lg flex items-center justify-center text-primary hover:bg-primary/10 active:scale-95 transition-all"
               aria-label="Реферальна програма">
 
