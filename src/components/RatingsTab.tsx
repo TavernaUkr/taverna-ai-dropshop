@@ -6,9 +6,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useTelegramAuthContext } from "@/components/TelegramAuthProvider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+
 import { SupplierBadge, getSupplierBadge, getCustomerBadge, type SupplierBadgeInfo } from "@/components/ui/supplier-badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RankCheckmark, RankCup, getRankBadge } from "@/components/ratings/RatingBadges";
+import { RatingRulesSheet } from "@/components/ratings/RatingRulesSheet";
 
 type Period = "day" | "week" | "month" | "year" | "alltime";
 type RankFilter = "all" | "top3" | "top10" | "4-10";
@@ -585,321 +587,48 @@ const ProductReviews = () => {
   );
 };
 
-const BadgeRules = () => {
-  const [isOpen, setIsOpen] = useState(false);
-
-  const badgeTiers = [
-    {
-      emoji: "💎",
-      name: "Діамантова галочка",
-      checkColor: "text-violet-400",
-      bgColor: "bg-violet-400/10",
-      rule: "№1 місце у загальному рейтингу за весь час",
-      detail: "Найвища нагорода — «Легенда платформи». Клієнт: безк. доставка. Продавець: 23% націнка.",
-    },
-    {
-      emoji: "🥇",
-      name: "Золота галочка",
-      checkColor: "text-yellow-500",
-      bgColor: "bg-yellow-500/10",
-      rule: "Топ 1-3 місце у річному рейтингу",
-      detail: "Найвища нагорода за рік. Учасник потрапив до трійки лідерів за підсумками року.",
-    },
-    {
-      emoji: "🥈",
-      name: "Срібна галочка",
-      checkColor: "text-slate-400",
-      bgColor: "bg-slate-400/10",
-      rule: "Топ 1-3 місце у місячному рейтингу",
-      detail: "Учасник показав найкращі результати за попередній місяць.",
-    },
-    {
-      emoji: "🥉",
-      name: "Бронзова галочка",
-      checkColor: "text-amber-600",
-      bgColor: "bg-amber-600/10",
-      rule: "Топ 1-3 місце у тижневому рейтингу",
-      detail: "Учасник увійшов до трійки лідерів за попередній тиждень.",
-    },
-    {
-      emoji: "🔷",
-      name: "Синя галочка",
-      checkColor: "text-blue-500",
-      bgColor: "bg-blue-500/10",
-      rule: "Топ 1-3 місце у денному рейтингу",
-      detail: "Учасник став лідером за попередній день. Швидкий темп активності!",
-    },
-    {
-      emoji: "✅",
-      name: "Верифікований (зелена)",
-      checkColor: "text-emerald-500",
-      bgColor: "bg-emerald-500/10",
-      rule: "Топ 4-10 місце у будь-якому рейтингу",
-      detail: "Учасник стабільно входить до десятки найкращих. Без кубка.",
-    },
-  ];
-
-  return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <CollapsibleTrigger className="w-full flex items-center gap-2 p-3 rounded-xl bg-muted/50 border border-border hover:bg-muted transition-colors">
-        <Info className="h-4 w-4 text-primary shrink-0" />
-        <span className="text-sm font-medium text-foreground flex-1 text-left">
-          Рейтинг, галочки, кубки та штрафи
-        </span>
-        {isOpen ? (
-          <ChevronUp className="h-4 w-4 text-muted-foreground" />
-        ) : (
-          <ChevronDown className="h-4 w-4 text-muted-foreground" />
-        )}
-      </CollapsibleTrigger>
-      <CollapsibleContent className="mt-2 space-y-3 animate-fade-in">
-
-        {/* Rating formula explanation */}
-        <div>
-          <p className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
-            <Calculator className="h-3.5 w-3.5 text-primary" /> Як формується Загальний Рейтинг
-          </p>
-          <div className="p-3 rounded-xl bg-primary/5 border border-primary/10 space-y-2">
-            <p className="text-xs text-foreground leading-relaxed">
-              <span className="font-semibold">Загальний Рейтинг</span> — це єдине числове значення, яке накопичується на основі всіх дій учасника. Воно може зростати або знижуватись.
-            </p>
-            <div className="space-y-1.5">
-              <p className="text-[11px] font-semibold text-emerald-600 flex items-center gap-1">
-                <TrendingUp className="h-3 w-3" /> Що підвищує рейтинг:
-              </p>
-              <ul className="text-[11px] text-muted-foreground space-y-0.5 ml-4">
-                <li>• Кожне оформлене замовлення / продаж</li>
-                <li>• Кількість проданих / куплених товарів</li>
-                <li>• Загальна сума замовлень / виручки</li>
-                <li>• Позитивні відгуки та високі оцінки (⭐ 4-5)</li>
-                <li>• Використані / зароблені бонуси та плюшки</li>
-                <li>• Кількість унікальних клієнтів (для продавців)</li>
-              </ul>
-            </div>
-            <div className="space-y-1.5">
-              <p className="text-[11px] font-semibold text-destructive flex items-center gap-1">
-                <AlertTriangle className="h-3 w-3" /> Що знижує рейтинг:
-              </p>
-              <ul className="text-[11px] text-muted-foreground space-y-0.5 ml-4">
-                <li>• Підтверджені скарги від іншої сторони</li>
-                <li>• Повернення товарів (з вини магазину / зловживання клієнтом)</li>
-                <li>• Обміни з причини дефектів чи невідповідності</li>
-                <li>• Штрафні санкції від модератора</li>
-                <li>• Негативні відгуки (⭐ 1-2)</li>
-                <li>• Скасовані замовлення з вини учасника</li>
-              </ul>
-            </div>
-            <div className="p-2 rounded-lg bg-muted/50 border border-border">
-              <p className="text-[10px] text-muted-foreground">
-                📊 Позиція у рейтингу (День / Тиждень / Місяць / Рік / Весь час) визначається саме цим числом. Чим вищий Загальний Рейтинг — тим вища позиція та краща галочка.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Unified badge tiers for both sellers and customers */}
-        <div>
-          <p className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
-            <BadgeCheck className="h-3.5 w-3.5 text-primary" /> Галочки (для магазинів і клієнтів)
-          </p>
-          <p className="text-[11px] text-muted-foreground mb-2">
-            Галочка відображає <span className="font-medium text-foreground">тип рейтингу</span> (період), у якому учасник досягнув найкращого результату. Кожен період має свій унікальний колір галочки.
-          </p>
-          <div className="space-y-2">
-            {badgeTiers.map((tier) => (
-              <div key={tier.name} className={cn("p-3 rounded-xl border border-transparent", tier.bgColor)}>
-                <div className="flex items-center gap-2 mb-1">
-                  <div className={cn("rounded-full p-0.5", tier.bgColor)}>
-                    <BadgeCheck className={cn("h-4 w-4", tier.checkColor)} />
-                  </div>
-                  <span className="text-sm font-semibold text-foreground">{tier.name}</span>
-                </div>
-                <p className="text-xs font-medium text-foreground/80">{tier.rule}</p>
-                <p className="text-[11px] text-muted-foreground mt-0.5">{tier.detail}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Trophy (Cup) explanation — NEW */}
-        <div>
-          <p className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
-            <Trophy className="h-3.5 w-3.5 text-yellow-500" /> Що таке кубки
-          </p>
-          <div className="p-3 rounded-xl bg-yellow-500/5 border border-yellow-500/10 space-y-2">
-            <p className="text-xs text-foreground leading-relaxed">
-              <span className="font-semibold">Кубок</span> — це значок місця у рейтингу, який відображається поруч із галочкою. Кубок показує конкретну позицію учасника серед Топ-3.
-            </p>
-            <p className="text-[11px] text-muted-foreground">
-              На відміну від галочок, кубки мають <span className="font-medium text-foreground">лише 3 кольори та 3 цифри</span>, незалежно від типу рейтингу:
-            </p>
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-2 p-2 rounded-lg bg-yellow-500/10">
-                <Trophy className="h-4 w-4 text-yellow-500" />
-                <span className="text-xs font-bold text-yellow-500">1</span>
-                <span className="text-xs text-foreground font-medium">Золотий кубок</span>
-                <span className="text-[10px] text-muted-foreground ml-auto">1-ше місце</span>
-              </div>
-              <div className="flex items-center gap-2 p-2 rounded-lg bg-slate-400/10">
-                <Trophy className="h-4 w-4 text-slate-400" />
-                <span className="text-xs font-bold text-slate-400">2</span>
-                <span className="text-xs text-foreground font-medium">Срібний кубок</span>
-                <span className="text-[10px] text-muted-foreground ml-auto">2-ге місце</span>
-              </div>
-              <div className="flex items-center gap-2 p-2 rounded-lg bg-amber-600/10">
-                <Trophy className="h-4 w-4 text-amber-600" />
-                <span className="text-xs font-bold text-amber-600">3</span>
-                <span className="text-xs text-foreground font-medium">Бронзовий кубок</span>
-                <span className="text-[10px] text-muted-foreground ml-auto">3-тє місце</span>
-              </div>
-            </div>
-            <div className="p-2 rounded-lg bg-muted/50 border border-border">
-              <p className="text-[10px] text-muted-foreground">
-                🏆 Кубок 1-го місця у будь-якому рейтингу має <span className="font-medium text-foreground">анімацію серцебиття</span> — він пульсує, щоб виділити лідера. Учасники з 4-10 місця отримують лише зелену галочку без кубка.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Bonuses tied to rating — rebalanced */}
-        <div>
-          <p className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
-            <Gift className="h-3.5 w-3.5 text-primary" /> Бонуси за позицію у рейтингу
-          </p>
-          <div className="p-3 rounded-xl bg-primary/5 border border-primary/10 space-y-2">
-            <p className="text-xs text-foreground">Бонуси нараховуються автоматично за позицію у єдиному рейтингу за кожен період:</p>
-            <div className="grid grid-cols-2 gap-2 text-[11px]">
-              <div className="space-y-1">
-                <p className="font-semibold text-foreground">👤 Клієнти:</p>
-                <ul className="text-muted-foreground space-y-0.5">
-                  <li>• День: 🥇+15₴+дост. 🥈+5₴ 🥉+3₴</li>
-                  <li>• Тиждень: 🥇+50₴+-5% 🥈+15₴ 🥉+8₴</li>
-                  <li>• Місяць: 🥇+200₴+дост. 🥈+75₴ 🥉+30₴</li>
-                  <li>• Рік: 🥇+700₴+VIP 🥈+250₴ 🥉+100₴</li>
-                  <li className="text-violet-400">• Весь час: 🥇 безк.доставка назавжди</li>
-                </ul>
-              </div>
-              <div className="space-y-1">
-                <p className="font-semibold text-foreground">🏪 Продавці:</p>
-                <ul className="text-muted-foreground space-y-0.5">
-                  <li>• День: Буст 24год+пост / Пріор. / Бон.</li>
-                  <li>• Тижд.: 2 пости+Буст7дн / Буст3дн</li>
-                  <li>• Міс.: 28%+2 пости / Пост / Пріор.</li>
-                  <li>• Рік: 25%на3м+VIP / 30%на2м / Рекл.</li>
-                  <li className="text-violet-400">• Весь час: 🥇 23% назавжди</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Platform economics */}
-        <div>
-          <p className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
-            <Calculator className="h-3.5 w-3.5 text-primary" /> 💰 Економіка платформи
-          </p>
-          <div className="p-3 rounded-xl bg-muted/50 border border-border space-y-2">
-            <p className="text-[11px] text-muted-foreground">
-              Бонуси обмежені <span className="font-medium text-foreground">макс 7%</span> від суми замовлення для фінансової стійкості платформи.
-            </p>
-            <p className="text-[11px] text-muted-foreground">
-              Кешбек: <span className="font-medium text-foreground">2%</span> базовий, до <span className="font-medium text-foreground">3%</span> при 10+ замовленнях.
-            </p>
-            <p className="text-[11px] text-muted-foreground">
-              Діамантовий бейдж 💎 = найкраща плюшка на платформі, доступна тільки №1 за весь час.
-            </p>
-          </div>
-        </div>
-
-        {/* Penalty/protection system */}
-        <div>
-          <p className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
-            <Shield className="h-3.5 w-3.5 text-primary" /> Штрафи та захист
-          </p>
-          <div className="space-y-2">
-            <div className="p-3 rounded-xl bg-destructive/5 border border-destructive/10">
-              <p className="text-xs font-semibold text-foreground mb-1.5 flex items-center gap-1">
-                <AlertTriangle className="h-3 w-3 text-destructive" /> Штрафи для магазинів
-              </p>
-              <ul className="text-[11px] text-muted-foreground space-y-1">
-                <li>• Підтверджена скарга → зниження Загального Рейтингу</li>
-                <li>• 3+ скарги/місяць → втрата галочки</li>
-                <li>• 5+ скарг/місяць → значне зниження рейтингу</li>
-                <li>• 10+ скарг → тимчасове призупинення</li>
-                <li>• Повернення з вини магазину → штраф до рейтингу + безкоштовна логістика</li>
-              </ul>
-            </div>
-            <div className="p-3 rounded-xl bg-warning/5 border border-warning/10">
-              <p className="text-xs font-semibold text-foreground mb-1.5 flex items-center gap-1">
-                <AlertTriangle className="h-3 w-3 text-warning" /> Штрафи для клієнтів
-              </p>
-              <ul className="text-[11px] text-muted-foreground space-y-1">
-                <li>• 3+ необґрунтованих повернення/місяць → зниження рейтингу + втрата галочки</li>
-                <li>• Фейкові скарги → попередження, потім бан</li>
-                <li>• Навмисне псування рейтингу → видалення відгуку модератором</li>
-                <li>• Зловживання → зниження ліміту бонусів на 50% + штраф рейтингу</li>
-              </ul>
-            </div>
-            <div className="p-2.5 rounded-lg bg-emerald-500/5 border border-emerald-500/10">
-              <p className="text-[11px] text-muted-foreground">
-                ✅ <span className="font-medium text-foreground">Принцип:</span> клієнт завжди правий, але при зловживаннях — штрафні санкції для обох сторін. Рейтинг відображає реальну репутацію.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="p-2.5 rounded-lg bg-primary/5 border border-primary/10">
-          <p className="text-[11px] text-muted-foreground">
-            💡 Пріоритет галочок: 💎Діамантова → 🥇Золота → 🥈Срібна → 🥉Бронзова → 🔷Синя → ✅Зелена. Кубки: 🏆Золотий(1) → 🥈Срібний(2) → 🥉Бронзовий(3). Учасники за межами Топ-10 не отримують галочку.
-          </p>
-        </div>
-      </CollapsibleContent>
-    </Collapsible>
-  );
-};
 
 // ============ Мій рейтинг ============
 
-const myTiers = [
-  { name: "Новачок", min: 0, color: "text-muted-foreground", bg: "bg-muted" },
-  { name: "Бронзовий", min: 1000, color: "text-amber-600", bg: "bg-amber-600/15" },
-  { name: "Срібний", min: 3000, color: "text-slate-400", bg: "bg-slate-400/15" },
-  { name: "Золотий", min: 7000, color: "text-yellow-500", bg: "bg-yellow-500/15" },
-  { name: "Легенда", min: 15000, color: "text-violet-400", bg: "bg-violet-400/15" },
-];
-
 const myPerks = [
-  { icon: Gift, label: "Знижка", value: "-5%", tone: "text-primary", bg: "bg-primary/10", active: true },
-  { icon: Zap, label: "Множник бонусів", value: "×1.5", tone: "text-live", bg: "bg-live/10", active: true },
+  { icon: Gift, label: "Клієнтам", value: "+200₴", tone: "text-primary", bg: "bg-primary/10", active: true },
   { icon: ShoppingBag, label: "Безкоштовна доставка", value: "від 999₴", tone: "text-success", bg: "bg-success/10", active: true },
-  { icon: Crown, label: "VIP-підтримка", value: "Золотий рівень", tone: "text-yellow-500", bg: "bg-yellow-500/10", active: false },
+  { icon: Zap, label: "Множник бонусів", value: "×1.5", tone: "text-live", bg: "bg-live/10", active: true },
+  { icon: Crown, label: "VIP-підтримка", value: "Пріоритет", tone: "text-yellow-500", bg: "bg-yellow-500/10", active: true },
   { icon: Award, label: "Кредити на публікації", value: "2 / міс", tone: "text-violet-400", bg: "bg-violet-400/10", active: false },
   { icon: Diamond, label: "Ексклюзивні дропи", value: "Легенда", tone: "text-violet-400", bg: "bg-violet-400/10", active: false },
 ];
 
-const MyRatingSection = ({ points = 4380 }: { points?: number }) => {
+/** Демо-позиції користувача по періодах. */
+const myRanks: Record<Period, number> = { day: 6, week: 4, month: 2, year: 12, alltime: 34 };
+
+const MyRatingSection = ({ points = 4380, onOpenRules }: { points?: number; onOpenRules: () => void }) => {
   const navigate = useNavigate();
-  const tierIndex = Math.max(0, myTiers.map((t) => points >= t.min).lastIndexOf(true));
-  const tier = myTiers[tierIndex];
-  const next = myTiers[tierIndex + 1];
-  const progress = next
-    ? Math.min(100, ((points - tier.min) / (next.min - tier.min)) * 100)
-    : 100;
+
+  // Найкраща галочка: пріоритет alltime → year → month → week → day
+  const order: Period[] = ["alltime", "year", "month", "week", "day"];
+  const bestPeriod = order.find((p) => myRanks[p] <= 10) ?? "day";
+  const bestRank = myRanks[bestPeriod];
+  const badge = getRankBadge(bestRank, bestPeriod);
+  const nextTarget = bestRank > 3 ? 3 : bestRank > 1 ? 1 : 1;
+  const progress = Math.min(100, Math.round((points / 7000) * 100));
 
   return (
     <div className="space-y-3">
       <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-primary/10 via-card to-card p-4">
         <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full bg-primary/10 blur-2xl" />
         <div className="relative flex items-center gap-3">
-          <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center text-lg font-bold", tier.bg, tier.color)}>
-            ТИ
+          <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center ring-1", badge.bg, badge.ring)}>
+            <RankCheckmark rank={bestRank} period={bestPeriod} />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <p className="text-base font-bold text-foreground truncate">{tier.name} клієнт</p>
-              <Badge variant="secondary" className={cn("text-[10px]", tier.color)}>{tierIndex + 1} рівень</Badge>
+            <div className="flex items-center gap-1.5">
+              <p className={cn("text-base font-bold truncate", badge.text)}>{badge.emoji} {badge.label}</p>
+              <RankCup rank={bestRank} size="sm" />
             </div>
-            <p className="text-xs text-muted-foreground">{points.toLocaleString("uk-UA")} рейтингових балів</p>
+            <p className="text-xs text-muted-foreground">
+              Загальний рейтинг: <span className="font-bold text-foreground">{points.toLocaleString("uk-UA")}</span>
+            </p>
           </div>
           <button
             onClick={() => navigate("/wallet")}
@@ -910,10 +639,21 @@ const MyRatingSection = ({ points = 4380 }: { points?: number }) => {
           </button>
         </div>
 
-        <div className="relative mt-4">
+        <div className="relative mt-3 grid grid-cols-5 gap-1.5">
+          {(["day", "week", "month", "year", "alltime"] as Period[]).map((p) => (
+            <div key={p} className="rounded-lg bg-background/60 p-1.5 text-center">
+              <p className="text-[9px] text-muted-foreground">{periodLabels[p]}</p>
+              <p className={cn("text-xs font-bold", myRanks[p] <= 10 ? "text-foreground" : "text-muted-foreground")}>
+                #{myRanks[p]}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        <div className="relative mt-3">
           <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1">
-            <span>{tier.name}</span>
-            <span>{next ? `${next.name} · ще ${(next.min - points).toLocaleString("uk-UA")} балів` : "Максимальний рівень"}</span>
+            <span>Місце #{bestRank} · {periodLabels[bestPeriod]}</span>
+            <span>До Топ-{nextTarget} потрібно більше балів</span>
           </div>
           <div className="h-2 rounded-full bg-muted overflow-hidden">
             <div className="h-full rounded-full bg-gradient-to-r from-primary to-live transition-all" style={{ width: `${progress}%` }} />
@@ -921,8 +661,17 @@ const MyRatingSection = ({ points = 4380 }: { points?: number }) => {
         </div>
       </div>
 
+      <button
+        onClick={onOpenRules}
+        className="w-full flex items-center gap-2 p-3 rounded-xl bg-muted/50 border border-border hover:bg-muted active:scale-[0.99] transition-all"
+      >
+        <Info className="h-4 w-4 text-primary shrink-0" />
+        <span className="text-sm font-medium text-foreground flex-1 text-left">Правила рейтингу, кубки та штрафи</span>
+        <ChevronDown className="h-4 w-4 text-muted-foreground -rotate-90" />
+      </button>
+
       <div>
-        <p className="text-xs font-semibold text-muted-foreground mb-2 px-0.5">Мої переваги</p>
+        <p className="text-xs font-semibold text-muted-foreground mb-2 px-0.5">Мої бонуси та привілеї</p>
         <div className="grid grid-cols-2 gap-2">
           {myPerks.map((p) => (
             <div
@@ -956,44 +705,39 @@ interface TopSeller {
   sales: number;
   positive: number;
   negative: number;
+  points: number;
 }
 
-const topSellersByPeriod: Record<Period, TopSeller[]> = {
-  day: [
-    { shopName: "Tactical Pro", initials: "TP", gradient: "from-emerald-500/30 to-lime-400/20", rating: 4.9, sales: 18, positive: 17, negative: 1 },
-    { shopName: "Military Store", initials: "MS", gradient: "from-sky-500/30 to-cyan-400/20", rating: 4.8, sales: 14, positive: 13, negative: 1 },
-    { shopName: "Urban Gear", initials: "UG", gradient: "from-amber-500/30 to-orange-400/20", rating: 4.6, sales: 11, positive: 10, negative: 1 },
-    { shopName: "Alpha Gear", initials: "AG", gradient: "from-violet-500/30 to-fuchsia-400/20", rating: 4.5, sales: 8, positive: 7, negative: 1 },
-    { shopName: "Ranger Shop", initials: "RS", gradient: "from-rose-500/30 to-pink-400/20", rating: 4.4, sales: 6, positive: 5, negative: 1 },
-  ],
-  week: [
-    { shopName: "Tactical Pro", initials: "TP", gradient: "from-emerald-500/30 to-lime-400/20", rating: 4.9, sales: 96, positive: 91, negative: 5 },
-    { shopName: "Urban Gear", initials: "UG", gradient: "from-amber-500/30 to-orange-400/20", rating: 4.7, sales: 78, positive: 73, negative: 5 },
-    { shopName: "Military Store", initials: "MS", gradient: "from-sky-500/30 to-cyan-400/20", rating: 4.7, sales: 71, positive: 66, negative: 5 },
-    { shopName: "Alpha Gear", initials: "AG", gradient: "from-violet-500/30 to-fuchsia-400/20", rating: 4.5, sales: 54, positive: 49, negative: 5 },
-    { shopName: "Ranger Shop", initials: "RS", gradient: "from-rose-500/30 to-pink-400/20", rating: 4.3, sales: 41, positive: 36, negative: 5 },
-  ],
-  month: [
-    { shopName: "Tactical Pro", initials: "TP", gradient: "from-emerald-500/30 to-lime-400/20", rating: 4.8, sales: 412, positive: 389, negative: 23 },
-    { shopName: "Military Store", initials: "MS", gradient: "from-sky-500/30 to-cyan-400/20", rating: 4.7, sales: 337, positive: 312, negative: 25 },
-    { shopName: "Urban Gear", initials: "UG", gradient: "from-amber-500/30 to-orange-400/20", rating: 4.6, sales: 289, positive: 264, negative: 25 },
-    { shopName: "Alpha Gear", initials: "AG", gradient: "from-violet-500/30 to-fuchsia-400/20", rating: 4.5, sales: 214, positive: 192, negative: 22 },
-    { shopName: "Ranger Shop", initials: "RS", gradient: "from-rose-500/30 to-pink-400/20", rating: 4.4, sales: 178, positive: 156, negative: 22 },
-  ],
-  year: [
-    { shopName: "Tactical Pro", initials: "TP", gradient: "from-emerald-500/30 to-lime-400/20", rating: 4.8, sales: 4820, positive: 4553, negative: 267 },
-    { shopName: "Military Store", initials: "MS", gradient: "from-sky-500/30 to-cyan-400/20", rating: 4.7, sales: 3945, positive: 3688, negative: 257 },
-    { shopName: "Urban Gear", initials: "UG", gradient: "from-amber-500/30 to-orange-400/20", rating: 4.6, sales: 3312, positive: 3061, negative: 251 },
-    { shopName: "Alpha Gear", initials: "AG", gradient: "from-violet-500/30 to-fuchsia-400/20", rating: 4.5, sales: 2488, positive: 2260, negative: 228 },
-    { shopName: "Ranger Shop", initials: "RS", gradient: "from-rose-500/30 to-pink-400/20", rating: 4.4, sales: 1974, positive: 1770, negative: 204 },
-  ],
-  alltime: [
-    { shopName: "Tactical Pro", initials: "TP", gradient: "from-emerald-500/30 to-lime-400/20", rating: 4.9, sales: 18420, positive: 17604, negative: 816 },
-    { shopName: "Military Store", initials: "MS", gradient: "from-sky-500/30 to-cyan-400/20", rating: 4.8, sales: 15230, positive: 14468, negative: 762 },
-    { shopName: "Urban Gear", initials: "UG", gradient: "from-amber-500/30 to-orange-400/20", rating: 4.7, sales: 12885, positive: 12112, negative: 773 },
-    { shopName: "Alpha Gear", initials: "AG", gradient: "from-violet-500/30 to-fuchsia-400/20", rating: 4.6, sales: 9640, positive: 8965, negative: 675 },
-    { shopName: "Ranger Shop", initials: "RS", gradient: "from-rose-500/30 to-pink-400/20", rating: 4.5, sales: 7315, positive: 6730, negative: 585 },
-  ],
+const SELLER_BASE = [
+  { shopName: "Tactical Pro", initials: "TP", gradient: "from-emerald-500/30 to-lime-400/20" },
+  { shopName: "Military Store", initials: "MS", gradient: "from-sky-500/30 to-cyan-400/20" },
+  { shopName: "Urban Gear", initials: "UG", gradient: "from-amber-500/30 to-orange-400/20" },
+  { shopName: "Alpha Gear", initials: "AG", gradient: "from-violet-500/30 to-fuchsia-400/20" },
+  { shopName: "Ranger Shop", initials: "RS", gradient: "from-rose-500/30 to-pink-400/20" },
+  { shopName: "Nord Tactical", initials: "NT", gradient: "from-indigo-500/30 to-blue-400/20" },
+  { shopName: "Steel Line", initials: "SL", gradient: "from-slate-500/30 to-zinc-400/20" },
+  { shopName: "Falcon Kit", initials: "FK", gradient: "from-teal-500/30 to-emerald-400/20" },
+  { shopName: "Vector Shop", initials: "VS", gradient: "from-orange-500/30 to-red-400/20" },
+  { shopName: "Base Camp", initials: "BC", gradient: "from-lime-500/30 to-green-400/20" },
+];
+
+const PERIOD_SCALE: Record<Period, number> = { day: 1, week: 6, month: 24, year: 260, alltime: 980 };
+
+const buildSellers = (period: Period): TopSeller[] => {
+  const scale = PERIOD_SCALE[period];
+  return SELLER_BASE.map((base, i) => {
+    const sales = Math.max(1, Math.round((20 - i * 1.7) * scale));
+    const rating = Math.round((4.95 - i * 0.07) * 10) / 10;
+    const negative = Math.max(0, Math.round(sales * (0.02 + i * 0.006)));
+    return {
+      ...base,
+      rating,
+      sales,
+      negative,
+      positive: sales - negative,
+      points: Math.round(sales * 18 + rating * 900 - negative * 25),
+    };
+  });
 };
 
 const PeriodPills = ({ period, onChange }: { period: Period; onChange: (p: Period) => void }) => (
@@ -1015,32 +759,53 @@ const PeriodPills = ({ period, onChange }: { period: Period; onChange: (p: Perio
   </div>
 );
 
-const SellerCard = ({ seller, rank }: { seller: TopSeller; rank: number }) => {
+const SellerCard = ({ seller, rank, period }: { seller: TopSeller; rank: number; period: Period }) => {
   const total = seller.positive + seller.negative;
   const positiveShare = total ? (seller.positive / total) * 100 : 0;
-  const isTop3 = rank <= 3;
+  const badge = getRankBadge(rank, period);
+  const isFirst = rank === 1;
 
   return (
-    <div className="rounded-2xl border border-border bg-card overflow-hidden">
+    <div
+      className={cn(
+        "rounded-2xl border bg-card overflow-hidden transition-all",
+        isFirst
+          ? "border-yellow-500/50 shadow-[0_10px_30px_-16px_hsl(45_93%_47%/0.8)]"
+          : rank <= 3
+            ? "border-border ring-1 ring-border"
+            : "border-border"
+      )}
+    >
       <div className={cn("relative h-14 bg-gradient-to-r", seller.gradient)}>
-        <div
-          className={cn(
-            "absolute top-2 left-2 min-w-[26px] h-[26px] px-1.5 rounded-full flex items-center justify-center text-xs font-bold backdrop-blur-sm",
-            isTop3 ? cn(rankBgs[rank - 1], rankColors[rank - 1], "bg-card/80") : "bg-card/80 text-muted-foreground"
-          )}
-        >
-          {isTop3 ? <Crown className="h-3.5 w-3.5" /> : rank}
+        <div className="absolute top-2 left-2 flex items-center gap-1 rounded-full bg-card/85 backdrop-blur-sm px-1.5 py-1">
+          <span className="text-[11px] font-bold text-foreground">#{rank}</span>
+          <RankCheckmark rank={rank} period={period} size="sm" />
+          <RankCup rank={rank} size="sm" />
         </div>
+        {badge.kind !== "none" && (
+          <span className={cn("absolute top-2.5 right-2 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-card/85 backdrop-blur-sm", badge.text)}>
+            {badge.emoji} {badge.label}
+          </span>
+        )}
       </div>
 
       <div className="px-3 pb-3 -mt-6">
         <div className="flex items-end gap-2.5">
-          <div className="w-12 h-12 rounded-xl bg-card border-2 border-card shadow-sm flex items-center justify-center text-sm font-bold text-foreground ring-1 ring-border">
+          <div className={cn(
+            "w-12 h-12 rounded-xl bg-card border-2 border-card shadow-sm flex items-center justify-center text-sm font-bold text-foreground ring-1",
+            isFirst ? "ring-yellow-500/50" : "ring-border"
+          )}>
             {seller.initials}
           </div>
           <div className="min-w-0 flex-1 pb-0.5">
             <p className="text-sm font-bold text-foreground truncate">{seller.shopName}</p>
             <StarRating rating={seller.rating} />
+          </div>
+          <div className="text-right pb-0.5">
+            <p className={cn("text-base font-extrabold leading-none", isFirst ? "text-yellow-500" : "text-foreground")}>
+              {seller.points.toLocaleString("uk-UA")}
+            </p>
+            <p className="text-[10px] text-muted-foreground">балів</p>
           </div>
         </div>
 
@@ -1080,7 +845,7 @@ const sellerViews: { id: SellerView; label: string }[] = [
 const TopSellersSection = () => {
   const [period, setPeriod] = useState<Period>("month");
   const [view, setView] = useState<SellerView>("leaders");
-  const sellers = topSellersByPeriod[period];
+  const sellers = useMemo(() => buildSellers(period), [period]);
 
   return (
     <div className="space-y-3">
@@ -1104,7 +869,7 @@ const TopSellersSection = () => {
           <PeriodPills period={period} onChange={setPeriod} />
           <div className="space-y-2.5">
             {sellers.map((s, i) => (
-              <SellerCard key={s.shopName} seller={s} rank={i + 1} />
+              <SellerCard key={s.shopName} seller={s} rank={i + 1} period={period} />
             ))}
           </div>
         </>
@@ -1119,6 +884,8 @@ const TopSellersSection = () => {
 
 export const RatingsTab = () => {
   const navigate = useNavigate();
+  const [rulesOpen, setRulesOpen] = useState(false);
+
 
   return (
     <div className="space-y-4 pb-28 animate-fade-in">
@@ -1131,13 +898,22 @@ export const RatingsTab = () => {
             <span className="text-xs font-medium text-rating">LIVE</span>
           </div>
         </div>
-        <button
-          onClick={() => navigate("/wallet")}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 active:scale-95 transition-all"
-        >
-          <Trophy className="h-3.5 w-3.5" />
-          Рейтингові бонуси
-        </button>
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => setRulesOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted text-foreground text-xs font-medium hover:bg-muted/70 active:scale-95 transition-all"
+          >
+            <Info className="h-3.5 w-3.5" />
+            Правила
+          </button>
+          <button
+            onClick={() => navigate("/wallet")}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 active:scale-95 transition-all"
+          >
+            <Trophy className="h-3.5 w-3.5" />
+            Бонуси
+          </button>
+        </div>
       </div>
 
       <Tabs defaultValue="my" className="w-full">
@@ -1153,13 +929,14 @@ export const RatingsTab = () => {
         </TabsList>
 
         <TabsContent value="my" className="mt-3 space-y-3">
-          <MyRatingSection />
-          <BadgeRules />
+          <MyRatingSection onOpenRules={() => setRulesOpen(true)} />
         </TabsContent>
         <TabsContent value="top" className="mt-3">
           <TopSellersSection />
         </TabsContent>
       </Tabs>
+
+      <RatingRulesSheet open={rulesOpen} onOpenChange={setRulesOpen} />
     </div>
   );
 };

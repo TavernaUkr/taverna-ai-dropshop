@@ -116,6 +116,12 @@ export default {
           "0%": { backgroundPosition: "-200% 0" },
           "100%": { backgroundPosition: "200% 0" },
         },
+        "cup-beat": {
+          "0%, 100%": { transform: "scale(1)", filter: "brightness(1)" },
+          "20%": { transform: "scale(1.18)", filter: "brightness(1.25)" },
+          "40%": { transform: "scale(1)", filter: "brightness(1)" },
+          "60%": { transform: "scale(1.12)", filter: "brightness(1.18)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -125,6 +131,7 @@ export default {
         "badge-swap-alt": "badge-swap 3s ease-in-out 1.5s infinite",
         "cloud-float": "cloud-float 2.6s ease-in-out infinite",
         "shine-sweep": "shine-sweep 2.5s linear infinite",
+        "cup-beat": "cup-beat 1.6s ease-in-out infinite",
       },
 
     },
