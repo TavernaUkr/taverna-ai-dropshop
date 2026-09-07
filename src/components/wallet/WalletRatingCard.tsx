@@ -1,4 +1,5 @@
-import { Trophy, Star, TrendingUp } from "lucide-react";
+import { Trophy, Star, TrendingUp, ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useBonuses } from "@/hooks/useBonuses";
 import { cn } from "@/lib/utils";
 
@@ -22,7 +23,10 @@ function rankOf(points: number) {
 }
 
 /** Рейтингові бали, ранг і множник бонусів — усередині єдиного рахунку. */
-export function WalletRatingCard({ fallbackPoints = 0 }: { fallbackPoints?: number }) {
+export function WalletRatingCard({
+  fallbackPoints = 0,
+  onGoToRatings,
+}: { fallbackPoints?: number; onGoToRatings?: () => void }) {
   const { totalEarned, reputationMultiplier, reputationScore } = useBonuses();
 
   const points = totalEarned || fallbackPoints;
