@@ -44,7 +44,7 @@ import { PromotionPreviewDialog } from "./PromotionPreviewDialog";
 import { ProductMultiSelector } from "./ProductMultiSelector";
 import { ShopPickerInline } from "./ShopPickerInline";
 import { PostMediaUploader } from "./PostMediaUploader";
-import { PromotionStepper, StepNav, type StepDef } from "./PromotionStepper";
+import { PromotionStepper, StepNav, PromoCodeField, type StepDef } from "./PromotionStepper";
 import { Store, Package, Layers } from "lucide-react";
 
 interface Product {
@@ -195,6 +195,7 @@ export function AdvertisingTab({
   const [mediaImages, setMediaImages] = useState<string[]>([]);
   const [mediaVideo, setMediaVideo] = useState<string | null>(null);
   const [step, setStep] = useState(initialStep ?? 1);
+  const [promoPercent, setPromoPercent] = useState(0);
   const hasShopSelection = (selectedShopIds?.length || 0) > 0;
 
   const AD_STEPS: StepDef[] = [

@@ -45,7 +45,7 @@ import { AIPostPreview } from "./AIPostPreview";
 import { PromotionPreviewDialog } from "./PromotionPreviewDialog";
 import { ShopPickerInline } from "./ShopPickerInline";
 import { PostMediaUploader } from "./PostMediaUploader";
-import { PromotionStepper, StepNav, type StepDef } from "./PromotionStepper";
+import { PromotionStepper, StepNav, PromoCodeField, type StepDef } from "./PromotionStepper";
 import { Store, Package, Layers } from "lucide-react";
 
 import { ProductMultiSelector } from "./ProductMultiSelector";
@@ -164,6 +164,7 @@ export function PostingTab({
   const [mediaImages, setMediaImages] = useState<string[]>([]);
   const [mediaVideo, setMediaVideo] = useState<string | null>(null);
   const [step, setStep] = useState(initialStep ?? 1);
+  const [promoPercent, setPromoPercent] = useState(0);
 
   const POST_STEPS: StepDef[] = [
     { id: 1, label: "Магазини", icon: Store },
@@ -341,6 +342,7 @@ export function PostingTab({
 
   const selectedPlatformData = POSTING_PLATFORMS.find((p) => p.id === selectedPlatform);
   const paidPostingPrice = selectedPlatformData?.price || 50;
+  const finalPostingPrice = Math.round(paidPostingPrice * (1 - promoPercent / 100));
 
   // Group platforms by category
   const socialPlatforms = POSTING_PLATFORMS.filter(p => p.category === "social");
@@ -817,21 +819,26 @@ export function PostingTab({
         onBack={() => setStep((s) => Math.max(1, s - 1))}
         onNext={() => setStep((s) => Math.min(4, s + 1))}
         finalSlot={
-          <Button
-            className="w-full"
-            size="lg"
-            onClick={handlePublish}
-            disabled={!hasSelection || !aiText || isPublishing || postStatus === "pending"}
-          >
-            {isPublishing ? (
-              <Loader2 className="h-5 w-5 animate-spin mr-2" />
-            ) : (
-              <Send className="h-5 w-5 mr-2" />
+          <div className="space-y-2">
+            {showPaidPosting && (
+              <PromoCodeField cost={paidPostingPrice} onDiscountChange={(p) => setPromoPercent(p)} />
             )}
-            {showPaidPosting
-              ? `Оплатити ${paidPostingPrice} ₴ та опублікувати`
-              : `Додати в чергу постинга${productCount ? ` (${productCount})` : ""}`}
-          </Button>
+            <Button
+              className="w-full"
+              size="lg"
+              onClick={handlePublish}
+              disabled={!hasSelection || !aiText || isPublishing || postStatus === "pending"}
+            >
+              {isPublishing ? (
+                <Loader2 className="h-5 w-5 animate-spin mr-2" />
+              ) : (
+                <Send className="h-5 w-5 mr-2" />
+              )}
+              {showPaidPosting
+                ? `Оплатити ${finalPostingPrice} ₴ та опублікувати`
+                : `Додати в чергу постинга${productCount ? ` (${productCount})` : ""}`}
+            </Button>
+          </div>
         }
       />
 
@@ -839,7 +846,7 @@ export function PostingTab({
       <PaymentModal
         open={showPaymentModal}
         onOpenChange={setShowPaymentModal}
-        amount={paidPostingPrice}
+        amount={finalPostingPrice}
         description={`Платний постинг: ${useAllProducts ? `усі товари` : selectedProducts.length > 1 ? `${selectedProducts.length} товарів` : (sampleProduct?.name || "товар")} на ${selectedPlatformData?.name}`}
         type="posting"
         onSuccess={handlePaymentSuccess}

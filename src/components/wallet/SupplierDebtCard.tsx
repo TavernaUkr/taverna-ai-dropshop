@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { AlertTriangle, ShieldCheck, Wallet2, Info } from "lucide-react";
+import { AlertTriangle, ShieldCheck, Wallet2, Info, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
@@ -22,6 +22,8 @@ interface SupplierDebtCardProps {
   onPayDebt: () => void;
   onWithdraw?: () => void;
   readOnly?: boolean;
+  /** Відкриває шторку з деталізацією доходу / націнки */
+  onOpenDetails?: (tab: "income" | "margin") => void;
 }
 
 /** Два основні баланси постачальника: дохід і борг перед платформою. */
@@ -35,6 +37,7 @@ export function SupplierDebtCard({
   onPayDebt,
   onWithdraw,
   readOnly,
+  onOpenDetails,
 }: SupplierDebtCardProps) {
   const hasDebt = debt > 0;
   const withheld = Math.round((earnings * autoRepayPercent) / 100);
@@ -54,6 +57,16 @@ export function SupplierDebtCard({
           {fmt(earnings)}<span className="text-xl">₴</span>
         </div>
         <p className="mt-1 text-[11px] text-muted-foreground">Доступно до виводу зараз</p>
+        {onOpenDetails && (
+          <Button
+            variant="link"
+            className="h-auto p-0 mt-1 text-xs text-success"
+            onClick={() => { hapticSelection(); onOpenDetails("income"); }}
+          >
+            Детально
+            <ChevronRight className="h-3 w-3 ml-0.5" />
+          </Button>
+        )}
         {!readOnly && onWithdraw && (
           <Button className="w-full mt-3 h-10" onClick={() => { hapticSelection(); onWithdraw(); }}>
             Вивести
@@ -87,6 +100,16 @@ export function SupplierDebtCard({
             ? "Націнка платформи, отримана вами готівкою на післяплатах"
             : "Боргів немає — усі націнки погашені"}
         </p>
+        {onOpenDetails && (
+          <Button
+            variant="link"
+            className={cn("h-auto p-0 mt-1 text-xs", hasDebt ? "text-destructive" : "text-muted-foreground")}
+            onClick={() => { hapticSelection(); onOpenDetails("margin"); }}
+          >
+            Детально
+            <ChevronRight className="h-3 w-3 ml-0.5" />
+          </Button>
+        )}
         {hasDebt && !readOnly && (
           <Button
             variant="destructive"
