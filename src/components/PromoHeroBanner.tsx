@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Gift, Sparkles, ChevronRight, Crown } from "lucide-react";
+import { Gift, Sparkles, ChevronRight, Crown, Package } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { hapticSelection } from "@/lib/haptics";
 import { PersonalBonusDialog } from "@/components/promos/PersonalBonusDialog";
+import { MyBonusesInventorySheet } from "@/components/promos/MyBonusesInventorySheet";
 
 /** Преміальний банер акцій + окрема кнопка персонального бонусу на головній. */
 export const PromoHeroBanner = () => {
