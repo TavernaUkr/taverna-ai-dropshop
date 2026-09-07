@@ -354,6 +354,7 @@ export function AdvertisingTab({
   };
 
   const totalCost = calculateTotalCost();
+  const finalAdCost = Math.round(totalCost * (1 - promoPercent / 100));
 
   // Group platforms
   const categories = ["social", "messenger", "marketplace", "search"];
