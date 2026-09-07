@@ -405,6 +405,7 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
         });
       }
       setPaymentMethod('cash');
+      setPaymentType('full_prepayment');
       setOrderNotes('');
     }
   }, [isOpen, isAuthenticated, profile, isMultiSupplier, savedAddresses]);
