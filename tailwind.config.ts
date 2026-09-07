@@ -116,6 +116,12 @@ export default {
           "0%": { backgroundPosition: "-200% 0" },
           "100%": { backgroundPosition: "200% 0" },
         },
+        "cup-beat": {
+          "0%, 100%": { transform: "scale(1)", filter: "brightness(1)" },
+          "20%": { transform: "scale(1.18)", filter: "brightness(1.25)" },
+          "40%": { transform: "scale(1)", filter: "brightness(1)" },
+          "60%": { transform: "scale(1.12)", filter: "brightness(1.18)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
