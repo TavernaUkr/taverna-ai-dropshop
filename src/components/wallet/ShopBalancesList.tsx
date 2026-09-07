@@ -1,12 +1,17 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Store, ChevronRight, Clock, TrendingUp, Lock, Zap, Check } from "lucide-react";
+import {
+  Store, ChevronRight, Clock, TrendingUp, Lock, Zap, Check,
+  AlertTriangle, CreditCard, ArrowLeftRight, EyeOff,
+} from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { hapticSelection } from "@/lib/haptics";
 import type { ShopSummary, ShopsTotals } from "@/hooks/useWallet";
 import { cn } from "@/lib/utils";
+import { DEBT_BLOCK_THRESHOLD, SHOP_RESERVE, isShopBlocked, withdrawableOf } from "@/lib/payoutAllocation";
+import { ShopDebtPayDialog, ShopDebtTransferDialog } from "@/components/wallet/ShopDebtDialogs";
 
 interface ShopBalancesListProps {
   shops: ShopSummary[];
@@ -16,6 +21,10 @@ interface ShopBalancesListProps {
   onSaveAuto?: (supplierId: string, patch: Record<string, unknown>) => void | Promise<unknown>;
   /** Тільки перегляд (менеджер магазину) */
   readOnly?: boolean;
+  /** Борги магазинів перед платформою */
+  debts?: Record<string, number>;
+  /** Погашення боргу: карткою або переказом з іншого магазину */
+  onSettleDebt?: (shopId: string, amount: number, source: { type: "card" } | { type: "shop"; fromShopId: string }) => void;
 }
 
 const uah = (v: number) => `${Number(v || 0).toLocaleString("uk-UA")}₴`;
@@ -26,11 +35,18 @@ const PROVIDERS: { id: string; label: string }[] = [
   { id: "iban", label: "IBAN" },
 ];
 
-export function ShopBalancesList({ shops, totals, onOpenShop, onSaveAuto, readOnly }: ShopBalancesListProps) {
+export function ShopBalancesList({
+  shops, totals, onOpenShop, onSaveAuto, readOnly, debts = {}, onSettleDebt,
+}: ShopBalancesListProps) {
   const [openAuto, setOpenAuto] = useState<string | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkMin, setBulkMin] = useState("500");
   const [bulkProvider, setBulkProvider] = useState("telegram_wallet");
+  const [payShop, setPayShop] = useState<ShopSummary | null>(null);
+  const [transferShop, setTransferShop] = useState<ShopSummary | null>(null);
+
+  const debtOf = (shop: ShopSummary) => Number(debts[shop.id] ?? shop.debt ?? 0);
+
 
   const ownedShops = shops.filter((s) => s.role === "owner");
   const canManage = !readOnly && !!onSaveAuto && ownedShops.length > 0;
