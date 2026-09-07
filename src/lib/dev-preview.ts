@@ -11,8 +11,7 @@ export const isPreviewDevEnvironment = (): boolean => {
     return (
       host === "localhost" ||
       host === "127.0.0.1" ||
-      host.startsWith("id-preview--") ||
-      host.endsWith(".lovableproject.com")
+      host.includes("lovable")
     );
   } catch {
     return false;
