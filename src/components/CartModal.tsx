@@ -127,11 +127,20 @@ export const CartModal = ({
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4">
           {items.length === 0 ? (
-            <EmptyState
-              type="cart"
-              title="Кошик порожній"
-              description="Додайте товари з каталогу, щоб оформити замовлення"
-            />
+            <div className="flex flex-col items-center">
+              <EmptyState
+                type="cart"
+                title="Кошик порожній"
+                description="Додайте товари з каталогу, щоб оформити замовлення"
+              />
+              <Button
+                onClick={handleBrowseCatalog}
+                className="w-full max-w-xs -mt-2 mb-8"
+                size="lg"
+              >
+                Додати товари
+              </Button>
+            </div>
           ) : (
             <div className="space-y-4">
               {/* Multi-supplier warning */}
