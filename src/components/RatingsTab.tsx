@@ -1170,13 +1170,22 @@ export const RatingsTab = () => {
             <span className="text-xs font-medium text-rating">LIVE</span>
           </div>
         </div>
-        <button
-          onClick={() => navigate("/wallet")}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 active:scale-95 transition-all"
-        >
-          <Trophy className="h-3.5 w-3.5" />
-          Рейтингові бонуси
-        </button>
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => setRulesOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted text-foreground text-xs font-medium hover:bg-muted/70 active:scale-95 transition-all"
+          >
+            <Info className="h-3.5 w-3.5" />
+            Правила
+          </button>
+          <button
+            onClick={() => navigate("/wallet")}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 active:scale-95 transition-all"
+          >
+            <Trophy className="h-3.5 w-3.5" />
+            Бонуси
+          </button>
+        </div>
       </div>
 
       <Tabs defaultValue="my" className="w-full">
