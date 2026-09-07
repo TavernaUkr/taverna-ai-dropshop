@@ -37,8 +37,9 @@ export function WalletRatingCard({ fallbackPoints = 0 }: { fallbackPoints?: numb
           <Trophy className="h-5 w-5 text-warning" />
         </div>
         <div className="flex-1 min-w-0">
+          <p className="text-[11px] text-muted-foreground">Мій Рейтинг</p>
           <p className="text-sm font-semibold text-foreground">
-            Рейтинг: <span className={cn(current.tone)}>{current.name}</span>
+            <span className={cn(current.tone)}>{current.name}</span> клієнт
           </p>
           <p className="text-[11px] text-muted-foreground">
             {points.toLocaleString("uk-UA")} балів
