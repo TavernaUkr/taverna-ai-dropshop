@@ -1141,7 +1141,7 @@ const TopSellersSection = () => {
           <PeriodPills period={period} onChange={setPeriod} />
           <div className="space-y-2.5">
             {sellers.map((s, i) => (
-              <SellerCard key={s.shopName} seller={s} rank={i + 1} />
+              <SellerCard key={s.shopName} seller={s} rank={i + 1} period={period} />
             ))}
           </div>
         </>
