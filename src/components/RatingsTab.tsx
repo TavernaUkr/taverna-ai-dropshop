@@ -956,44 +956,39 @@ interface TopSeller {
   sales: number;
   positive: number;
   negative: number;
+  points: number;
 }
 
-const topSellersByPeriod: Record<Period, TopSeller[]> = {
-  day: [
-    { shopName: "Tactical Pro", initials: "TP", gradient: "from-emerald-500/30 to-lime-400/20", rating: 4.9, sales: 18, positive: 17, negative: 1 },
-    { shopName: "Military Store", initials: "MS", gradient: "from-sky-500/30 to-cyan-400/20", rating: 4.8, sales: 14, positive: 13, negative: 1 },
-    { shopName: "Urban Gear", initials: "UG", gradient: "from-amber-500/30 to-orange-400/20", rating: 4.6, sales: 11, positive: 10, negative: 1 },
-    { shopName: "Alpha Gear", initials: "AG", gradient: "from-violet-500/30 to-fuchsia-400/20", rating: 4.5, sales: 8, positive: 7, negative: 1 },
-    { shopName: "Ranger Shop", initials: "RS", gradient: "from-rose-500/30 to-pink-400/20", rating: 4.4, sales: 6, positive: 5, negative: 1 },
-  ],
-  week: [
-    { shopName: "Tactical Pro", initials: "TP", gradient: "from-emerald-500/30 to-lime-400/20", rating: 4.9, sales: 96, positive: 91, negative: 5 },
-    { shopName: "Urban Gear", initials: "UG", gradient: "from-amber-500/30 to-orange-400/20", rating: 4.7, sales: 78, positive: 73, negative: 5 },
-    { shopName: "Military Store", initials: "MS", gradient: "from-sky-500/30 to-cyan-400/20", rating: 4.7, sales: 71, positive: 66, negative: 5 },
-    { shopName: "Alpha Gear", initials: "AG", gradient: "from-violet-500/30 to-fuchsia-400/20", rating: 4.5, sales: 54, positive: 49, negative: 5 },
-    { shopName: "Ranger Shop", initials: "RS", gradient: "from-rose-500/30 to-pink-400/20", rating: 4.3, sales: 41, positive: 36, negative: 5 },
-  ],
-  month: [
-    { shopName: "Tactical Pro", initials: "TP", gradient: "from-emerald-500/30 to-lime-400/20", rating: 4.8, sales: 412, positive: 389, negative: 23 },
-    { shopName: "Military Store", initials: "MS", gradient: "from-sky-500/30 to-cyan-400/20", rating: 4.7, sales: 337, positive: 312, negative: 25 },
-    { shopName: "Urban Gear", initials: "UG", gradient: "from-amber-500/30 to-orange-400/20", rating: 4.6, sales: 289, positive: 264, negative: 25 },
-    { shopName: "Alpha Gear", initials: "AG", gradient: "from-violet-500/30 to-fuchsia-400/20", rating: 4.5, sales: 214, positive: 192, negative: 22 },
-    { shopName: "Ranger Shop", initials: "RS", gradient: "from-rose-500/30 to-pink-400/20", rating: 4.4, sales: 178, positive: 156, negative: 22 },
-  ],
-  year: [
-    { shopName: "Tactical Pro", initials: "TP", gradient: "from-emerald-500/30 to-lime-400/20", rating: 4.8, sales: 4820, positive: 4553, negative: 267 },
-    { shopName: "Military Store", initials: "MS", gradient: "from-sky-500/30 to-cyan-400/20", rating: 4.7, sales: 3945, positive: 3688, negative: 257 },
-    { shopName: "Urban Gear", initials: "UG", gradient: "from-amber-500/30 to-orange-400/20", rating: 4.6, sales: 3312, positive: 3061, negative: 251 },
-    { shopName: "Alpha Gear", initials: "AG", gradient: "from-violet-500/30 to-fuchsia-400/20", rating: 4.5, sales: 2488, positive: 2260, negative: 228 },
-    { shopName: "Ranger Shop", initials: "RS", gradient: "from-rose-500/30 to-pink-400/20", rating: 4.4, sales: 1974, positive: 1770, negative: 204 },
-  ],
-  alltime: [
-    { shopName: "Tactical Pro", initials: "TP", gradient: "from-emerald-500/30 to-lime-400/20", rating: 4.9, sales: 18420, positive: 17604, negative: 816 },
-    { shopName: "Military Store", initials: "MS", gradient: "from-sky-500/30 to-cyan-400/20", rating: 4.8, sales: 15230, positive: 14468, negative: 762 },
-    { shopName: "Urban Gear", initials: "UG", gradient: "from-amber-500/30 to-orange-400/20", rating: 4.7, sales: 12885, positive: 12112, negative: 773 },
-    { shopName: "Alpha Gear", initials: "AG", gradient: "from-violet-500/30 to-fuchsia-400/20", rating: 4.6, sales: 9640, positive: 8965, negative: 675 },
-    { shopName: "Ranger Shop", initials: "RS", gradient: "from-rose-500/30 to-pink-400/20", rating: 4.5, sales: 7315, positive: 6730, negative: 585 },
-  ],
+const SELLER_BASE = [
+  { shopName: "Tactical Pro", initials: "TP", gradient: "from-emerald-500/30 to-lime-400/20" },
+  { shopName: "Military Store", initials: "MS", gradient: "from-sky-500/30 to-cyan-400/20" },
+  { shopName: "Urban Gear", initials: "UG", gradient: "from-amber-500/30 to-orange-400/20" },
+  { shopName: "Alpha Gear", initials: "AG", gradient: "from-violet-500/30 to-fuchsia-400/20" },
+  { shopName: "Ranger Shop", initials: "RS", gradient: "from-rose-500/30 to-pink-400/20" },
+  { shopName: "Nord Tactical", initials: "NT", gradient: "from-indigo-500/30 to-blue-400/20" },
+  { shopName: "Steel Line", initials: "SL", gradient: "from-slate-500/30 to-zinc-400/20" },
+  { shopName: "Falcon Kit", initials: "FK", gradient: "from-teal-500/30 to-emerald-400/20" },
+  { shopName: "Vector Shop", initials: "VS", gradient: "from-orange-500/30 to-red-400/20" },
+  { shopName: "Base Camp", initials: "BC", gradient: "from-lime-500/30 to-green-400/20" },
+];
+
+const PERIOD_SCALE: Record<Period, number> = { day: 1, week: 6, month: 24, year: 260, alltime: 980 };
+
+const buildSellers = (period: Period): TopSeller[] => {
+  const scale = PERIOD_SCALE[period];
+  return SELLER_BASE.map((base, i) => {
+    const sales = Math.max(1, Math.round((20 - i * 1.7) * scale));
+    const rating = Math.round((4.95 - i * 0.07) * 10) / 10;
+    const negative = Math.max(0, Math.round(sales * (0.02 + i * 0.006)));
+    return {
+      ...base,
+      rating,
+      sales,
+      negative,
+      positive: sales - negative,
+      points: Math.round(sales * 18 + rating * 900 - negative * 25),
+    };
+  });
 };
 
 const PeriodPills = ({ period, onChange }: { period: Period; onChange: (p: Period) => void }) => (
@@ -1015,32 +1010,53 @@ const PeriodPills = ({ period, onChange }: { period: Period; onChange: (p: Perio
   </div>
 );
 
-const SellerCard = ({ seller, rank }: { seller: TopSeller; rank: number }) => {
+const SellerCard = ({ seller, rank, period }: { seller: TopSeller; rank: number; period: Period }) => {
   const total = seller.positive + seller.negative;
   const positiveShare = total ? (seller.positive / total) * 100 : 0;
-  const isTop3 = rank <= 3;
+  const badge = getRankBadge(rank, period);
+  const isFirst = rank === 1;
 
   return (
-    <div className="rounded-2xl border border-border bg-card overflow-hidden">
+    <div
+      className={cn(
+        "rounded-2xl border bg-card overflow-hidden transition-all",
+        isFirst
+          ? "border-yellow-500/50 shadow-[0_10px_30px_-16px_hsl(45_93%_47%/0.8)]"
+          : rank <= 3
+            ? "border-border ring-1 ring-border"
+            : "border-border"
+      )}
+    >
       <div className={cn("relative h-14 bg-gradient-to-r", seller.gradient)}>
-        <div
-          className={cn(
-            "absolute top-2 left-2 min-w-[26px] h-[26px] px-1.5 rounded-full flex items-center justify-center text-xs font-bold backdrop-blur-sm",
-            isTop3 ? cn(rankBgs[rank - 1], rankColors[rank - 1], "bg-card/80") : "bg-card/80 text-muted-foreground"
-          )}
-        >
-          {isTop3 ? <Crown className="h-3.5 w-3.5" /> : rank}
+        <div className="absolute top-2 left-2 flex items-center gap-1 rounded-full bg-card/85 backdrop-blur-sm px-1.5 py-1">
+          <span className="text-[11px] font-bold text-foreground">#{rank}</span>
+          <RankCheckmark rank={rank} period={period} size="sm" />
+          <RankCup rank={rank} size="sm" />
         </div>
+        {badge.kind !== "none" && (
+          <span className={cn("absolute top-2.5 right-2 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-card/85 backdrop-blur-sm", badge.text)}>
+            {badge.emoji} {badge.label}
+          </span>
+        )}
       </div>
 
       <div className="px-3 pb-3 -mt-6">
         <div className="flex items-end gap-2.5">
-          <div className="w-12 h-12 rounded-xl bg-card border-2 border-card shadow-sm flex items-center justify-center text-sm font-bold text-foreground ring-1 ring-border">
+          <div className={cn(
+            "w-12 h-12 rounded-xl bg-card border-2 border-card shadow-sm flex items-center justify-center text-sm font-bold text-foreground ring-1",
+            isFirst ? "ring-yellow-500/50" : "ring-border"
+          )}>
             {seller.initials}
           </div>
           <div className="min-w-0 flex-1 pb-0.5">
             <p className="text-sm font-bold text-foreground truncate">{seller.shopName}</p>
             <StarRating rating={seller.rating} />
+          </div>
+          <div className="text-right pb-0.5">
+            <p className={cn("text-base font-extrabold leading-none", isFirst ? "text-yellow-500" : "text-foreground")}>
+              {seller.points.toLocaleString("uk-UA")}
+            </p>
+            <p className="text-[10px] text-muted-foreground">балів</p>
           </div>
         </div>
 
