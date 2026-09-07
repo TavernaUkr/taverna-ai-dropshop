@@ -9,6 +9,7 @@ import { WalletBadgeCloud, type WalletCloudAction, type WalletCloudVariant } fro
 
 import { useWallet } from "@/hooks/useWallet";
 import { useTelegramAuthContext } from "./TelegramAuthProvider";
+import { cn } from "@/lib/utils";
 
 
 interface HeaderProps {
