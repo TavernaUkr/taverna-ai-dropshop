@@ -9,6 +9,7 @@ import { CategoryCard } from "@/components/CategoryCard";
 import { LiveFeedItem } from "@/components/LiveFeedItem";
 import { PartnerBanner } from "@/components/PartnerBanner";
 import { PromoCard } from "@/components/PromoCard";
+import { PromoHeroBanner } from "@/components/PromoHeroBanner";
 import { SearchModal } from "@/components/SearchModal";
 import { CartModal } from "@/components/CartModal";
 import { CheckoutModal } from "@/components/CheckoutModal";
@@ -135,6 +136,8 @@ const CatalogTab = ({
   
   return (
     <div className="space-y-6 pb-28 animate-fade-in">
+      <PromoHeroBanner />
+
       {/* Categories */}
       <section>
         <div className="flex items-center justify-between mb-3">

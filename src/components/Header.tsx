@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ShoppingCart, Search, Heart, Gift, Info, Trophy, Wallet, Globe, Flag, LogIn, Plus, ArrowUpRight, ShoppingBag, Eye } from "lucide-react";
+import { ShoppingCart, Search, Heart, Gift, Info, Trophy, Wallet, Globe, Flag, LogIn, Plus, ArrowUpRight, ShoppingBag, Eye, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import tavernaLogo from "@/assets/taverna-logo.png";
 import { AppInfoModal } from "./AppInfoModal";
@@ -141,6 +141,13 @@ export const Header = ({
               aria-label="Акції">
               
               <Gift className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => navigate("/referrals")}
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-primary hover:bg-primary/10 active:scale-95 transition-all"
+              aria-label="Реферальна програма">
+
+              <Users className="h-4 w-4" />
             </button>
             <button
               onClick={onSearchClick}
