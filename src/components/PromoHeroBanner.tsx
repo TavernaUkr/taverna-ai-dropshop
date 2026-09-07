@@ -11,6 +11,7 @@ export const PromoHeroBanner = () => {
   const navigate = useNavigate();
   const [promoCount, setPromoCount] = useState(0);
   const [bonusOpen, setBonusOpen] = useState(false);
+  const [inventoryOpen, setInventoryOpen] = useState(false);
 
   useEffect(() => {
     supabase
