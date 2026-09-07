@@ -33,10 +33,14 @@ interface WalletOverviewProps {
   shops: ShopSummary[];
   totals: ShopsTotals | null;
   onOpenShops: () => void;
+  onWithdraw?: () => void;
+  onConnectWallet?: () => void;
+  readOnly?: boolean;
 }
 
 /** «Загалом»: зведення всіх магазинів + особисті кошти + графік по періодах. */
-export function WalletOverview({ wallet, shops, totals, onOpenShops }: WalletOverviewProps) {
+export function WalletOverview({ wallet, shops, totals, onOpenShops, onWithdraw, onConnectWallet, readOnly }: WalletOverviewProps) {
+  const debtCtl = useDebtControls(Number((wallet as any).platform_debt ?? 0));
   const auth = useTelegramAuthContext() as any;
   const sessionToken = auth?.sessionToken;
   const devRoleOverride = auth?.devRoleOverride;
