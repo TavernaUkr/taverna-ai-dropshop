@@ -85,10 +85,8 @@ export function WalletOverview({ wallet, shops, totals, onOpenShops, onWithdraw,
   const turnover = totals?.turnover ?? 0;
   const commission = shops.reduce((s, r) => s + Number(r.commission || 0), 0);
 
-  const grandTotal = useMemo(
-    () => Number(wallet.balance || 0) + Number(shopsAvailable || 0),
-    [wallet.balance, shopsAvailable],
-  );
+  const grandTotal = useMemo(() => Number(shopsAvailable || 0), [shopsAvailable]);
+
 
   return (
     <div className="space-y-4">
