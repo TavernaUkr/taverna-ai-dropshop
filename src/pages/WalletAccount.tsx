@@ -435,7 +435,14 @@ export default function WalletAccount() {
 
       <ConnectWalletSheet open={showConnect} onOpenChange={setShowConnect} onConnect={connectWallet} />
       <TopUpSheet open={showTopUp} onOpenChange={setShowTopUp} limits={limits} mode={mode} onTopUp={topUp} onCheckTopUp={checkTopUp} />
-      <PayoutSheet open={showPayout} onOpenChange={setShowPayout} wallet={wallet} limits={limits} onPayout={requestPayout} />
+      <PayoutSheet
+        open={showPayout}
+        onOpenChange={setShowPayout}
+        wallet={wallet}
+        limits={limits}
+        sources={payoutSources}
+        onPayout={requestPayout}
+      />
       <ReceiptDialog transaction={receipt} onOpenChange={() => setReceipt(null)} />
     </div>
   );
