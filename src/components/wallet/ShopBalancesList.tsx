@@ -52,7 +52,7 @@ export function ShopBalancesList({ shops, totals, onOpenShop, onSaveAuto, readOn
           animate={{ opacity: 1, y: 0 }}
           className="rounded-2xl border border-border bg-gradient-to-br from-success/15 via-success/5 to-transparent p-4"
         >
-          <p className="text-xs text-muted-foreground">Загальний баланс магазинів</p>
+          <p className="text-xs text-muted-foreground">Загальний баланс магазинів · доступно до виводу</p>
           <p className="text-3xl font-bold text-foreground mt-0.5">{uah(totals.available)}</p>
           <div className="grid grid-cols-3 gap-2 mt-3">
             <MiniStat label="В обробці" value={uah(totals.pending)} />
