@@ -351,19 +351,10 @@ const SupplierRankings = () => {
             supplier.rank <= 3 ? `${rankBgs[supplier.rank - 1]} border-transparent` : "border-border bg-card"
           )}>
             <div className="flex items-center gap-3 mb-2">
-              {supplier.rank <= 3 ? (
-                <div className={cn("w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0", periodBadgeColors[period].bg, supplier.rank === 1 && periodBadgeColors[period].glow)}>
-                  <BadgeCheck className={cn("h-5 w-5", periodBadgeColors[period].text)} />
-                </div>
-              ) : supplier.rank <= 10 ? (
-                <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 bg-emerald-500/15">
-                  <BadgeCheck className="h-5 w-5 text-emerald-500" />
-                </div>
-              ) : (
-                <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 bg-muted text-muted-foreground">
-                  {supplier.rank}
-                </div>
-              )}
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <RankCheckmark rank={supplier.rank} period={period} />
+                <RankCup rank={supplier.rank} size="sm" />
+              </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
                   <p className={cn("font-semibold text-sm", supplier.rank === 1 ? periodBadgeColors[period].shimmer : "text-foreground")}>{supplier.shopName}</p>
