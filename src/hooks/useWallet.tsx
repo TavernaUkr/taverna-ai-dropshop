@@ -40,10 +40,13 @@ export interface WalletState {
   payout_provider: string;
   auto_withdraw: boolean;
   auto_withdraw_min: number;
+  /** Заборгованість перед платформою (націнка з післяплат). UI-поле, сервер може не повертати. */
+  platform_debt?: number;
 }
 
 const demoWallet = (bonusOnly = false): WalletState => ({
   id: "preview-wallet",
+  platform_debt: bonusOnly ? 0 : 4820,
   balance: bonusOnly ? 0 : 3420,
   bonus_balance: 1250,
   pending: bonusOnly ? 0 : 780,

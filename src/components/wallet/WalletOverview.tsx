@@ -7,6 +7,8 @@ import { isPreviewDevEnvironment } from "@/lib/dev-preview";
 import { hapticSelection } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
 import type { WalletState, ShopSummary, ShopsTotals } from "@/hooks/useWallet";
+import { SupplierDebtCard, useDebtControls } from "@/components/wallet/SupplierDebtCard";
+import { UsdtPayoutCard } from "@/components/wallet/UsdtPayoutCard";
 
 type Period = "day" | "week" | "month" | "year";
 interface SeriesPoint { label: string; turnover: number; commission?: number }
@@ -33,10 +35,16 @@ interface WalletOverviewProps {
   shops: ShopSummary[];
   totals: ShopsTotals | null;
   onOpenShops: () => void;
+  onWithdraw?: () => void;
+  onConnectWallet?: () => void;
+  readOnly?: boolean;
 }
 
 /** «Загалом»: зведення всіх магазинів + особисті кошти + графік по періодах. */
-export function WalletOverview({ wallet, shops, totals, onOpenShops }: WalletOverviewProps) {
+export function WalletOverview({ wallet, shops, totals, onOpenShops, onWithdraw, onConnectWallet, readOnly }: WalletOverviewProps) {
+  const debtCtl = useDebtControls(
+    Number(wallet.platform_debt ?? (isPreviewDevEnvironment() ? 4820 : 0)),
+  );
   const auth = useTelegramAuthContext() as any;
   const sessionToken = auth?.sessionToken;
   const devRoleOverride = auth?.devRoleOverride;
@@ -84,6 +92,29 @@ export function WalletOverview({ wallet, shops, totals, onOpenShops }: WalletOve
 
   return (
     <div className="space-y-4">
+      {/* Дохід vs борг перед платформою */}
+      <SupplierDebtCard
+        earnings={grandTotal}
+        debt={debtCtl.debt}
+        autoRepay={debtCtl.autoRepay}
+        autoRepayPercent={debtCtl.percent}
+        onAutoRepayChange={debtCtl.setAutoRepay}
+        onAutoRepayPercentChange={debtCtl.setPercent}
+        onPayDebt={debtCtl.payDebt}
+        onWithdraw={onWithdraw}
+        readOnly={readOnly}
+      />
+
+      {/* USDT / Telegram Wallet */}
+      {!readOnly && onConnectWallet && (
+        <UsdtPayoutCard
+          connected={!!wallet.is_connected}
+          address={wallet.tg_wallet_address}
+          currency={wallet.tg_wallet_currency}
+          onConnect={onConnectWallet}
+        />
+      )}
+
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}

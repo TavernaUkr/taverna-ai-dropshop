@@ -202,7 +202,10 @@ export default function WalletAccount() {
             wallet={wallet}
             shops={shops}
             totals={shopsTotals}
+            readOnly={readOnly}
             onOpenShops={() => setTab("shops")}
+            onWithdraw={() => setShowPayout(true)}
+            onConnectWallet={() => setShowConnect(true)}
           />
         ) : tab === "shops" && !supplierId ? (
           <ShopBalancesList
