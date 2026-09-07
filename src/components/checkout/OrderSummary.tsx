@@ -1,6 +1,7 @@
-import { Package, Truck, Banknote, Tag, Wallet, Sparkles } from "lucide-react";
+import { Package, Truck, Banknote, Tag, Wallet, Sparkles, Info } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { CartItem } from "@/components/CartModal";
+import { PaymentType } from "./PaymentMethodSelect";
 
 interface OrderSummaryProps {
   items: CartItem[];
@@ -12,6 +13,8 @@ interface OrderSummaryProps {
   personalBonusDiscount?: number;
   personalBonusName?: string;
   promoCode?: string;
+  paymentType?: PaymentType;
+  amountToPayNow?: number;
 }
 
 export const OrderSummary = ({
@@ -24,7 +27,11 @@ export const OrderSummary = ({
   personalBonusDiscount = 0,
   personalBonusName,
   promoCode,
+  paymentType = "full_prepayment",
+  amountToPayNow = total,
 }: OrderSummaryProps) => {
+  const remainingAtPickup = Math.max(0, total - amountToPayNow);
+
   return (
     <div className="bg-card rounded-xl border border-border p-4 space-y-4">
       <div className="flex items-center gap-2">
@@ -108,16 +115,40 @@ export const OrderSummary = ({
 
       <Separator />
 
-      {/* Total */}
+      {/* Payment type helper */}
+      {paymentType === "markup_only" && (
+        <div className="flex items-start gap-2 text-xs text-muted-foreground bg-muted/50 rounded-lg p-2.5">
+          <Info className="h-3.5 w-3.5 shrink-0 mt-0.5 text-primary" />
+          <span>
+            Часткова оплата: зараз сплачується націнка платформи (~25%). Решту суми потрібно буде сплатити при отриманні накладним платежем.
+          </span>
+        </div>
+      )}
+
+      {/* To pay now */}
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-2">
           <Banknote className="h-5 w-5 text-primary" />
-          <span className="font-semibold text-foreground">До сплати</span>
+          <span className="font-semibold text-foreground">Сума до сплати зараз</span>
         </div>
         <span className="text-xl font-bold text-primary">
-          {total.toLocaleString()} ₴
+          {amountToPayNow.toLocaleString()} ₴
         </span>
       </div>
+
+      {/* COD / remaining amount notices */}
+      {paymentType === "cod" && (
+        <div className="bg-warning/10 border border-warning/30 rounded-xl p-3 flex items-center justify-between">
+          <span className="text-sm font-medium text-foreground">До сплати на пошті:</span>
+          <span className="text-lg font-bold text-warning">{total.toLocaleString()} ₴</span>
+        </div>
+      )}
+      {paymentType === "markup_only" && remainingAtPickup > 0 && (
+        <div className="bg-muted/50 rounded-xl p-3 flex items-center justify-between">
+          <span className="text-sm text-muted-foreground">Решта при отриманні:</span>
+          <span className="text-base font-semibold text-foreground">{remainingAtPickup.toLocaleString()} ₴</span>
+        </div>
+      )}
     </div>
   );
 };

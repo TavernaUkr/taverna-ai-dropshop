@@ -16,7 +16,7 @@ import { CheckoutSteps, CheckoutStep } from './checkout/CheckoutSteps';
 import { PhoneInput } from './checkout/PhoneInput';
 import { CitySearch } from './checkout/CitySearch';
 import { WarehouseSelect } from './checkout/WarehouseSelect';
-import { PaymentMethodSelect, PaymentMethod } from './checkout/PaymentMethodSelect';
+import { PaymentMethodSelect, PaymentMethod, PaymentType } from './checkout/PaymentMethodSelect';
 import { OrderSummary } from './checkout/OrderSummary';
 import { CheckoutDiscounts } from './checkout/CheckoutDiscounts';
 import { 
@@ -95,6 +95,7 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
   
   // Payment
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
+  const [paymentType, setPaymentType] = useState<PaymentType>('full_prepayment');
   const { payWithBalance } = useWallet();
   const [walletOrder, setWalletOrder] = useState<{ id: string; number?: string | null } | null>(null);
   const [orderNotes, setOrderNotes] = useState('');
@@ -124,6 +125,13 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
     ? Math.round(subtotal * selectedPersonalBonus.discountPercent / 100)
     : selectedPersonalBonus?.discountAmount || 0;
   const total = Math.max(0, subtotal + deliveryCost - promoDiscount - bonusesToUse - personalBonusDiscount);
+
+  // Amount to pay now depends on selected payment type
+  const amountToPayNow = paymentType === 'full_prepayment'
+    ? total
+    : paymentType === 'markup_only'
+    ? Math.round(total * 0.25)
+    : 0;
 
   // Load personal bonuses for checkout
   useEffect(() => {
@@ -397,6 +405,7 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
         });
       }
       setPaymentMethod('cash');
+      setPaymentType('full_prepayment');
       setOrderNotes('');
     }
   }, [isOpen, isAuthenticated, profile, isMultiSupplier, savedAddresses]);
@@ -823,6 +832,8 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
       <PaymentMethodSelect
         value={paymentMethod}
         onChange={setPaymentMethod}
+        paymentType={paymentType}
+        onPaymentTypeChange={setPaymentType}
         allowTavernaBalance={["supplier", "shop_manager", "admin", "moderator"].includes(effectiveRole)}
       />
 
@@ -891,6 +902,8 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
         personalBonusDiscount={personalBonusDiscount}
         personalBonusName={selectedPersonalBonus?.title}
         promoCode={promoApplied ? promoCode : undefined}
+        paymentType={paymentType}
+        amountToPayNow={amountToPayNow}
       />
 
       {/* Contact Info */}
@@ -929,8 +942,13 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
         <div className="text-sm font-medium text-foreground flex items-center gap-2">
           💳 Оплата
         </div>
+        <p className="text-sm text-foreground font-medium">
+          {paymentType === 'full_prepayment' && 'Повна оплата'}
+          {paymentType === 'markup_only' && 'Часткова оплата (Лише націнка)'}
+          {paymentType === 'cod' && 'При отриманні (Накладений платіж)'}
+        </p>
         <p className="text-sm text-muted-foreground">
-          {paymentMethod === 'cash' && 'Оплата при отриманні (Накладений платіж)'}
+          {paymentMethod === 'cash' && 'Оплата при отриманні на пошті'}
           {paymentMethod === 'card' && 'Картка Visa/Mastercard'}
           {paymentMethod === 'mono' && 'MonoPay'}
           {paymentMethod === 'applepay' && 'Apple Pay'}
@@ -938,12 +956,17 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
           {paymentMethod === 'telegram_wallet' && 'Telegram Wallet'}
           {paymentMethod === 'taverna_balance' && 'Рахунок Taverna (баланс + бонуси)'}
         </p>
+        {paymentType === 'markup_only' && (
+          <p className="text-xs text-primary">
+            Решту {Math.max(0, total - amountToPayNow).toLocaleString()}₴ сплатите при отриманні накладним платежем
+          </p>
+        )}
       </div>
 
       {/* Total highlight */}
       <div className="bg-primary/10 border border-primary/20 rounded-xl p-4 flex items-center justify-between">
-        <span className="font-semibold text-foreground">До сплати:</span>
-        <span className="text-xl font-bold text-primary">{total}₴</span>
+        <span className="font-semibold text-foreground">Сума до сплати зараз:</span>
+        <span className="text-xl font-bold text-primary">{amountToPayNow.toLocaleString()}₴</span>
       </div>
 
       <div className="flex gap-3">
@@ -1011,7 +1034,7 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
             <WalletPayment
               orderId={walletOrder.id}
               orderNumber={walletOrder.number}
-              amount={total}
+              amount={amountToPayNow}
               sessionToken={sessionToken}
               onPaid={(id) => { setWalletOrder(null); onOrderComplete(id); }}
               onCancel={() => { const id = walletOrder.id; setWalletOrder(null); onOrderComplete(id); }}
