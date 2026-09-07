@@ -115,30 +115,12 @@ export function WalletOverview({ wallet, shops, totals, onOpenShops, onWithdraw,
         />
       )}
 
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="rounded-2xl bg-gradient-to-br from-primary/15 via-primary/5 to-transparent border border-border p-5"
-      >
-        <p className="text-xs text-muted-foreground">Загалом доступно (магазини + особисті)</p>
-        <div className="text-4xl font-bold text-foreground mt-1">
-          {fmt(grandTotal)}<span className="text-2xl">₴</span>
-        </div>
-        <p className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1">
-          <Clock className="h-3 w-3" />
-          Ще {fmt(shopsPending + Number(wallet.pending || 0))}₴ в обробці — кошти по незавершених замовленнях
-        </p>
+      <div className="grid grid-cols-3 gap-2">
+        <Cell label="Доступно" value={shopsAvailable} icon={Store} tone="success" />
+        <Cell label="В обробці" value={shopsPending} icon={Clock} tone="muted" />
+        <Cell label="Виплачено" value={shopsPaid} icon={Banknote} />
+      </div>
 
-        <div className="grid grid-cols-2 gap-2 mt-4">
-          <Cell label="Доступно · магазини" value={shopsAvailable} icon={Store} tone="success" />
-          <Cell label="В обробці · магазини" value={shopsPending} icon={Clock} tone="muted" />
-          <Cell label="Доступно · особистий" value={Number(wallet.balance || 0)} icon={Wallet} tone="success" />
-          <Cell label="В обробці · особистий" value={Number(wallet.pending || 0)} icon={Clock} tone="muted" />
-        </div>
-        <div className="mt-2">
-          <Cell label="Виплачено за весь час" value={shopsPaid} icon={Banknote} />
-        </div>
-      </motion.div>
 
       <div className="grid grid-cols-2 gap-3">
         <div className="rounded-xl border border-border bg-card p-3">
