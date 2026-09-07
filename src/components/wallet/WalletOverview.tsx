@@ -180,13 +180,18 @@ export function WalletOverview({ wallet, shops, totals, onOpenShops }: WalletOve
   );
 }
 
-function Cell({ label, value, icon: Icon }: { label: string; value: number; icon: any }) {
+function Cell({ label, value, icon: Icon, tone }: { label: string; value: number; icon: any; tone?: "success" | "muted" }) {
   return (
     <div className="rounded-xl bg-card/70 border border-border p-2.5">
       <p className="text-[11px] text-muted-foreground flex items-center gap-1">
-        <Icon className="h-3 w-3" /> {label}
+        <Icon className={cn("h-3 w-3", tone === "success" && "text-success")} /> {label}
       </p>
-      <p className="text-sm font-semibold text-foreground">{fmt(value)}₴</p>
+      <p className={cn(
+        "text-sm font-semibold",
+        tone === "success" ? "text-success" : tone === "muted" ? "text-muted-foreground" : "text-foreground",
+      )}>
+        {fmt(value)}₴
+      </p>
     </div>
   );
 }
