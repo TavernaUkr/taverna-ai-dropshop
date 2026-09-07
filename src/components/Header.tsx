@@ -167,15 +167,19 @@ export const Header = ({
               }
             </button>
             <button
-              onClick={onCartClick}
-              className="relative w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground active:scale-95 transition-all">
-              
-              <ShoppingCart className="h-4.5 w-4.5" />
-              {cartCount > 0 &&
-              <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 flex items-center justify-center bg-primary text-primary-foreground text-[9px] font-bold rounded-full">
-                  {cartCount > 99 ? "99+" : cartCount}
-                </span>
-              }
+              onClick={() => (cartCount > 0 ? onCartClick?.() : navigate("/"))}
+              className={cn(
+                "relative flex items-center gap-1 h-8 pl-2 pr-2.5 rounded-full transition-all active:scale-95",
+                cartCount > 0
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+              aria-label={cartCount > 0 ? "Оформити замовлення" : "Додати товари"}>
+
+              <ShoppingCart className="h-4 w-4" />
+              <span className="text-[10px] font-semibold">
+                {cartCount > 0 ? `Оформити${cartCount > 1 ? ` · ${cartCount > 99 ? "99+" : cartCount}` : ""}` : "Додати"}
+              </span>
             </button>
           </div>
         </div>
