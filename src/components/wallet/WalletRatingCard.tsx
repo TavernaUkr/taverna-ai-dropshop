@@ -56,7 +56,28 @@ export function WalletRatingCard({
           </p>
           <p className="text-sm font-bold text-primary">×{multiplier.toFixed(1)}</p>
         </div>
+        {onGoToRatings && (
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Всі рівні рейтингу"
+            onClick={onGoToRatings}
+            className="shrink-0 -mr-1 text-muted-foreground"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </Button>
+        )}
       </div>
+
+      {onGoToRatings && (
+        <button
+          onClick={onGoToRatings}
+          className="mt-2 text-[11px] font-medium text-primary active:opacity-60"
+        >
+          Детальніше про рейтинг · всі рівні
+        </button>
+      )}
+
 
       <div className="mt-3">
         <div className="h-1.5 rounded-full bg-muted overflow-hidden">
