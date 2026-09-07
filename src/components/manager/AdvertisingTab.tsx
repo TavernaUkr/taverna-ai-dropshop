@@ -843,27 +843,30 @@ export function AdvertisingTab({
         onBack={() => setStep((s) => Math.max(1, s - 1))}
         onNext={() => setStep((s) => Math.min(4, s + 1))}
         finalSlot={
-          <Button
-            className="w-full"
-            size="lg"
-            onClick={handleSubmitAd}
-            disabled={
-              !hasSelection ||
-              selectedPlatforms.length === 0 ||
-              !aiText ||
-              adStatus === "pending_review" ||
-              adStatus === "active"
-            }
-          >
-            {adStatus === "pending_review" ? (
-              <Loader2 className="h-5 w-5 animate-spin mr-2" />
-            ) : (
-              <Megaphone className="h-5 w-5 mr-2" />
-            )}
-            {adStatus === "pending_review"
-              ? "Модерація..."
-              : `Оплатити ${totalCost} ₴ та запустити рекламу`}
-          </Button>
+          <div className="space-y-2">
+            <PromoCodeField cost={totalCost} onDiscountChange={(p) => setPromoPercent(p)} />
+            <Button
+              className="w-full"
+              size="lg"
+              onClick={handleSubmitAd}
+              disabled={
+                !hasSelection ||
+                selectedPlatforms.length === 0 ||
+                !aiText ||
+                adStatus === "pending_review" ||
+                adStatus === "active"
+              }
+            >
+              {adStatus === "pending_review" ? (
+                <Loader2 className="h-5 w-5 animate-spin mr-2" />
+              ) : (
+                <Megaphone className="h-5 w-5 mr-2" />
+              )}
+              {adStatus === "pending_review"
+                ? "Модерація..."
+                : `Оплатити ${finalAdCost} ₴ та запустити рекламу`}
+            </Button>
+          </div>
         }
       />
 
