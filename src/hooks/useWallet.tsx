@@ -305,8 +305,8 @@ export function useWallet({ supplierId, withShops }: UseWalletOptions = {}) {
 
     payWithBalance: (orderId: string, useBonus = true) =>
       call("pay_with_balance", { order_id: orderId, use_bonus: useBonus }),
-    requestPayout: (amount: number, provider: string, destination?: string) =>
-      safe(() => call("request_payout", { amount, provider, destination })),
+    requestPayout: (amount: number, provider: string, destination?: string, sourceShopId?: string) =>
+      safe(() => call("request_payout", { amount, provider, destination, supplier_id: sourceShopId })),
     savePayoutSettings: (patch: Record<string, unknown>) =>
       safe(() => call("set_payout_settings", patch), patch as Partial<WalletState>),
 

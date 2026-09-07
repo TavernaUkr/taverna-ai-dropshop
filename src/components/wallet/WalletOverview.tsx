@@ -93,11 +93,19 @@ export function WalletOverview({ wallet, shops, totals, onOpenShops }: WalletOve
         <div className="text-4xl font-bold text-foreground mt-1">
           {fmt(grandTotal)}<span className="text-2xl">₴</span>
         </div>
+        <p className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1">
+          <Clock className="h-3 w-3" />
+          Ще {fmt(shopsPending + Number(wallet.pending || 0))}₴ в обробці — кошти по незавершених замовленнях
+        </p>
 
-        <div className="grid grid-cols-3 gap-2 mt-4">
-          <Cell label="Магазини" value={shopsAvailable} icon={Store} />
-          <Cell label="В обробці" value={shopsPending} icon={Clock} />
-          <Cell label="Виплачено" value={shopsPaid} icon={Banknote} />
+        <div className="grid grid-cols-2 gap-2 mt-4">
+          <Cell label="Доступно · магазини" value={shopsAvailable} icon={Store} tone="success" />
+          <Cell label="В обробці · магазини" value={shopsPending} icon={Clock} tone="muted" />
+          <Cell label="Доступно · особистий" value={Number(wallet.balance || 0)} icon={Wallet} tone="success" />
+          <Cell label="В обробці · особистий" value={Number(wallet.pending || 0)} icon={Clock} tone="muted" />
+        </div>
+        <div className="mt-2">
+          <Cell label="Виплачено за весь час" value={shopsPaid} icon={Banknote} />
         </div>
       </motion.div>
 
@@ -172,13 +180,18 @@ export function WalletOverview({ wallet, shops, totals, onOpenShops }: WalletOve
   );
 }
 
-function Cell({ label, value, icon: Icon }: { label: string; value: number; icon: any }) {
+function Cell({ label, value, icon: Icon, tone }: { label: string; value: number; icon: any; tone?: "success" | "muted" }) {
   return (
     <div className="rounded-xl bg-card/70 border border-border p-2.5">
       <p className="text-[11px] text-muted-foreground flex items-center gap-1">
-        <Icon className="h-3 w-3" /> {label}
+        <Icon className={cn("h-3 w-3", tone === "success" && "text-success")} /> {label}
       </p>
-      <p className="text-sm font-semibold text-foreground">{fmt(value)}₴</p>
+      <p className={cn(
+        "text-sm font-semibold",
+        tone === "success" ? "text-success" : tone === "muted" ? "text-muted-foreground" : "text-foreground",
+      )}>
+        {fmt(value)}₴
+      </p>
     </div>
   );
 }

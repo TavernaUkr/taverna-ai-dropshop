@@ -84,6 +84,24 @@ export default function WalletAccount() {
   const shopsPending = shopsInPersonal.reduce((sum, sh) => sum + Number(sh.pending || 0), 0);
   const grandTotal = Math.round((Number(wallet?.balance || 0) + shopsAvailable) * 100) / 100;
 
+  /** Джерела для виводу: кожен магазин-власник + особистий гаманець */
+  const payoutSources = shopsInPersonal.length > 0
+    ? [
+        ...shopsInPersonal.map((sh) => ({
+          id: sh.id,
+          name: sh.shop_name,
+          available: Number(sh.available || 0),
+          pending: Number(sh.pending || 0),
+        })),
+        {
+          id: null,
+          name: "Особистий гаманець",
+          available: Number(wallet?.balance || 0),
+          pending: Number(wallet?.pending || 0),
+        },
+      ]
+    : [];
+
   const action = searchParams.get("action");
   useEffect(() => {
     if (!action || isLoading) return;
@@ -147,7 +165,7 @@ export default function WalletAccount() {
         </div>
 
         {/* Перемикач: особистий рахунок / магазини */}
-        {!supplierId && hasShops && (
+        {!supplierId && hasShops && !bonusOnly && (
           <div className="px-4 pb-3">
             <div className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-muted">
               {([
@@ -172,7 +190,7 @@ export default function WalletAccount() {
       </div>
 
       <div className="p-4 space-y-4">
-        {bonusOnly && !supplierId && (!hasShops || tab === "personal") ? (
+        {bonusOnly && !supplierId ? (
           <ClientBonusAccount
             bonusBalance={wallet.bonus_balance}
             transactions={transactions}
@@ -435,7 +453,14 @@ export default function WalletAccount() {
 
       <ConnectWalletSheet open={showConnect} onOpenChange={setShowConnect} onConnect={connectWallet} />
       <TopUpSheet open={showTopUp} onOpenChange={setShowTopUp} limits={limits} mode={mode} onTopUp={topUp} onCheckTopUp={checkTopUp} />
-      <PayoutSheet open={showPayout} onOpenChange={setShowPayout} wallet={wallet} limits={limits} onPayout={requestPayout} />
+      <PayoutSheet
+        open={showPayout}
+        onOpenChange={setShowPayout}
+        wallet={wallet}
+        limits={limits}
+        sources={payoutSources}
+        onPayout={requestPayout}
+      />
       <ReceiptDialog transaction={receipt} onOpenChange={() => setReceipt(null)} />
     </div>
   );
