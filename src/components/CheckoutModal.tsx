@@ -95,6 +95,7 @@ export function CheckoutModal({ isOpen, onClose, items, onOrderComplete }: Check
   
   // Payment
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
+  const [paymentType, setPaymentType] = useState<PaymentType>('full_prepayment');
   const { payWithBalance } = useWallet();
   const [walletOrder, setWalletOrder] = useState<{ id: string; number?: string | null } | null>(null);
   const [orderNotes, setOrderNotes] = useState('');
