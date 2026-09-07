@@ -74,7 +74,10 @@ export function ClientBonusAccount({ bonusBalance, transactions, onOpenReceipt, 
       </motion.div>
 
       {/* Рейтинг, ранг і множник бонусів */}
-      <WalletRatingCard fallbackPoints={bonusBalance} />
+      <WalletRatingCard
+        fallbackPoints={bonusBalance}
+        onGoToRatings={() => { hapticSelection(); navigate("/?tab=ratings"); }}
+      />
 
       {/* Реквізити для повернення коштів */}
       <button
@@ -136,25 +139,16 @@ export function ClientBonusAccount({ bonusBalance, transactions, onOpenReceipt, 
 
       <WalletOffers bonusBalance={bonusBalance} />
 
-      {/* Правила бонусної програми */}
-      <Accordion type="single" collapsible className="rounded-2xl border border-border bg-card px-4">
-        <AccordionItem value="rules" className="border-0">
-          <AccordionTrigger className="text-sm font-semibold text-foreground hover:no-underline">
-            <span className="flex items-center gap-2">
-              <HelpCircle className="h-4 w-4 text-primary" />
-              Як працюють бонуси та знижки?
-            </span>
-          </AccordionTrigger>
-          <AccordionContent className="text-xs text-muted-foreground space-y-2.5 pb-4">
-            <p><span className="font-medium text-foreground">Нарахування.</span> Бонуси нараховуються після отримання замовлення, а також за відгук із фото.</p>
-            <p><span className="font-medium text-foreground">Ліміт оплати.</span> Бонусами можна оплатити до 7% суми кошика — решта оплачується карткою або Telegram Wallet.</p>
-            <p><span className="font-medium text-foreground">Множник рейтингу.</span> Чим вищий ваш ранг, тим більший множник нарахувань — від ×1 для «Новачка» до максимального для «Легенди».</p>
-            <p><span className="font-medium text-foreground">Реферали.</span> За кожного друга, який зробить перше замовлення, ви отримуєте бонуси на рахунок після завершення його замовлення.</p>
-            <p><span className="font-medium text-foreground">Повернення.</span> Використані бонуси повертаються на рахунок, якщо замовлення скасовано або оформлено повернення.</p>
-            <p><span className="font-medium text-foreground">Термін дії.</span> Бонуси активні, доки ви робите хоча б одне замовлення на рік.</p>
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
+      {/* Правила бонусної програми — у випливаючому вікні */}
+      <Button
+        variant="secondary"
+        size="sm"
+        onClick={() => { hapticSelection(); setRulesOpen(true); }}
+        className="rounded-full gap-1.5"
+      >
+        <HelpCircle className="h-4 w-4" /> Правила програми
+      </Button>
+      <BonusRulesSheet open={rulesOpen} onOpenChange={setRulesOpen} />
     </div>
   );
 }
