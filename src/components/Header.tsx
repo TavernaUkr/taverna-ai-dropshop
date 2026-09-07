@@ -6,6 +6,7 @@ import { AppInfoModal } from "./AppInfoModal";
 import { LanguageSelectorModal } from "./LanguageSelectorModal";
 import { RegionSelectorModal } from "./RegionSelectorModal";
 import { WalletBadgeCloud, type WalletCloudAction, type WalletCloudVariant } from "./wallet/WalletBadgeCloud";
+import { CartBadgeCloud } from "./cart/CartBadgeCloud";
 
 import { useWallet } from "@/hooks/useWallet";
 import { useTelegramAuthContext } from "./TelegramAuthProvider";
