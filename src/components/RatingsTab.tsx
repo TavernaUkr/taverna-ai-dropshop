@@ -860,46 +860,45 @@ const BadgeRules = () => {
 
 // ============ Мій рейтинг ============
 
-const myTiers = [
-  { name: "Новачок", min: 0, color: "text-muted-foreground", bg: "bg-muted" },
-  { name: "Бронзовий", min: 1000, color: "text-amber-600", bg: "bg-amber-600/15" },
-  { name: "Срібний", min: 3000, color: "text-slate-400", bg: "bg-slate-400/15" },
-  { name: "Золотий", min: 7000, color: "text-yellow-500", bg: "bg-yellow-500/15" },
-  { name: "Легенда", min: 15000, color: "text-violet-400", bg: "bg-violet-400/15" },
-];
-
 const myPerks = [
-  { icon: Gift, label: "Знижка", value: "-5%", tone: "text-primary", bg: "bg-primary/10", active: true },
-  { icon: Zap, label: "Множник бонусів", value: "×1.5", tone: "text-live", bg: "bg-live/10", active: true },
+  { icon: Gift, label: "Клієнтам", value: "+200₴", tone: "text-primary", bg: "bg-primary/10", active: true },
   { icon: ShoppingBag, label: "Безкоштовна доставка", value: "від 999₴", tone: "text-success", bg: "bg-success/10", active: true },
-  { icon: Crown, label: "VIP-підтримка", value: "Золотий рівень", tone: "text-yellow-500", bg: "bg-yellow-500/10", active: false },
+  { icon: Zap, label: "Множник бонусів", value: "×1.5", tone: "text-live", bg: "bg-live/10", active: true },
+  { icon: Crown, label: "VIP-підтримка", value: "Пріоритет", tone: "text-yellow-500", bg: "bg-yellow-500/10", active: true },
   { icon: Award, label: "Кредити на публікації", value: "2 / міс", tone: "text-violet-400", bg: "bg-violet-400/10", active: false },
   { icon: Diamond, label: "Ексклюзивні дропи", value: "Легенда", tone: "text-violet-400", bg: "bg-violet-400/10", active: false },
 ];
 
-const MyRatingSection = ({ points = 4380 }: { points?: number }) => {
+/** Демо-позиції користувача по періодах. */
+const myRanks: Record<Period, number> = { day: 6, week: 4, month: 2, year: 12, alltime: 34 };
+
+const MyRatingSection = ({ points = 4380, onOpenRules }: { points?: number; onOpenRules: () => void }) => {
   const navigate = useNavigate();
-  const tierIndex = Math.max(0, myTiers.map((t) => points >= t.min).lastIndexOf(true));
-  const tier = myTiers[tierIndex];
-  const next = myTiers[tierIndex + 1];
-  const progress = next
-    ? Math.min(100, ((points - tier.min) / (next.min - tier.min)) * 100)
-    : 100;
+
+  // Найкраща галочка: пріоритет alltime → year → month → week → day
+  const order: Period[] = ["alltime", "year", "month", "week", "day"];
+  const bestPeriod = order.find((p) => myRanks[p] <= 10) ?? "day";
+  const bestRank = myRanks[bestPeriod];
+  const badge = getRankBadge(bestRank, bestPeriod);
+  const nextTarget = bestRank > 3 ? 3 : bestRank > 1 ? 1 : 1;
+  const progress = Math.min(100, Math.round((points / 7000) * 100));
 
   return (
     <div className="space-y-3">
       <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-primary/10 via-card to-card p-4">
         <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full bg-primary/10 blur-2xl" />
         <div className="relative flex items-center gap-3">
-          <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center text-lg font-bold", tier.bg, tier.color)}>
-            ТИ
+          <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center ring-1", badge.bg, badge.ring)}>
+            <RankCheckmark rank={bestRank} period={bestPeriod} />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <p className="text-base font-bold text-foreground truncate">{tier.name} клієнт</p>
-              <Badge variant="secondary" className={cn("text-[10px]", tier.color)}>{tierIndex + 1} рівень</Badge>
+            <div className="flex items-center gap-1.5">
+              <p className={cn("text-base font-bold truncate", badge.text)}>{badge.emoji} {badge.label}</p>
+              <RankCup rank={bestRank} size="sm" />
             </div>
-            <p className="text-xs text-muted-foreground">{points.toLocaleString("uk-UA")} рейтингових балів</p>
+            <p className="text-xs text-muted-foreground">
+              Загальний рейтинг: <span className="font-bold text-foreground">{points.toLocaleString("uk-UA")}</span>
+            </p>
           </div>
           <button
             onClick={() => navigate("/wallet")}
@@ -910,10 +909,21 @@ const MyRatingSection = ({ points = 4380 }: { points?: number }) => {
           </button>
         </div>
 
-        <div className="relative mt-4">
+        <div className="relative mt-3 grid grid-cols-5 gap-1.5">
+          {(["day", "week", "month", "year", "alltime"] as Period[]).map((p) => (
+            <div key={p} className="rounded-lg bg-background/60 p-1.5 text-center">
+              <p className="text-[9px] text-muted-foreground">{periodLabels[p]}</p>
+              <p className={cn("text-xs font-bold", myRanks[p] <= 10 ? "text-foreground" : "text-muted-foreground")}>
+                #{myRanks[p]}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        <div className="relative mt-3">
           <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1">
-            <span>{tier.name}</span>
-            <span>{next ? `${next.name} · ще ${(next.min - points).toLocaleString("uk-UA")} балів` : "Максимальний рівень"}</span>
+            <span>Місце #{bestRank} · {periodLabels[bestPeriod]}</span>
+            <span>До Топ-{nextTarget} потрібно більше балів</span>
           </div>
           <div className="h-2 rounded-full bg-muted overflow-hidden">
             <div className="h-full rounded-full bg-gradient-to-r from-primary to-live transition-all" style={{ width: `${progress}%` }} />
@@ -921,8 +931,17 @@ const MyRatingSection = ({ points = 4380 }: { points?: number }) => {
         </div>
       </div>
 
+      <button
+        onClick={onOpenRules}
+        className="w-full flex items-center gap-2 p-3 rounded-xl bg-muted/50 border border-border hover:bg-muted active:scale-[0.99] transition-all"
+      >
+        <Info className="h-4 w-4 text-primary shrink-0" />
+        <span className="text-sm font-medium text-foreground flex-1 text-left">Правила рейтингу, кубки та штрафи</span>
+        <ChevronDown className="h-4 w-4 text-muted-foreground -rotate-90" />
+      </button>
+
       <div>
-        <p className="text-xs font-semibold text-muted-foreground mb-2 px-0.5">Мої переваги</p>
+        <p className="text-xs font-semibold text-muted-foreground mb-2 px-0.5">Мої бонуси та привілеї</p>
         <div className="grid grid-cols-2 gap-2">
           {myPerks.map((p) => (
             <div
