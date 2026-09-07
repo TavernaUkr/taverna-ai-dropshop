@@ -1201,13 +1201,14 @@ export const RatingsTab = () => {
         </TabsList>
 
         <TabsContent value="my" className="mt-3 space-y-3">
-          <MyRatingSection />
-          <BadgeRules />
+          <MyRatingSection onOpenRules={() => setRulesOpen(true)} />
         </TabsContent>
         <TabsContent value="top" className="mt-3">
           <TopSellersSection />
         </TabsContent>
       </Tabs>
+
+      <RatingRulesSheet open={rulesOpen} onOpenChange={setRulesOpen} />
     </div>
   );
 };
