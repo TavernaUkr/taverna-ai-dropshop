@@ -299,10 +299,9 @@ export function DisputesManager() {
         timeline: timelineMap[t.id] || [],
       }));
 
-      setDisputes(disputesData);
+      if (disputesData.length > 0) setDisputes(disputesData);
     } catch (err) {
       console.error("Error fetching disputes:", err);
-      toast.error("Помилка завантаження спорів");
     } finally {
       setIsLoading(false);
     }
@@ -314,31 +313,36 @@ export function DisputesManager() {
       return;
     }
 
+    const isDemo = selectedDispute.id.startsWith("demo-");
     setIsResolving(true);
     try {
-      const { error } = await supabase
-        .from("support_tickets")
-        .update({ status: "closed" })
-        .eq("id", selectedDispute.ticket_id);
+      if (!isDemo) {
+        const { error } = await supabase
+          .from("support_tickets")
+          .update({ status: "closed" })
+          .eq("id", selectedDispute.ticket_id);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      await supabase.from("ticket_messages").insert({
-        ticket_id: selectedDispute.ticket_id,
-        sender_role: "moderator",
-        message_text: `Рішення модератора: ${
-          resolutionType === "customer" ? "На користь клієнта" :
-          resolutionType === "supplier" ? "На користь постачальника" :
-          "Спір відхилено"
-        }.\n\n${resolution}`,
-      });
+        await supabase.from("ticket_messages").insert({
+          ticket_id: selectedDispute.ticket_id,
+          sender_role: "moderator",
+          message_text: `Рішення модератора: ${
+            resolutionType === "customer" ? "На користь клієнта" :
+            resolutionType === "supplier" ? "На користь постачальника" :
+            "Спір відхилено"
+          }.\n\n${resolution}`,
+        });
+      } else {
+        setDisputes(prev => prev.filter(d => d.id !== selectedDispute.id));
+      }
 
       hapticNotification("success");
       toast.success("Спір вирішено");
       setSelectedDispute(null);
       setResolution("");
       setResolutionType("");
-      fetchDisputes();
+      if (!isDemo) fetchDisputes();
     } catch (err) {
       console.error("Error resolving dispute:", err);
       toast.error("Помилка вирішення спору");
@@ -350,18 +354,27 @@ export function DisputesManager() {
   const runQuickAction = async () => {
     if (!quickAction) return;
     const cfg = QUICK_ACTIONS.find(a => a.id === quickAction.action)!;
+    const isDemo = quickAction.dispute.id.startsWith("demo-");
     setIsActing(true);
     try {
-      await supabase.from("ticket_messages").insert({
-        ticket_id: quickAction.dispute.ticket_id,
-        sender_role: "moderator",
-        message_text: `[Дія модератора] ${cfg.note(quickAction.dispute)}${quickComment ? `\n\n${quickComment}` : ""}`,
-      });
+      const note = `${cfg.note(quickAction.dispute)}${quickComment ? `\n\n${quickComment}` : ""}`;
+      if (!isDemo) {
+        await supabase.from("ticket_messages").insert({
+          ticket_id: quickAction.dispute.ticket_id,
+          sender_role: "moderator",
+          message_text: `[Дія модератора] ${note}`,
+        });
+      } else {
+        const id = quickAction.dispute.id;
+        setDisputes(prev => prev.map(d => d.id === id
+          ? { ...d, timeline: [...d.timeline, { label: cfg.label, at: new Date().toISOString() }] }
+          : d));
+      }
       hapticNotification("success");
       toast.success(cfg.title, { description: "Дію зафіксовано в історії спору" });
       setQuickAction(null);
       setQuickComment("");
-      fetchDisputes();
+      if (!isDemo) fetchDisputes();
     } catch (err) {
       console.error("Quick action error:", err);
       toast.error("Не вдалося виконати дію");
@@ -369,6 +382,7 @@ export function DisputesManager() {
       setIsActing(false);
     }
   };
+
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString("uk-UA", {
