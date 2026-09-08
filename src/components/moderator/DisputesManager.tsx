@@ -89,10 +89,95 @@ const QUICK_ACTIONS: {
 
 const hoursSince = (iso: string) => (Date.now() - new Date(iso).getTime()) / 3600000;
 
+const agoISO = (hours: number) => new Date(Date.now() - hours * 3600000).toISOString();
+
+const MOCK_DISPUTES: Dispute[] = [
+  {
+    id: "demo-1",
+    ticket_id: "demo-1",
+    order_id: "demo-order-1",
+    order_number: "#1042-A",
+    customer_name: "Олег Кравченко",
+    supplier_name: "Tactical Pro",
+    reason: "Пошкоджена коробка",
+    description: "Пошкоджена коробка при отриманні",
+    status: "pending",
+    created_at: agoISO(31),
+    order_amount: 1450,
+    client_claim:
+      "Отримав посилку з розірваною коробкою, кріплення на рюкзаку зламане. Прошу повне повернення коштів, фото додав у чат.",
+    shop_reply:
+      "Надіслали відео цілого пакування перед відправкою. Коробка була ціла, пошкодження сталося на боці перевізника — готові оформити претензію до служби доставки.",
+    timeline: [
+      { label: "Клієнт написав", at: agoISO(31) },
+      { label: "Магазин відповів", at: agoISO(27) },
+      { label: "Клієнт надіслав фото", at: agoISO(20) },
+    ],
+  },
+  {
+    id: "demo-2",
+    ticket_id: "demo-2",
+    order_id: "demo-order-2",
+    order_number: "#1078-B",
+    customer_name: "Ірина Мельник",
+    supplier_name: "Alpha Gear",
+    reason: "Невідповідний розмір",
+    description: "Прийшов не той розмір",
+    status: "pending",
+    created_at: agoISO(11),
+    order_amount: 890,
+    client_claim:
+      "Замовляла черевики 39 розміру, у посилці 41. Хочу обмін або повернення, товар не носила.",
+    shop_reply:
+      "У накладній вказано 39. Перевіряємо склад, можливо переплутали пару при комплектації. Пропонуємо безкоштовний обмін.",
+    timeline: [
+      { label: "Клієнт написав", at: agoISO(11) },
+      { label: "Магазин відповів", at: agoISO(9) },
+    ],
+  },
+  {
+    id: "demo-3",
+    ticket_id: "demo-3",
+    order_id: "demo-order-3",
+    order_number: "#1093-C",
+    customer_name: "Сергій Бондар",
+    supplier_name: "Nord Supply",
+    reason: "Замовлення не доїхало",
+    description: "Трек не оновлюється 9 днів",
+    status: "pending",
+    created_at: agoISO(52),
+    order_amount: 3200,
+    client_claim:
+      "Трек-номер не оновлюється 9 днів, у відділенні посилки немає. Оплатив повну передоплату 3 200 ₴, магазин не виходить на зв'язок.",
+    shop_reply: null,
+    timeline: [
+      { label: "Клієнт написав", at: agoISO(52) },
+      { label: "AI-асистент", at: agoISO(51) },
+      { label: "Модератор втрутився", at: agoISO(6) },
+    ],
+  },
+  {
+    id: "demo-4",
+    ticket_id: "demo-4",
+    order_id: "demo-order-4",
+    order_number: "#1101-D",
+    customer_name: "Марта Гнатюк",
+    supplier_name: "Taverna Store",
+    reason: "Спірна якість",
+    description: "Плями на тканині",
+    status: "pending",
+    created_at: agoISO(2),
+    order_amount: 640,
+    client_claim: "На сорочці плями від фарби, схоже на брак партії.",
+    shop_reply: "Готові прийняти повернення після фото. Компенсуємо доставку.",
+    timeline: [{ label: "Клієнт написав", at: agoISO(2) }],
+  },
+];
+
 export function DisputesManager() {
   const navigate = useNavigate();
-  const [disputes, setDisputes] = useState<Dispute[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [disputes, setDisputes] = useState<Dispute[]>(MOCK_DISPUTES);
+  const [isLoading, setIsLoading] = useState(false);
   const [selectedDispute, setSelectedDispute] = useState<Dispute | null>(null);
   const [resolution, setResolution] = useState("");
   const [resolutionType, setResolutionType] = useState<string>("");
@@ -106,7 +191,6 @@ export function DisputesManager() {
   }, []);
 
   const fetchDisputes = async () => {
-    setIsLoading(true);
     try {
       const { data: tickets, error } = await supabase
         .from("support_tickets")
@@ -215,10 +299,9 @@ export function DisputesManager() {
         timeline: timelineMap[t.id] || [],
       }));
 
-      setDisputes(disputesData);
+      if (disputesData.length > 0) setDisputes(disputesData);
     } catch (err) {
       console.error("Error fetching disputes:", err);
-      toast.error("Помилка завантаження спорів");
     } finally {
       setIsLoading(false);
     }
@@ -230,31 +313,36 @@ export function DisputesManager() {
       return;
     }
 
+    const isDemo = selectedDispute.id.startsWith("demo-");
     setIsResolving(true);
     try {
-      const { error } = await supabase
-        .from("support_tickets")
-        .update({ status: "closed" })
-        .eq("id", selectedDispute.ticket_id);
+      if (!isDemo) {
+        const { error } = await supabase
+          .from("support_tickets")
+          .update({ status: "closed" })
+          .eq("id", selectedDispute.ticket_id);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      await supabase.from("ticket_messages").insert({
-        ticket_id: selectedDispute.ticket_id,
-        sender_role: "moderator",
-        message_text: `Рішення модератора: ${
-          resolutionType === "customer" ? "На користь клієнта" :
-          resolutionType === "supplier" ? "На користь постачальника" :
-          "Спір відхилено"
-        }.\n\n${resolution}`,
-      });
+        await supabase.from("ticket_messages").insert({
+          ticket_id: selectedDispute.ticket_id,
+          sender_role: "moderator",
+          message_text: `Рішення модератора: ${
+            resolutionType === "customer" ? "На користь клієнта" :
+            resolutionType === "supplier" ? "На користь постачальника" :
+            "Спір відхилено"
+          }.\n\n${resolution}`,
+        });
+      } else {
+        setDisputes(prev => prev.filter(d => d.id !== selectedDispute.id));
+      }
 
       hapticNotification("success");
       toast.success("Спір вирішено");
       setSelectedDispute(null);
       setResolution("");
       setResolutionType("");
-      fetchDisputes();
+      if (!isDemo) fetchDisputes();
     } catch (err) {
       console.error("Error resolving dispute:", err);
       toast.error("Помилка вирішення спору");
@@ -266,18 +354,27 @@ export function DisputesManager() {
   const runQuickAction = async () => {
     if (!quickAction) return;
     const cfg = QUICK_ACTIONS.find(a => a.id === quickAction.action)!;
+    const isDemo = quickAction.dispute.id.startsWith("demo-");
     setIsActing(true);
     try {
-      await supabase.from("ticket_messages").insert({
-        ticket_id: quickAction.dispute.ticket_id,
-        sender_role: "moderator",
-        message_text: `[Дія модератора] ${cfg.note(quickAction.dispute)}${quickComment ? `\n\n${quickComment}` : ""}`,
-      });
+      const note = `${cfg.note(quickAction.dispute)}${quickComment ? `\n\n${quickComment}` : ""}`;
+      if (!isDemo) {
+        await supabase.from("ticket_messages").insert({
+          ticket_id: quickAction.dispute.ticket_id,
+          sender_role: "moderator",
+          message_text: `[Дія модератора] ${note}`,
+        });
+      } else {
+        const id = quickAction.dispute.id;
+        setDisputes(prev => prev.map(d => d.id === id
+          ? { ...d, timeline: [...d.timeline, { label: cfg.label, at: new Date().toISOString() }] }
+          : d));
+      }
       hapticNotification("success");
       toast.success(cfg.title, { description: "Дію зафіксовано в історії спору" });
       setQuickAction(null);
       setQuickComment("");
-      fetchDisputes();
+      if (!isDemo) fetchDisputes();
     } catch (err) {
       console.error("Quick action error:", err);
       toast.error("Не вдалося виконати дію");
@@ -285,6 +382,7 @@ export function DisputesManager() {
       setIsActing(false);
     }
   };
+
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString("uk-UA", {
@@ -386,7 +484,7 @@ export function DisputesManager() {
                         )}
                         {dispute.timeline.length > 0 && (
                           <ul className="space-y-1 pt-1 border-t border-border/60">
-                            {dispute.timeline.slice(0, 3).map((ev, i) => (
+                            {dispute.timeline.slice(-3).map((ev, i) => (
                               <li key={i} className="flex items-center justify-between text-[11px] text-muted-foreground">
                                 <span className="truncate">{ev.label}</span>
                                 <span className="shrink-0 ml-2">{formatDate(ev.at)}</span>

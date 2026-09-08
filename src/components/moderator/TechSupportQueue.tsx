@@ -20,10 +20,59 @@ interface TechTicket {
   unread_count: number;
 }
 
+const agoISO = (hours: number) => new Date(Date.now() - hours * 3600000).toISOString();
+
+const MOCK_TICKETS: TechTicket[] = [
+  {
+    id: "demo-t1",
+    user_id: "demo-u1",
+    status: "open",
+    created_at: agoISO(29),
+    updated_at: agoISO(0.2),
+    user_name: "Олег Кравченко",
+    telegram_username: "oleg_k",
+    last_message: "Оплата пройшла, але замовлення досі не з'явилось у списку. Що робити?",
+    unread_count: 6,
+  },
+  {
+    id: "demo-t2",
+    user_id: "demo-u2",
+    status: "open",
+    created_at: agoISO(7),
+    updated_at: agoISO(1.5),
+    user_name: "Ірина Мельник",
+    telegram_username: "iryna_m",
+    last_message: "Не можу привʼязати картку для повернень — пише помилку.",
+    unread_count: 3,
+  },
+  {
+    id: "demo-t3",
+    user_id: "demo-u3",
+    status: "open",
+    created_at: agoISO(3),
+    updated_at: agoISO(0.6),
+    user_name: "Nord Supply (магазин)",
+    telegram_username: "nord_supply",
+    last_message: "Баланс магазину не оновився після виплати за вчорашні замовлення.",
+    unread_count: 2,
+  },
+  {
+    id: "demo-t4",
+    user_id: "demo-u4",
+    status: "open",
+    created_at: agoISO(0.4),
+    updated_at: agoISO(0.1),
+    user_name: "Марта Гнатюк",
+    telegram_username: null,
+    last_message: "Як використати бонуси при оформленні замовлення?",
+    unread_count: 1,
+  },
+];
+
 export function TechSupportQueue() {
   const navigate = useNavigate();
-  const [tickets, setTickets] = useState<TechTicket[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [tickets, setTickets] = useState<TechTicket[]>(MOCK_TICKETS);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     fetchTickets();
@@ -51,7 +100,6 @@ export function TechSupportQueue() {
   }, []);
 
   const fetchTickets = async () => {
-    setIsLoading(true);
     try {
       // Fetch tech support tickets
       const { data: ticketsData, error: ticketsError } = await supabase
@@ -103,10 +151,9 @@ export function TechSupportQueue() {
         };
       });
 
-      setTickets(ticketsWithData);
+      if (ticketsWithData.length > 0) setTickets(ticketsWithData);
     } catch (err) {
       console.error("Error fetching tickets:", err);
-      toast.error("Помилка завантаження");
     } finally {
       setIsLoading(false);
     }

@@ -16,6 +16,7 @@ import { uk } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { ChatRatingPrompt } from "@/components/ChatRatingPrompt";
 import { toast } from "sonner";
+import { isPreviewDevEnvironment } from "@/lib/dev-preview";
 
 const REACTIONS = ["👍", "❤️", "🔥", "😅", "😡"];
 
@@ -103,7 +104,9 @@ export default function SupportChat() {
   const [botMessages, setBotMessages] = useState<{ id: string; text: string }[]>([]);
 
   // Bridge (dual view) — лише для модератора/адміна
-  const isModerator = roles.includes("admin") || roles.includes("moderator");
+  // Preview/demo environments show the moderator bridge UI for visual work.
+  const isModerator =
+    roles.includes("admin") || roles.includes("moderator") || isPreviewDevEnvironment();
   const [bridgeView, setBridgeView] = useState<"client" | "shop">("client");
   const [internalMessages, setInternalMessages] = useState<{ id: string; from: "moderator" | "shop"; text: string; at: string }[]>([]);
   const [reactions, setReactions] = useState<Record<string, string>>({});
