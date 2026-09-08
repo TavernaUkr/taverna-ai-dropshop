@@ -9,6 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { PlatformTreasury } from "./PlatformTreasury";
+import { SupplierAuditCards } from "./SupplierAuditCards";
+import { SystemKillSwitch } from "./SystemKillSwitch";
 
 interface OrderStats {
   totalOrders: number;
