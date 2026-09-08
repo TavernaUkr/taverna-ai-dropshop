@@ -100,7 +100,6 @@ export function TechSupportQueue() {
   }, []);
 
   const fetchTickets = async () => {
-    setIsLoading(true);
     try {
       // Fetch tech support tickets
       const { data: ticketsData, error: ticketsError } = await supabase
