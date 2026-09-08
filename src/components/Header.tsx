@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ShoppingCart, Search, Heart, Gift, Info, Trophy, Wallet, Globe, Flag, LogIn, Plus, ArrowUpRight, ShoppingBag, Eye, Users } from "lucide-react";
+import { ShoppingCart, Search, Heart, Gift, Info, Trophy, Wallet, Globe, Flag, LogIn, Plus, ArrowUpRight, ShoppingBag, Eye, Users, Megaphone } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import tavernaLogo from "@/assets/taverna-logo.png";
 import { AppInfoModal } from "./AppInfoModal";
