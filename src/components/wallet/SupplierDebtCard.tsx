@@ -157,9 +157,17 @@ export function SupplierDebtCard({
           </p>
         </div>
       </div>
+      )}
+
+      {readOnly && (
+        <div className="sm:col-span-2 rounded-2xl border border-border bg-muted/40 p-3 text-[11px] text-muted-foreground">
+          Режим перегляду: менеджер магазину бачить лише суми надходжень. Виводом коштів і погашенням боргу керує власник.
+        </div>
+      )}
     </div>
   );
 }
+
 
 /** Хук-стан для демо-керування боргом у прев'ю (без бекенду). */
 export function useDebtControls(initialDebt: number) {
