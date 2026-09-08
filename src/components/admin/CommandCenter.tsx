@@ -198,6 +198,12 @@ export function CommandCenter({ stats, applicationsCount, onNavigate }: CommandC
         </CardContent>
       </Card>
 
+      {/* Platform treasury */}
+      <PlatformTreasury />
+
+      {/* AI supplier audit */}
+      <SupplierAuditCards />
+
       {/* Quick actions */}
       <div>
         <p className="text-sm font-semibold text-foreground mb-2">Швидкі дії</p>
