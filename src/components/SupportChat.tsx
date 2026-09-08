@@ -16,6 +16,7 @@ import { uk } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { ChatRatingPrompt } from "@/components/ChatRatingPrompt";
 import { toast } from "sonner";
+import { isPreviewDevEnvironment } from "@/lib/dev-preview";
 
 const REACTIONS = ["👍", "❤️", "🔥", "😅", "😡"];
 
