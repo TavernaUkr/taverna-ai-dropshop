@@ -559,11 +559,117 @@ export default function SupportChat() {
           )}>
             {ticket?.status === "open" ? "Активний" : "Закрито"}
           </div>
+
+          {isModerator && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" aria-label="Дії модератора">
+                  <MoreVertical className="w-5 h-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>Дії модератора</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => moderatorAction("Попередження надіслано", "Учасник отримав офіційне попередження")}>
+                  <ShieldAlert className="h-4 w-4 mr-2 text-warning" /> Винести попередження
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => moderatorAction("Тимчасове блокування", "Доступ обмежено на 24 години")}>
+                  <UserX className="h-4 w-4 mr-2 text-destructive" /> Тимчасовий бан (24 год)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => moderatorAction("Ескалація до адміністратора", "Звернення передано адміну платформи")}>
+                  <ArrowUpRight className="h-4 w-4 mr-2 text-primary" /> Ескалація до адміна
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleCloseTicket} disabled={isClosingTicket}>
+                  <Lock className="h-4 w-4 mr-2" /> Закрити тікет
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
+
+        {/* Dual view: клієнт / приватний чат з магазином */}
+        {isModerator && (
+          <div className="px-4 pb-3">
+            <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-muted">
+              {([
+                { id: "client", label: "Чат з клієнтом", icon: User },
+                { id: "shop", label: "Приватно з магазином", icon: Store },
+              ] as const).map((v) => {
+                const Icon = v.icon;
+                return (
+                  <button
+                    key={v.id}
+                    onClick={() => { hapticSelection(); setBridgeView(v.id); }}
+                    className={cn(
+                      "flex items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-medium transition-colors",
+                      bridgeView === v.id ? "bg-background text-foreground shadow-sm" : "text-muted-foreground",
+                    )}
+                  >
+                    <Icon className="h-3.5 w-3.5" /> {v.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </header>
 
-      {/* Messages Area */}
+      {/* Приватний внутрішній чат з менеджером магазину */}
+      {isModerator && bridgeView === "shop" ? (
+        <main className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-hide bg-warning/5">
+          <div className="text-center">
+            <span className="text-[11px] text-muted-foreground bg-muted px-3 py-1 rounded-full">
+              🔒 Внутрішній чат — клієнт цього не бачить
+            </span>
+          </div>
+          {internalMessages.length === 0 && (
+            <p className="text-center text-sm text-muted-foreground py-8">
+              Напишіть менеджеру магазину щодо цього звернення
+            </p>
+          )}
+          {internalMessages.map((m) => (
+            <motion.div
+              key={m.id}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={cn("flex", m.from === "moderator" ? "justify-end" : "justify-start")}
+            >
+              <div className={cn(
+                "max-w-[80%] px-4 py-2.5 border",
+                m.from === "moderator"
+                  ? "bg-warning/15 border-warning/40 rounded-2xl rounded-br-md"
+                  : "bg-card border-border rounded-2xl rounded-bl-md",
+              )}>
+                <p className="text-[11px] font-medium text-muted-foreground mb-1">
+                  {m.from === "moderator" ? "Ви (модератор)" : "Менеджер магазину"}
+                </p>
+                <p className="text-sm whitespace-pre-wrap break-words">{m.text}</p>
+                <p className="text-[10px] mt-1 text-muted-foreground">{format(new Date(m.at), "HH:mm")}</p>
+              </div>
+            </motion.div>
+          ))}
+          {peerTyping && (
+            <div className="flex justify-start">
+              <div className="bg-card border border-border rounded-2xl rounded-bl-md px-4 py-3 flex items-center gap-1">
+                {[0, 1, 2].map((i) => (
+                  <span
+                    key={i}
+                    className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce"
+                    style={{ animationDelay: `${i * 0.15}s` }}
+                  />
+                ))}
+                <span className="text-xs text-muted-foreground ml-1.5">магазин друкує…</span>
+              </div>
+            </div>
+          )}
+          <div ref={messagesEndRef} />
+        </main>
+      ) : (
+
+      /* Messages Area */
       <main className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-hide">
+
         {/* Bot guided messages */}
         {isGuidedFlow && (
           <AnimatePresence initial={false}>
