@@ -83,8 +83,7 @@ export function SystemKillSwitch() {
               >
                 <span className="text-[11px] text-foreground">{f.label}</span>
                 <Switch
-                  checked={maintenance && flags[f.key]}
-                  disabled={!maintenance}
+                  checked={flags[f.key]}
                   onCheckedChange={(v) => setFlags((p) => ({ ...p, [f.key]: v }))}
                 />
               </div>
