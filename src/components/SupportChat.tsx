@@ -1,8 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, ArrowLeft, MessageCircle, Loader2, Bot, Package, Truck, CreditCard, RotateCcw, ArrowLeftRight, ShoppingBag, HelpCircle, User, ChevronRight, Lock } from "lucide-react";
+import { Send, ArrowLeft, MessageCircle, Loader2, Bot, Package, Truck, CreditCard, RotateCcw, ArrowLeftRight, ShoppingBag, HelpCircle, User, ChevronRight, Lock, MoreVertical, ShieldAlert, UserX, ArrowUpRight, Store, Smile } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
+  DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { useTelegramAuthContext } from "@/components/TelegramAuthProvider";
 import { hapticNotification, hapticSelection } from "@/lib/haptics";
@@ -12,6 +16,9 @@ import { uk } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { ChatRatingPrompt } from "@/components/ChatRatingPrompt";
 import { toast } from "sonner";
+
+const REACTIONS = ["👍", "❤️", "🔥", "😅", "😡"];
+
 
 interface Message {
   id: string;
