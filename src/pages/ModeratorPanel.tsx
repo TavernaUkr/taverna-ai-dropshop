@@ -321,8 +321,8 @@ export default function ModeratorPanel() {
           setActiveTab(value);
         }}>
           <ScrollArea className="w-full pb-2">
-            <TabsList className="w-max flex gap-1 mb-4">
-              <TabsTrigger value="reports" className="gap-1 text-xs px-3">
+            <TabsList className="w-max flex gap-1.5 mb-4 bg-muted/50 backdrop-blur rounded-2xl p-1.5 border border-border/60">
+              <TabsTrigger value="reports" className="gap-1.5 text-xs px-4 py-2 rounded-xl font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all">
                 <Flag className="h-4 w-4" />
                 Скарги
                 {stats.openReports > 0 && (
@@ -331,7 +331,7 @@ export default function ModeratorPanel() {
                   </Badge>
                 )}
               </TabsTrigger>
-              <TabsTrigger value="disputes" className="gap-1 text-xs px-3">
+              <TabsTrigger value="disputes" className="gap-1.5 text-xs px-4 py-2 rounded-xl font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all">
                 <Scale className="h-4 w-4" />
                 Спори
                 {stats.openDisputes > 0 && (
@@ -340,7 +340,7 @@ export default function ModeratorPanel() {
                   </Badge>
                 )}
               </TabsTrigger>
-              <TabsTrigger value="support" className="gap-1 text-xs px-3">
+              <TabsTrigger value="support" className="gap-1.5 text-xs px-4 py-2 rounded-xl font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all">
                 <Headphones className="h-4 w-4" />
                 Підтримка
                 {stats.openTickets > 0 && (
@@ -349,15 +349,15 @@ export default function ModeratorPanel() {
                   </Badge>
                 )}
               </TabsTrigger>
-              <TabsTrigger value="payments" className="gap-1 text-xs px-3">
+              <TabsTrigger value="payments" className="gap-1.5 text-xs px-4 py-2 rounded-xl font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all">
                 <Wallet className="h-4 w-4" />
                 Оплати
               </TabsTrigger>
-              <TabsTrigger value="bonuses" className="gap-1 text-xs px-3">
+              <TabsTrigger value="bonuses" className="gap-1.5 text-xs px-4 py-2 rounded-xl font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all">
                 <Gift className="h-4 w-4" />
                 Бонуси
               </TabsTrigger>
-              <TabsTrigger value="products" className="gap-1 text-xs px-3">
+              <TabsTrigger value="products" className="gap-1.5 text-xs px-4 py-2 rounded-xl font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all">
                 <Package className="h-4 w-4" />
                 Товари
               </TabsTrigger>
