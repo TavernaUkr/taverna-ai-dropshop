@@ -191,7 +191,6 @@ export function DisputesManager() {
   }, []);
 
   const fetchDisputes = async () => {
-    setIsLoading(true);
     try {
       const { data: tickets, error } = await supabase
         .from("support_tickets")
