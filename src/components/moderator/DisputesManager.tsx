@@ -484,7 +484,7 @@ export function DisputesManager() {
                         )}
                         {dispute.timeline.length > 0 && (
                           <ul className="space-y-1 pt-1 border-t border-border/60">
-                            {dispute.timeline.slice(0, 3).map((ev, i) => (
+                            {dispute.timeline.slice(-3).map((ev, i) => (
                               <li key={i} className="flex items-center justify-between text-[11px] text-muted-foreground">
                                 <span className="truncate">{ev.label}</span>
                                 <span className="shrink-0 ml-2">{formatDate(ev.at)}</span>
