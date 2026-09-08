@@ -131,7 +131,7 @@ export function SupplierAuditCards() {
             <div className="absolute inset-x-2 top-2 h-[260px] rounded-2xl border border-border/50 bg-muted/40 scale-[0.96]" />
           )}
 
-          <AnimatePresence mode="popLayout" initial={false}>
+          <AnimatePresence mode="wait" initial={false}>
             {current && (
               <motion.div
                 key={current.id}
