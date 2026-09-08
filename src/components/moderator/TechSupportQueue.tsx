@@ -151,10 +151,9 @@ export function TechSupportQueue() {
         };
       });
 
-      setTickets(ticketsWithData);
+      if (ticketsWithData.length > 0) setTickets(ticketsWithData);
     } catch (err) {
       console.error("Error fetching tickets:", err);
-      toast.error("Помилка завантаження");
     } finally {
       setIsLoading(false);
     }
