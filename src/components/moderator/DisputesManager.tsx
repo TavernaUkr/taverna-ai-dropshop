@@ -89,10 +89,95 @@ const QUICK_ACTIONS: {
 
 const hoursSince = (iso: string) => (Date.now() - new Date(iso).getTime()) / 3600000;
 
+const agoISO = (hours: number) => new Date(Date.now() - hours * 3600000).toISOString();
+
+const MOCK_DISPUTES: Dispute[] = [
+  {
+    id: "demo-1",
+    ticket_id: "demo-1",
+    order_id: "demo-order-1",
+    order_number: "#1042-A",
+    customer_name: "Олег Кравченко",
+    supplier_name: "Tactical Pro",
+    reason: "Пошкоджена коробка",
+    description: "Пошкоджена коробка при отриманні",
+    status: "pending",
+    created_at: agoISO(31),
+    order_amount: 1450,
+    client_claim:
+      "Отримав посилку з розірваною коробкою, кріплення на рюкзаку зламане. Прошу повне повернення коштів, фото додав у чат.",
+    shop_reply:
+      "Надіслали відео цілого пакування перед відправкою. Коробка була ціла, пошкодження сталося на боці перевізника — готові оформити претензію до служби доставки.",
+    timeline: [
+      { label: "Клієнт написав", at: agoISO(31) },
+      { label: "Магазин відповів", at: agoISO(27) },
+      { label: "Клієнт надіслав фото", at: agoISO(20) },
+    ],
+  },
+  {
+    id: "demo-2",
+    ticket_id: "demo-2",
+    order_id: "demo-order-2",
+    order_number: "#1078-B",
+    customer_name: "Ірина Мельник",
+    supplier_name: "Alpha Gear",
+    reason: "Невідповідний розмір",
+    description: "Прийшов не той розмір",
+    status: "pending",
+    created_at: agoISO(11),
+    order_amount: 890,
+    client_claim:
+      "Замовляла черевики 39 розміру, у посилці 41. Хочу обмін або повернення, товар не носила.",
+    shop_reply:
+      "У накладній вказано 39. Перевіряємо склад, можливо переплутали пару при комплектації. Пропонуємо безкоштовний обмін.",
+    timeline: [
+      { label: "Клієнт написав", at: agoISO(11) },
+      { label: "Магазин відповів", at: agoISO(9) },
+    ],
+  },
+  {
+    id: "demo-3",
+    ticket_id: "demo-3",
+    order_id: "demo-order-3",
+    order_number: "#1093-C",
+    customer_name: "Сергій Бондар",
+    supplier_name: "Nord Supply",
+    reason: "Замовлення не доїхало",
+    description: "Трек не оновлюється 9 днів",
+    status: "pending",
+    created_at: agoISO(52),
+    order_amount: 3200,
+    client_claim:
+      "Трек-номер не оновлюється 9 днів, у відділенні посилки немає. Оплатив повну передоплату 3 200 ₴, магазин не виходить на зв'язок.",
+    shop_reply: null,
+    timeline: [
+      { label: "Клієнт написав", at: agoISO(52) },
+      { label: "AI-асистент", at: agoISO(51) },
+      { label: "Модератор втрутився", at: agoISO(6) },
+    ],
+  },
+  {
+    id: "demo-4",
+    ticket_id: "demo-4",
+    order_id: "demo-order-4",
+    order_number: "#1101-D",
+    customer_name: "Марта Гнатюк",
+    supplier_name: "Taverna Store",
+    reason: "Спірна якість",
+    description: "Плями на тканині",
+    status: "pending",
+    created_at: agoISO(2),
+    order_amount: 640,
+    client_claim: "На сорочці плями від фарби, схоже на брак партії.",
+    shop_reply: "Готові прийняти повернення після фото. Компенсуємо доставку.",
+    timeline: [{ label: "Клієнт написав", at: agoISO(2) }],
+  },
+];
+
 export function DisputesManager() {
   const navigate = useNavigate();
-  const [disputes, setDisputes] = useState<Dispute[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [disputes, setDisputes] = useState<Dispute[]>(MOCK_DISPUTES);
+  const [isLoading, setIsLoading] = useState(false);
   const [selectedDispute, setSelectedDispute] = useState<Dispute | null>(null);
   const [resolution, setResolution] = useState("");
   const [resolutionType, setResolutionType] = useState<string>("");
