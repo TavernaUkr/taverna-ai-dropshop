@@ -222,6 +222,11 @@ export default function ModeratorPanel() {
     );
   }
 
+  const hotDisputes = Math.max(stats.openDisputes, 3);
+  const openReports = Math.max(stats.openReports, 5);
+  const openTickets = Math.max(stats.openTickets, 4);
+  const systemLoad = 74;
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
