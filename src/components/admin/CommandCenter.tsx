@@ -9,6 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { PlatformTreasury } from "./PlatformTreasury";
+import { SupplierAuditCards } from "./SupplierAuditCards";
+import { SystemKillSwitch } from "./SystemKillSwitch";
 
 interface OrderStats {
   totalOrders: number;
@@ -136,7 +139,7 @@ export function CommandCenter({ stats, applicationsCount, onNavigate }: CommandC
   return (
     <div className="space-y-4">
       {/* KPI grid */}
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {kpis.map((k) => (
           <button
             key={k.label}
@@ -195,6 +198,12 @@ export function CommandCenter({ stats, applicationsCount, onNavigate }: CommandC
         </CardContent>
       </Card>
 
+      {/* Platform treasury */}
+      <PlatformTreasury />
+
+      {/* AI supplier audit */}
+      <SupplierAuditCards />
+
       {/* Quick actions */}
       <div>
         <p className="text-sm font-semibold text-foreground mb-2">Швидкі дії</p>
@@ -212,6 +221,9 @@ export function CommandCenter({ stats, applicationsCount, onNavigate }: CommandC
           ))}
         </div>
       </div>
+
+      {/* Danger zone */}
+      <SystemKillSwitch />
     </div>
   );
 }
