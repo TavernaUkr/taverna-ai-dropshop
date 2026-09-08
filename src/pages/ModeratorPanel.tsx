@@ -86,8 +86,10 @@ export default function ModeratorPanel() {
     productsToReview: 0,
   });
 
+  // Preview/demo environment always renders the panel for visual work.
   const hasModeratorAccess =
-    isAuthenticated && (roles.includes('admin') || roles.includes('moderator'));
+    isPreviewDevEnvironment() ||
+    (isAuthenticated && (roles.includes('admin') || roles.includes('moderator')));
 
   useEffect(() => {
     if (hasModeratorAccess) {
