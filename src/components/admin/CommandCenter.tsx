@@ -221,6 +221,9 @@ export function CommandCenter({ stats, applicationsCount, onNavigate }: CommandC
           ))}
         </div>
       </div>
+
+      {/* Danger zone */}
+      <SystemKillSwitch />
     </div>
   );
 }
