@@ -205,16 +205,24 @@ export function TechSupportQueue() {
                     )}
 
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <Clock className="h-3 w-3" />
                         {formatTime(ticket.updated_at)}
+                        <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${
+                          urgency === "high" ? "bg-destructive/10 text-destructive" :
+                          urgency === "medium" ? "bg-warning/10 text-warning" :
+                          "bg-muted text-muted-foreground"
+                        }`}>
+                          {urgency === "high" ? "Терміново" : urgency === "medium" ? "Очікує" : "Нове"}
+                        </span>
                       </div>
                       <Button variant="ghost" size="sm" className="h-7 text-xs">
                         <MessageSquare className="h-3 w-3 mr-1" />
-                        Відповісти
+                        Відкрити міст
                         <ExternalLink className="h-3 w-3 ml-1" />
                       </Button>
                     </div>
+
                   </CardContent>
                 </Card>
               );

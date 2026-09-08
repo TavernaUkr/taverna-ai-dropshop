@@ -1,8 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, ArrowLeft, MessageCircle, Loader2, Bot, Package, Truck, CreditCard, RotateCcw, ArrowLeftRight, ShoppingBag, HelpCircle, User, ChevronRight, Lock } from "lucide-react";
+import { Send, ArrowLeft, MessageCircle, Loader2, Bot, Package, Truck, CreditCard, RotateCcw, ArrowLeftRight, ShoppingBag, HelpCircle, User, ChevronRight, Lock, MoreVertical, ShieldAlert, UserX, ArrowUpRight, Store, Smile } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
+  DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { useTelegramAuthContext } from "@/components/TelegramAuthProvider";
 import { hapticNotification, hapticSelection } from "@/lib/haptics";
@@ -12,6 +16,9 @@ import { uk } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { ChatRatingPrompt } from "@/components/ChatRatingPrompt";
 import { toast } from "sonner";
+
+const REACTIONS = ["👍", "❤️", "🔥", "😅", "😡"];
+
 
 interface Message {
   id: string;
@@ -94,6 +101,48 @@ export default function SupportChat() {
   const [showChatRating, setShowChatRating] = useState(false);
   const [isClosingTicket, setIsClosingTicket] = useState(false);
   const [botMessages, setBotMessages] = useState<{ id: string; text: string }[]>([]);
+
+  // Bridge (dual view) — лише для модератора/адміна
+  const isModerator = roles.includes("admin") || roles.includes("moderator");
+  const [bridgeView, setBridgeView] = useState<"client" | "shop">("client");
+  const [internalMessages, setInternalMessages] = useState<{ id: string; from: "moderator" | "shop"; text: string; at: string }[]>([]);
+  const [reactions, setReactions] = useState<Record<string, string>>({});
+  const [peerTyping, setPeerTyping] = useState(false);
+
+  const toggleReaction = (id: string, emoji: string) => {
+    hapticSelection();
+    setReactions((prev) => ({ ...prev, [id]: prev[id] === emoji ? "" : emoji }));
+  };
+
+  const sendInternal = (text: string) => {
+    setInternalMessages((prev) => [
+      ...prev,
+      { id: `int-${Date.now()}`, from: "moderator", text, at: new Date().toISOString() },
+    ]);
+    setPeerTyping(true);
+    setTimeout(() => {
+      setPeerTyping(false);
+      setInternalMessages((prev) => [
+        ...prev,
+        {
+          id: `int-${Date.now()}-r`,
+          from: "shop",
+          text: "Прийнято, перевіряємо замовлення та повернемось із відповіддю.",
+          at: new Date().toISOString(),
+        },
+      ]);
+    }, 1600);
+  };
+
+  const moderatorAction = (label: string, description: string) => {
+    hapticNotification("warning");
+    toast.success(label, { description });
+    setInternalMessages((prev) => [
+      ...prev,
+      { id: `act-${Date.now()}`, from: "moderator", text: `[Дія модератора] ${label}`, at: new Date().toISOString() },
+    ]);
+  };
+
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -510,11 +559,117 @@ export default function SupportChat() {
           )}>
             {ticket?.status === "open" ? "Активний" : "Закрито"}
           </div>
+
+          {isModerator && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" aria-label="Дії модератора">
+                  <MoreVertical className="w-5 h-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>Дії модератора</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => moderatorAction("Попередження надіслано", "Учасник отримав офіційне попередження")}>
+                  <ShieldAlert className="h-4 w-4 mr-2 text-warning" /> Винести попередження
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => moderatorAction("Тимчасове блокування", "Доступ обмежено на 24 години")}>
+                  <UserX className="h-4 w-4 mr-2 text-destructive" /> Тимчасовий бан (24 год)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => moderatorAction("Ескалація до адміністратора", "Звернення передано адміну платформи")}>
+                  <ArrowUpRight className="h-4 w-4 mr-2 text-primary" /> Ескалація до адміна
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleCloseTicket} disabled={isClosingTicket}>
+                  <Lock className="h-4 w-4 mr-2" /> Закрити тікет
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
+
+        {/* Dual view: клієнт / приватний чат з магазином */}
+        {isModerator && (
+          <div className="px-4 pb-3">
+            <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-muted">
+              {([
+                { id: "client", label: "Чат з клієнтом", icon: User },
+                { id: "shop", label: "Приватно з магазином", icon: Store },
+              ] as const).map((v) => {
+                const Icon = v.icon;
+                return (
+                  <button
+                    key={v.id}
+                    onClick={() => { hapticSelection(); setBridgeView(v.id); }}
+                    className={cn(
+                      "flex items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-medium transition-colors",
+                      bridgeView === v.id ? "bg-background text-foreground shadow-sm" : "text-muted-foreground",
+                    )}
+                  >
+                    <Icon className="h-3.5 w-3.5" /> {v.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </header>
 
-      {/* Messages Area */}
+      {/* Приватний внутрішній чат з менеджером магазину */}
+      {isModerator && bridgeView === "shop" ? (
+        <main className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-hide bg-warning/5">
+          <div className="text-center">
+            <span className="text-[11px] text-muted-foreground bg-muted px-3 py-1 rounded-full">
+              🔒 Внутрішній чат — клієнт цього не бачить
+            </span>
+          </div>
+          {internalMessages.length === 0 && (
+            <p className="text-center text-sm text-muted-foreground py-8">
+              Напишіть менеджеру магазину щодо цього звернення
+            </p>
+          )}
+          {internalMessages.map((m) => (
+            <motion.div
+              key={m.id}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={cn("flex", m.from === "moderator" ? "justify-end" : "justify-start")}
+            >
+              <div className={cn(
+                "max-w-[80%] px-4 py-2.5 border",
+                m.from === "moderator"
+                  ? "bg-warning/15 border-warning/40 rounded-2xl rounded-br-md"
+                  : "bg-card border-border rounded-2xl rounded-bl-md",
+              )}>
+                <p className="text-[11px] font-medium text-muted-foreground mb-1">
+                  {m.from === "moderator" ? "Ви (модератор)" : "Менеджер магазину"}
+                </p>
+                <p className="text-sm whitespace-pre-wrap break-words">{m.text}</p>
+                <p className="text-[10px] mt-1 text-muted-foreground">{format(new Date(m.at), "HH:mm")}</p>
+              </div>
+            </motion.div>
+          ))}
+          {peerTyping && (
+            <div className="flex justify-start">
+              <div className="bg-card border border-border rounded-2xl rounded-bl-md px-4 py-3 flex items-center gap-1">
+                {[0, 1, 2].map((i) => (
+                  <span
+                    key={i}
+                    className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce"
+                    style={{ animationDelay: `${i * 0.15}s` }}
+                  />
+                ))}
+                <span className="text-xs text-muted-foreground ml-1.5">магазин друкує…</span>
+              </div>
+            </div>
+          )}
+          <div ref={messagesEndRef} />
+        </main>
+      ) : (
+
+      /* Messages Area */
       <main className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-hide">
+
         {/* Bot guided messages */}
         {isGuidedFlow && (
           <AnimatePresence initial={false}>
@@ -659,27 +814,61 @@ export default function SupportChat() {
                   initial={{ opacity: 0, y: 10, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   transition={{ duration: 0.2 }}
-                  className={`flex ${isUser ? "justify-end" : "justify-start"}`}
+                  className={`group flex ${isUser ? "justify-end" : "justify-start"}`}
                 >
-                  <div className={cn(
-                    "max-w-[80%] px-4 py-2.5",
-                    isUser
-                      ? "bg-primary text-primary-foreground rounded-2xl rounded-br-md"
-                      : "bg-muted rounded-2xl rounded-bl-md"
-                  )}>
-                    {!isUser && (
-                      <p className="text-xs font-medium text-primary mb-1 flex items-center gap-1">
-                        {message.sender_role === "admin" ? <Bot className="h-3 w-3" /> : <User className="h-3 w-3" />}
-                        {getSenderLabel(message.sender_role)}
+                  <div className="max-w-[80%]">
+                    <div className={cn(
+                      "px-4 py-2.5",
+                      isUser
+                        ? "bg-primary text-primary-foreground rounded-2xl rounded-br-md"
+                        : "bg-muted rounded-2xl rounded-bl-md"
+                    )}>
+                      {!isUser && (
+                        <p className="text-xs font-medium text-primary mb-1 flex items-center gap-1">
+                          {message.sender_role === "admin" ? <Bot className="h-3 w-3" /> : <User className="h-3 w-3" />}
+                          {getSenderLabel(message.sender_role)}
+                        </p>
+                      )}
+                      <p className="text-sm whitespace-pre-wrap break-words">{message.message_text}</p>
+                      <p className={cn("text-[10px] mt-1", isUser ? "text-primary-foreground/70" : "text-muted-foreground")}>
+                        {format(new Date(message.created_at), "HH:mm")}
                       </p>
-                    )}
-                    <p className="text-sm whitespace-pre-wrap break-words">{message.message_text}</p>
-                    <p className={cn("text-[10px] mt-1", isUser ? "text-primary-foreground/70" : "text-muted-foreground")}>
-                      {format(new Date(message.created_at), "HH:mm")}
-                    </p>
+                    </div>
+
+                    {/* Швидкі реакції */}
+                    <div className={cn("flex items-center gap-1 mt-1", isUser ? "justify-end" : "justify-start")}>
+                      {reactions[message.id] ? (
+                        <button
+                          onClick={() => toggleReaction(message.id, reactions[message.id])}
+                          className="text-xs bg-card border border-border rounded-full px-2 py-0.5"
+                        >
+                          {reactions[message.id]}
+                        </button>
+                      ) : (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity text-muted-foreground">
+                              <Smile className="h-3.5 w-3.5" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align={isUser ? "end" : "start"} className="flex gap-1 p-1 min-w-0">
+                            {REACTIONS.map((emoji) => (
+                              <button
+                                key={emoji}
+                                onClick={() => toggleReaction(message.id, emoji)}
+                                className="text-base px-1.5 py-0.5 rounded hover:bg-muted"
+                              >
+                                {emoji}
+                              </button>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                    </div>
                   </div>
                 </motion.div>
               </div>
+
             );
           })}
         </AnimatePresence>
@@ -720,16 +909,37 @@ export default function SupportChat() {
 
         <div ref={messagesEndRef} />
       </main>
+      )}
 
       {/* Input Area */}
-      {ticket?.status === "open" && showTextInput ? (
-        <div className="sticky bottom-0 bg-background border-t p-4 pb-safe">
-          <form onSubmit={handleSendMessage} className="flex gap-2">
+      {(ticket?.status === "open" && showTextInput) || (isModerator && bridgeView === "shop") ? (
+        <div className={cn(
+          "sticky bottom-0 border-t p-4 pb-safe",
+          isModerator && bridgeView === "shop" ? "bg-warning/5" : "bg-background",
+        )}>
+          <form
+            onSubmit={(e) => {
+              if (isModerator && bridgeView === "shop") {
+                e.preventDefault();
+                if (!newMessage.trim()) return;
+                sendInternal(newMessage.trim());
+                setNewMessage("");
+                hapticSelection();
+                return;
+              }
+              handleSendMessage(e);
+            }}
+            className="flex gap-2"
+          >
             <Input
               ref={inputRef}
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
-              placeholder={flowStage === "ai_chat" ? "Опишіть ваше питання..." : "Напишіть повідомлення..."}
+              placeholder={
+                isModerator && bridgeView === "shop"
+                  ? "Внутрішнє повідомлення магазину..."
+                  : flowStage === "ai_chat" ? "Опишіть ваше питання..." : "Напишіть повідомлення..."
+              }
               className="flex-1 bg-muted border-0"
               disabled={isSending || isAiThinking}
             />
@@ -737,6 +947,7 @@ export default function SupportChat() {
               {isSending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
             </Button>
           </form>
+
           {/* Close ticket button for staff */}
           {isStaff && (
             <Button variant="outline" size="sm" onClick={handleCloseTicket} disabled={isClosingTicket} className="w-full mt-2 gap-2 text-xs">

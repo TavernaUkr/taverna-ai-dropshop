@@ -121,7 +121,8 @@ export function SupplierDebtCard({
         )}
       </motion.div>
 
-      {/* Авто-погашення */}
+      {/* Авто-погашення — лише для власника коштів */}
+      {!readOnly && (
       <div className="sm:col-span-2 rounded-2xl border border-border bg-card p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -156,9 +157,17 @@ export function SupplierDebtCard({
           </p>
         </div>
       </div>
+      )}
+
+      {readOnly && (
+        <div className="sm:col-span-2 rounded-2xl border border-border bg-muted/40 p-3 text-[11px] text-muted-foreground">
+          Режим перегляду: менеджер магазину бачить лише суми надходжень. Виводом коштів і погашенням боргу керує власник.
+        </div>
+      )}
     </div>
   );
 }
+
 
 /** Хук-стан для демо-керування боргом у прев'ю (без бекенду). */
 export function useDebtControls(initialDebt: number) {
