@@ -153,6 +153,13 @@ export const Header = ({
               <Users className="h-4 w-4" />
             </button>
             <button
+              onClick={() => navigate("/manager")}
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-primary hover:bg-primary/10 active:scale-95 transition-all"
+              aria-label="Просування">
+
+              <Megaphone className="h-4 w-4" />
+            </button>
+            <button
               onClick={onSearchClick}
               className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground active:scale-95 transition-all">
               
