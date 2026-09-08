@@ -102,6 +102,48 @@ export default function SupportChat() {
   const [isClosingTicket, setIsClosingTicket] = useState(false);
   const [botMessages, setBotMessages] = useState<{ id: string; text: string }[]>([]);
 
+  // Bridge (dual view) — лише для модератора/адміна
+  const isModerator = roles.includes("admin") || roles.includes("moderator");
+  const [bridgeView, setBridgeView] = useState<"client" | "shop">("client");
+  const [internalMessages, setInternalMessages] = useState<{ id: string; from: "moderator" | "shop"; text: string; at: string }[]>([]);
+  const [reactions, setReactions] = useState<Record<string, string>>({});
+  const [peerTyping, setPeerTyping] = useState(false);
+
+  const toggleReaction = (id: string, emoji: string) => {
+    hapticSelection();
+    setReactions((prev) => ({ ...prev, [id]: prev[id] === emoji ? "" : emoji }));
+  };
+
+  const sendInternal = (text: string) => {
+    setInternalMessages((prev) => [
+      ...prev,
+      { id: `int-${Date.now()}`, from: "moderator", text, at: new Date().toISOString() },
+    ]);
+    setPeerTyping(true);
+    setTimeout(() => {
+      setPeerTyping(false);
+      setInternalMessages((prev) => [
+        ...prev,
+        {
+          id: `int-${Date.now()}-r`,
+          from: "shop",
+          text: "Прийнято, перевіряємо замовлення та повернемось із відповіддю.",
+          at: new Date().toISOString(),
+        },
+      ]);
+    }, 1600);
+  };
+
+  const moderatorAction = (label: string, description: string) => {
+    hapticNotification("warning");
+    toast.success(label, { description });
+    setInternalMessages((prev) => [
+      ...prev,
+      { id: `act-${Date.now()}`, from: "moderator", text: `[Дія модератора] ${label}`, at: new Date().toISOString() },
+    ]);
+  };
+
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
