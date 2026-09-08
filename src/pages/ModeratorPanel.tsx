@@ -36,6 +36,7 @@ import { TechSupportQueue } from '@/components/moderator/TechSupportQueue';
 import { RefundsQueue } from '@/components/moderator/RefundsQueue';
 import { PaymentsManager } from '@/components/admin/PaymentsManager';
 import { ShopBalancesPanel } from '@/components/admin/ShopBalancesPanel';
+import { isPreviewDevEnvironment } from '@/lib/dev-preview';
 
 interface Report {
   id: string;
