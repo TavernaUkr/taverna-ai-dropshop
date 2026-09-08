@@ -814,27 +814,61 @@ export default function SupportChat() {
                   initial={{ opacity: 0, y: 10, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   transition={{ duration: 0.2 }}
-                  className={`flex ${isUser ? "justify-end" : "justify-start"}`}
+                  className={`group flex ${isUser ? "justify-end" : "justify-start"}`}
                 >
-                  <div className={cn(
-                    "max-w-[80%] px-4 py-2.5",
-                    isUser
-                      ? "bg-primary text-primary-foreground rounded-2xl rounded-br-md"
-                      : "bg-muted rounded-2xl rounded-bl-md"
-                  )}>
-                    {!isUser && (
-                      <p className="text-xs font-medium text-primary mb-1 flex items-center gap-1">
-                        {message.sender_role === "admin" ? <Bot className="h-3 w-3" /> : <User className="h-3 w-3" />}
-                        {getSenderLabel(message.sender_role)}
+                  <div className="max-w-[80%]">
+                    <div className={cn(
+                      "px-4 py-2.5",
+                      isUser
+                        ? "bg-primary text-primary-foreground rounded-2xl rounded-br-md"
+                        : "bg-muted rounded-2xl rounded-bl-md"
+                    )}>
+                      {!isUser && (
+                        <p className="text-xs font-medium text-primary mb-1 flex items-center gap-1">
+                          {message.sender_role === "admin" ? <Bot className="h-3 w-3" /> : <User className="h-3 w-3" />}
+                          {getSenderLabel(message.sender_role)}
+                        </p>
+                      )}
+                      <p className="text-sm whitespace-pre-wrap break-words">{message.message_text}</p>
+                      <p className={cn("text-[10px] mt-1", isUser ? "text-primary-foreground/70" : "text-muted-foreground")}>
+                        {format(new Date(message.created_at), "HH:mm")}
                       </p>
-                    )}
-                    <p className="text-sm whitespace-pre-wrap break-words">{message.message_text}</p>
-                    <p className={cn("text-[10px] mt-1", isUser ? "text-primary-foreground/70" : "text-muted-foreground")}>
-                      {format(new Date(message.created_at), "HH:mm")}
-                    </p>
+                    </div>
+
+                    {/* Швидкі реакції */}
+                    <div className={cn("flex items-center gap-1 mt-1", isUser ? "justify-end" : "justify-start")}>
+                      {reactions[message.id] ? (
+                        <button
+                          onClick={() => toggleReaction(message.id, reactions[message.id])}
+                          className="text-xs bg-card border border-border rounded-full px-2 py-0.5"
+                        >
+                          {reactions[message.id]}
+                        </button>
+                      ) : (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity text-muted-foreground">
+                              <Smile className="h-3.5 w-3.5" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align={isUser ? "end" : "start"} className="flex gap-1 p-1 min-w-0">
+                            {REACTIONS.map((emoji) => (
+                              <button
+                                key={emoji}
+                                onClick={() => toggleReaction(message.id, emoji)}
+                                className="text-base px-1.5 py-0.5 rounded hover:bg-muted"
+                              >
+                                {emoji}
+                              </button>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                    </div>
                   </div>
                 </motion.div>
               </div>
+
             );
           })}
         </AnimatePresence>
