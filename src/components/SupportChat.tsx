@@ -909,16 +909,37 @@ export default function SupportChat() {
 
         <div ref={messagesEndRef} />
       </main>
+      )}
 
       {/* Input Area */}
-      {ticket?.status === "open" && showTextInput ? (
-        <div className="sticky bottom-0 bg-background border-t p-4 pb-safe">
-          <form onSubmit={handleSendMessage} className="flex gap-2">
+      {(ticket?.status === "open" && showTextInput) || (isModerator && bridgeView === "shop") ? (
+        <div className={cn(
+          "sticky bottom-0 border-t p-4 pb-safe",
+          isModerator && bridgeView === "shop" ? "bg-warning/5" : "bg-background",
+        )}>
+          <form
+            onSubmit={(e) => {
+              if (isModerator && bridgeView === "shop") {
+                e.preventDefault();
+                if (!newMessage.trim()) return;
+                sendInternal(newMessage.trim());
+                setNewMessage("");
+                hapticSelection();
+                return;
+              }
+              handleSendMessage(e);
+            }}
+            className="flex gap-2"
+          >
             <Input
               ref={inputRef}
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
-              placeholder={flowStage === "ai_chat" ? "Опишіть ваше питання..." : "Напишіть повідомлення..."}
+              placeholder={
+                isModerator && bridgeView === "shop"
+                  ? "Внутрішнє повідомлення магазину..."
+                  : flowStage === "ai_chat" ? "Опишіть ваше питання..." : "Напишіть повідомлення..."
+              }
               className="flex-1 bg-muted border-0"
               disabled={isSending || isAiThinking}
             />
@@ -926,6 +947,7 @@ export default function SupportChat() {
               {isSending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
             </Button>
           </form>
+
           {/* Close ticket button for staff */}
           {isStaff && (
             <Button variant="outline" size="sm" onClick={handleCloseTicket} disabled={isClosingTicket} className="w-full mt-2 gap-2 text-xs">
