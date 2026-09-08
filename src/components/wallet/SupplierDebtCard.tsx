@@ -121,7 +121,8 @@ export function SupplierDebtCard({
         )}
       </motion.div>
 
-      {/* Авто-погашення */}
+      {/* Авто-погашення — лише для власника коштів */}
+      {!readOnly && (
       <div className="sm:col-span-2 rounded-2xl border border-border bg-card p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
