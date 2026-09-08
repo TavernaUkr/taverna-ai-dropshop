@@ -1,5 +1,9 @@
 import { useState, useEffect } from "react";
-import { Scale, MessageSquare, Loader2, Check, X, AlertTriangle, Package, User, Store } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import {
+  Scale, MessageSquare, Loader2, Check, AlertTriangle, Package, User, Store,
+  Clock, Undo2, ShieldAlert, UserX, ArrowUpRight, Flame,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -7,19 +11,21 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { hapticNotification } from "@/lib/haptics";
+import { hapticNotification, hapticSelection } from "@/lib/haptics";
+import { cn } from "@/lib/utils";
 
 interface Dispute {
   id: string;
   ticket_id: string;
   order_id: string;
+  order_number: string;
   customer_name: string;
   supplier_name: string;
   reason: string;
@@ -27,16 +33,73 @@ interface Dispute {
   status: "pending" | "in_review" | "resolved_customer" | "resolved_supplier" | "rejected";
   created_at: string;
   order_amount: number;
-  last_message: string | null;
+  client_claim: string | null;
+  shop_reply: string | null;
+  timeline: { label: string; at: string }[];
 }
 
+type QuickActionId = "refund" | "penalty_shop" | "penalty_client" | "escalate";
+
+const QUICK_ACTIONS: {
+  id: QuickActionId;
+  label: string;
+  icon: any;
+  tone: "success" | "destructive" | "warning" | "primary";
+  title: string;
+  hint: string;
+  note: (d: Dispute) => string;
+}[] = [
+  {
+    id: "refund",
+    label: "Повернути кошти",
+    icon: Undo2,
+    tone: "success",
+    title: "Повернення коштів клієнту",
+    hint: "Сума замовлення повернеться на «Картку для повернень» клієнта.",
+    note: (d) => `Модератор ініціював повернення коштів клієнту на суму ${d.order_amount.toLocaleString()} ₴.`,
+  },
+  {
+    id: "penalty_shop",
+    label: "Штраф магазину",
+    icon: ShieldAlert,
+    tone: "destructive",
+    title: "Штраф магазину",
+    hint: "Знижує рейтинг магазину та фіксує порушення в історії.",
+    note: (d) => `Модератор наклав штраф на магазин «${d.supplier_name}».`,
+  },
+  {
+    id: "penalty_client",
+    label: "Штраф клієнту",
+    icon: UserX,
+    tone: "warning",
+    title: "Штраф клієнту (неправдива скарга)",
+    hint: "Використовуйте лише при підтвердженій неправдивій претензії.",
+    note: (d) => `Модератор наклав штраф на клієнта «${d.customer_name}» за неправдиву претензію.`,
+  },
+  {
+    id: "escalate",
+    label: "Ескалація до Адміна",
+    icon: ArrowUpRight,
+    tone: "primary",
+    title: "Ескалація до адміністратора",
+    hint: "Спір перейде до адміністратора платформи з вашим коментарем.",
+    note: () => `Спір ескальовано до адміністратора платформи.`,
+  },
+];
+
+const hoursSince = (iso: string) => (Date.now() - new Date(iso).getTime()) / 3600000;
+
 export function DisputesManager() {
+  const navigate = useNavigate();
   const [disputes, setDisputes] = useState<Dispute[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedDispute, setSelectedDispute] = useState<Dispute | null>(null);
   const [resolution, setResolution] = useState("");
   const [resolutionType, setResolutionType] = useState<string>("");
   const [isResolving, setIsResolving] = useState(false);
+  const [quickAction, setQuickAction] = useState<{ dispute: Dispute; action: QuickActionId } | null>(null);
+  const [quickComment, setQuickComment] = useState("");
+  const [isActing, setIsActing] = useState(false);
 
   useEffect(() => {
     fetchDisputes();
@@ -76,24 +139,24 @@ export function DisputesManager() {
           .from("order_items")
           .select("order_id, product_id")
           .in("order_id", orderIds);
-        
+
         const productIds = [...new Set((orderItems || []).map(oi => oi.product_id).filter(Boolean))];
         if (productIds.length > 0) {
           const { data: products } = await supabase
             .from("products")
             .select("id, supplier_id")
             .in("id", productIds);
-          
+
           const supplierIds = [...new Set((products || []).map(p => p.supplier_id).filter(Boolean))];
           if (supplierIds.length > 0) {
             const { data: suppliers } = await supabase
               .from("suppliers")
               .select("id, shop_name")
               .in("id", supplierIds as string[]);
-            
+
             const supplierNameMap: Record<string, string> = {};
             (suppliers || []).forEach(s => { supplierNameMap[s.id] = s.shop_name; });
-            
+
             (orderItems || []).forEach(oi => {
               const product = (products || []).find(p => p.id === oi.product_id);
               if (product?.supplier_id && oi.order_id) {
@@ -104,19 +167,33 @@ export function DisputesManager() {
         }
       }
 
-      // Fetch last messages for each ticket
+      // Fetch messages for each ticket: client claim, shop reply, timeline
       const ticketIds = (tickets || []).map(t => t.id);
-      let lastMessageMap: Record<string, string> = {};
+      const claimMap: Record<string, string> = {};
+      const replyMap: Record<string, string> = {};
+      const timelineMap: Record<string, { label: string; at: string }[]> = {};
       if (ticketIds.length > 0) {
         const { data: messages } = await supabase
           .from("ticket_messages")
-          .select("ticket_id, message_text")
+          .select("ticket_id, message_text, sender_role, created_at")
           .in("ticket_id", ticketIds)
-          .order("created_at", { ascending: false });
-        
+          .order("created_at", { ascending: true });
+
         (messages || []).forEach(m => {
-          if (!lastMessageMap[m.ticket_id]) {
-            lastMessageMap[m.ticket_id] = m.message_text;
+          const clean = (m.message_text || "").replace(/^\[.*?\]\n?/, "");
+          if (m.sender_role === "user" && !claimMap[m.ticket_id]) claimMap[m.ticket_id] = clean;
+          if ((m.sender_role === "supplier" || m.sender_role === "moderator") && !replyMap[m.ticket_id]) {
+            replyMap[m.ticket_id] = clean;
+          }
+          const list = timelineMap[m.ticket_id] || (timelineMap[m.ticket_id] = []);
+          if (list.length < 5) {
+            list.push({
+              label:
+                m.sender_role === "user" ? "Клієнт написав" :
+                m.sender_role === "supplier" ? "Магазин відповів" :
+                m.sender_role === "moderator" ? "Модератор втрутився" : "AI-асистент",
+              at: m.created_at,
+            });
           }
         });
       }
@@ -125,14 +202,17 @@ export function DisputesManager() {
         id: t.id,
         ticket_id: t.id,
         order_id: t.related_order_id || "",
+        order_number: t.order?.order_number || `#${(t.related_order_id || "").slice(0, 8)}`,
         customer_name: profileMap[t.user_id] || "Клієнт",
         supplier_name: supplierMap[t.related_order_id || ""] || "Постачальник",
         reason: "Спір по замовленню",
-        description: lastMessageMap[t.id] || "Спірне питання щодо замовлення",
+        description: claimMap[t.id] || "Спірне питання щодо замовлення",
         status: "pending" as const,
         created_at: t.created_at,
         order_amount: t.order?.total || 0,
-        last_message: lastMessageMap[t.id] || null,
+        client_claim: claimMap[t.id] || null,
+        shop_reply: replyMap[t.id] || null,
+        timeline: timelineMap[t.id] || [],
       }));
 
       setDisputes(disputesData);
@@ -183,25 +263,57 @@ export function DisputesManager() {
     }
   };
 
+  const runQuickAction = async () => {
+    if (!quickAction) return;
+    const cfg = QUICK_ACTIONS.find(a => a.id === quickAction.action)!;
+    setIsActing(true);
+    try {
+      await supabase.from("ticket_messages").insert({
+        ticket_id: quickAction.dispute.ticket_id,
+        sender_role: "moderator",
+        message_text: `[Дія модератора] ${cfg.note(quickAction.dispute)}${quickComment ? `\n\n${quickComment}` : ""}`,
+      });
+      hapticNotification("success");
+      toast.success(cfg.title, { description: "Дію зафіксовано в історії спору" });
+      setQuickAction(null);
+      setQuickComment("");
+      fetchDisputes();
+    } catch (err) {
+      console.error("Quick action error:", err);
+      toast.error("Не вдалося виконати дію");
+    } finally {
+      setIsActing(false);
+    }
+  };
+
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString("uk-UA", {
       day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
     });
   };
 
+  const hotCount = disputes.filter(d => hoursSince(d.created_at) > 24).length;
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-foreground flex items-center gap-2">
           <Scale className="h-5 w-5 text-warning" />
-          Спори клієнт/постачальник
+          Арена спорів
         </h3>
-        <Badge variant={disputes.length > 0 ? "destructive" : "outline"}>
-          {disputes.length} активних
-        </Badge>
+        <div className="flex items-center gap-2">
+          {hotCount > 0 && (
+            <Badge variant="destructive" className="gap-1">
+              <Flame className="h-3 w-3" /> {hotCount} гарячих
+            </Badge>
+          )}
+          <Badge variant={disputes.length > 0 ? "default" : "outline"}>
+            {disputes.length} активних
+          </Badge>
+        </div>
       </div>
 
-      <ScrollArea className="h-[350px]">
+      <ScrollArea className="h-[420px]">
         <div className="space-y-3 pr-4">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
@@ -214,58 +326,169 @@ export function DisputesManager() {
               <p className="text-sm text-muted-foreground mt-1">Всі спірні питання вирішено</p>
             </div>
           ) : (
-            disputes.map((dispute) => (
-              <Card key={dispute.id} className="overflow-hidden">
-                <CardContent className="p-4 space-y-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-2">
-                      <AlertTriangle className="h-5 w-5 text-warning" />
-                      <span className="font-medium">{dispute.reason}</span>
-                    </div>
-                    <Badge variant="destructive">Очікує</Badge>
-                  </div>
+            disputes.map((dispute) => {
+              const hours = hoursSince(dispute.created_at);
+              const urgent = hours > 24;
 
-                  <div className="grid grid-cols-2 gap-3 text-sm">
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <User className="h-4 w-4" />
-                      <span className="truncate">{dispute.customer_name}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Store className="h-4 w-4" />
-                      <span className="truncate">{dispute.supplier_name}</span>
-                    </div>
-                  </div>
-
-                  {dispute.last_message && (
-                    <p className="text-xs text-muted-foreground line-clamp-2 bg-muted/50 rounded-lg p-2">
-                      {dispute.last_message}
-                    </p>
+              return (
+                <Card
+                  key={dispute.id}
+                  className={cn(
+                    "overflow-hidden",
+                    urgent ? "border-destructive/50" : hours > 8 ? "border-warning/50" : "",
                   )}
-
-                  <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Package className="h-4 w-4" />
-                      <span>Замовлення: {dispute.order_amount.toLocaleString()} ₴</span>
+                >
+                  {/* Смуга-заголовок */}
+                  <div className={cn(
+                    "flex items-center justify-between gap-2 px-4 py-2.5 text-sm",
+                    urgent ? "bg-destructive/10" : "bg-muted/60",
+                  )}>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <AlertTriangle className={cn("h-4 w-4 shrink-0", urgent ? "text-destructive" : "text-warning")} />
+                      <span className="font-semibold truncate">{dispute.order_number}</span>
+                      <span className="text-muted-foreground shrink-0">
+                        · {dispute.order_amount.toLocaleString()} ₴
+                      </span>
                     </div>
-                    <span className="text-xs text-muted-foreground">{formatDate(dispute.created_at)}</span>
+                    <div className={cn(
+                      "flex items-center gap-1 text-xs shrink-0",
+                      urgent ? "text-destructive font-semibold" : "text-muted-foreground",
+                    )}>
+                      <Clock className="h-3 w-3" />
+                      {hours < 1 ? "щойно" : hours < 24 ? `${Math.floor(hours)} год` : `${Math.floor(hours / 24)} дн`}
+                    </div>
                   </div>
 
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" className="flex-1" onClick={() => toast.info("Відкрийте чат через панель тех. підтримки")}>
-                      <MessageSquare className="h-4 w-4 mr-1" />
-                      Чат
-                    </Button>
-                    <Button size="sm" className="flex-1" onClick={() => setSelectedDispute(dispute)}>
-                      <Scale className="h-4 w-4 mr-1" />
-                      Вирішити
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
+                  <CardContent className="p-4 space-y-3">
+                    {/* Дві сторони конфлікту */}
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 space-y-2">
+                        <div className="flex items-center gap-2 text-xs font-semibold text-destructive">
+                          <User className="h-3.5 w-3.5" /> Претензія клієнта
+                        </div>
+                        <p className="text-sm font-medium text-foreground truncate">{dispute.customer_name}</p>
+                        <p className="text-xs text-muted-foreground whitespace-pre-wrap line-clamp-4">
+                          {dispute.client_claim || "Клієнт ще не описав претензію"}
+                        </p>
+                      </div>
+
+                      <div className="rounded-xl border border-border bg-muted/40 p-3 space-y-2">
+                        <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
+                          <Store className="h-3.5 w-3.5" /> Позиція магазину / Історія
+                        </div>
+                        <p className="text-sm font-medium text-foreground truncate">{dispute.supplier_name}</p>
+                        {dispute.shop_reply ? (
+                          <p className="text-xs text-muted-foreground whitespace-pre-wrap line-clamp-3">
+                            {dispute.shop_reply}
+                          </p>
+                        ) : (
+                          <p className="text-xs text-warning">Без відповіді магазину</p>
+                        )}
+                        {dispute.timeline.length > 0 && (
+                          <ul className="space-y-1 pt-1 border-t border-border/60">
+                            {dispute.timeline.slice(0, 3).map((ev, i) => (
+                              <li key={i} className="flex items-center justify-between text-[11px] text-muted-foreground">
+                                <span className="truncate">{ev.label}</span>
+                                <span className="shrink-0 ml-2">{formatDate(ev.at)}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Швидкі дії */}
+                    <div className="grid grid-cols-2 gap-2">
+                      {QUICK_ACTIONS.map((a) => {
+                        const Icon = a.icon;
+                        return (
+                          <Button
+                            key={a.id}
+                            size="sm"
+                            variant="outline"
+                            className={cn(
+                              "h-9 text-[11px] justify-start",
+                              a.tone === "success" && "border-success/40 text-success hover:bg-success/10",
+                              a.tone === "destructive" && "border-destructive/40 text-destructive hover:bg-destructive/10",
+                              a.tone === "warning" && "border-warning/40 text-warning hover:bg-warning/10",
+                              a.tone === "primary" && "border-primary/40 text-primary hover:bg-primary/10",
+                            )}
+                            onClick={() => { hapticSelection(); setQuickAction({ dispute, action: a.id }); }}
+                          >
+                            <Icon className="h-3.5 w-3.5 mr-1.5 shrink-0" />
+                            {a.label}
+                          </Button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="flex gap-2 pt-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => navigate(`/support/chat/${dispute.ticket_id}`)}
+                      >
+                        <MessageSquare className="h-4 w-4 mr-1" />
+                        Міст-чат
+                      </Button>
+                      <Button size="sm" className="flex-1" onClick={() => setSelectedDispute(dispute)}>
+                        <Scale className="h-4 w-4 mr-1" />
+                        Вирішити
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })
           )}
         </div>
       </ScrollArea>
+
+      {/* Швидка дія */}
+      <Dialog open={!!quickAction} onOpenChange={(o) => { if (!o) { setQuickAction(null); setQuickComment(""); } }}>
+        <DialogContent>
+          {quickAction && (() => {
+            const cfg = QUICK_ACTIONS.find(a => a.id === quickAction.action)!;
+            const Icon = cfg.icon;
+            return (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <Icon className="h-5 w-5" /> {cfg.title}
+                  </DialogTitle>
+                  <DialogDescription>{cfg.hint}</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-3 py-2">
+                  <div className="p-3 bg-muted rounded-lg text-sm">
+                    <p className="font-medium">{quickAction.dispute.order_number}</p>
+                    <p className="text-muted-foreground text-xs mt-0.5">
+                      {quickAction.dispute.customer_name} vs {quickAction.dispute.supplier_name} ·{" "}
+                      {quickAction.dispute.order_amount.toLocaleString()} ₴
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Коментар (необов'язково)</Label>
+                    <Textarea
+                      value={quickComment}
+                      onChange={(e) => setQuickComment(e.target.value)}
+                      rows={3}
+                      placeholder="Підстава для дії..."
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setQuickAction(null)}>Скасувати</Button>
+                  <Button onClick={runQuickAction} disabled={isActing}>
+                    {isActing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
+                    Підтвердити
+                  </Button>
+                </DialogFooter>
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
 
       {/* Resolution Dialog */}
       <Dialog open={!!selectedDispute} onOpenChange={() => setSelectedDispute(null)}>
@@ -279,7 +502,7 @@ export function DisputesManager() {
           <div className="space-y-4 py-4">
             {selectedDispute && (
               <div className="p-3 bg-muted rounded-lg space-y-2">
-                <p className="font-medium">{selectedDispute.reason}</p>
+                <p className="font-medium">{selectedDispute.order_number}</p>
                 <div className="flex items-center justify-between text-sm text-muted-foreground">
                   <span>{selectedDispute.customer_name} vs {selectedDispute.supplier_name}</span>
                   <span>{selectedDispute.order_amount.toLocaleString()} ₴</span>
