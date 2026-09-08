@@ -139,7 +139,7 @@ export function CommandCenter({ stats, applicationsCount, onNavigate }: CommandC
   return (
     <div className="space-y-4">
       {/* KPI grid */}
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {kpis.map((k) => (
           <button
             key={k.label}
