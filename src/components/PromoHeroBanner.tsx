@@ -1,17 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Gift, Sparkles, ChevronRight, Crown, Package } from "lucide-react";
+import { Gift, Sparkles, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { hapticSelection } from "@/lib/haptics";
-import { PersonalBonusDialog } from "@/components/promos/PersonalBonusDialog";
-import { MyBonusesInventorySheet } from "@/components/promos/MyBonusesInventorySheet";
 
-/** Преміальний банер акцій + окрема кнопка персонального бонусу на головній. */
+/** Преміальний банер акцій на головній. */
 export const PromoHeroBanner = () => {
   const navigate = useNavigate();
   const [promoCount, setPromoCount] = useState(0);
-  const [bonusOpen, setBonusOpen] = useState(false);
-  const [inventoryOpen, setInventoryOpen] = useState(false);
 
   useEffect(() => {
     supabase
@@ -53,42 +49,6 @@ export const PromoHeroBanner = () => {
           </span>
         </div>
       </button>
-
-      <button
-        onClick={() => { hapticSelection(); setBonusOpen(true); }}
-        aria-label="Персональний бонус"
-        className="relative w-full overflow-hidden rounded-2xl p-3.5 text-left text-primary-foreground bg-gradient-to-r from-warning via-rating to-primary shadow-lg active:scale-[0.985] transition-transform duration-150"
-      >
-        <span className="pointer-events-none absolute -right-8 -bottom-10 w-28 h-28 rounded-full bg-primary-foreground/10" />
-        <div className="relative z-10 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary-foreground/20 backdrop-blur-sm flex items-center justify-center">
-            <Crown className="h-5 w-5" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-[14px] font-bold leading-tight">Персональний бонус</p>
-            <p className="text-[11px] opacity-90 truncate">Ваша особиста винагорода за активність</p>
-          </div>
-          <ChevronRight className="h-4 w-4 opacity-80" />
-        </div>
-      </button>
-
-      <button
-        onClick={() => { hapticSelection(); setInventoryOpen(true); }}
-        aria-label="Мої бонуси"
-        className="w-full flex items-center gap-3 rounded-2xl border border-border bg-card p-3 text-left active:scale-[0.985] transition-transform duration-150"
-      >
-        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-          <Package className="h-5 w-5 text-primary" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-[14px] font-bold text-foreground leading-tight">Мої бонуси</p>
-          <p className="text-[11px] text-muted-foreground truncate">Доступні нагороди та історія використання</p>
-        </div>
-        <ChevronRight className="h-4 w-4 text-muted-foreground" />
-      </button>
-
-      <PersonalBonusDialog open={bonusOpen} onOpenChange={setBonusOpen} />
-      <MyBonusesInventorySheet open={inventoryOpen} onOpenChange={setInventoryOpen} />
     </section>
   );
 };
