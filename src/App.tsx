@@ -32,6 +32,7 @@ import NotFound from "./pages/NotFound";
 import OAuthConsent from "./pages/OAuthConsent";
 import Login from "./pages/Login";
 import { FloatingDevRoleSwitcher } from "@/components/dev/FloatingDevRoleSwitcher";
+import { FloatingBonusWidget } from "@/components/promos/FloatingBonusWidget";
 
 const queryClient = new QueryClient();
 
@@ -153,6 +154,7 @@ const App = () => (
             <Sonner />
             <BrowserRouter>
               <AnimatedRoutes />
+              <FloatingBonusWidget />
               <FloatingDevRoleSwitcher />
             </BrowserRouter>
 
