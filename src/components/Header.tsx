@@ -140,21 +140,21 @@ export const Header = ({
             </button>
             <button
               onClick={onPromoClick}
-              className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-live/10 active:scale-95 transition-all text-[#ff00d9]"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-header-promo hover:bg-header-promo/10 active:scale-95 transition-all"
               aria-label="Акції">
               
               <Gift className="h-4 w-4" />
             </button>
             <button
               onClick={() => setIsReferralsOpen(true)}
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-accent hover:bg-accent/10 active:scale-95 transition-all"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-header-referral hover:bg-header-referral/10 active:scale-95 transition-all"
               aria-label="Реферальна програма">
 
               <Users className="h-4 w-4" />
             </button>
             <button
               onClick={() => navigate("/manager")}
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-warning hover:bg-warning/10 active:scale-95 transition-all"
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-header-promotion hover:bg-header-promotion/10 active:scale-95 transition-all"
               aria-label="Просування">
 
               <Megaphone className="h-4 w-4" />

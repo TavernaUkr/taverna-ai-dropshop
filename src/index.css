@@ -52,6 +52,14 @@ All colors MUST be HSL.
     --rating: 38 90% 48%;
     --rating-foreground: 0 0% 100%;
 
+    /* Header action accents */
+    --header-referral: 199 89% 48%;
+    --header-referral-foreground: 0 0% 100%;
+    --header-promotion: 270 60% 55%;
+    --header-promotion-foreground: 0 0% 100%;
+    --header-promo: 330 95% 65%;
+    --header-promo-foreground: 210 10% 12%;
+
     --border: 210 8% 90%;
     --input: 210 8% 92%;
     --ring: 130 32% 38%;
@@ -116,6 +124,14 @@ All colors MUST be HSL.
 
     --rating: 38 90% 48%;
     --rating-foreground: 0 0% 100%;
+
+    /* Header action accents */
+    --header-referral: 199 95% 55%;
+    --header-referral-foreground: 0 0% 100%;
+    --header-promotion: 270 70% 65%;
+    --header-promotion-foreground: 0 0% 100%;
+    --header-promo: 330 100% 75%;
+    --header-promo-foreground: 210 10% 12%;
 
     --border: 220 10% 20%;
     --input: 220 10% 20%;
