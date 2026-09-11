@@ -66,6 +66,18 @@ export default {
           DEFAULT: "hsl(var(--rating))",
           foreground: "hsl(var(--rating-foreground))",
         },
+        "header-referral": {
+          DEFAULT: "hsl(var(--header-referral))",
+          foreground: "hsl(var(--header-referral-foreground))",
+        },
+        "header-promotion": {
+          DEFAULT: "hsl(var(--header-promotion))",
+          foreground: "hsl(var(--header-promotion-foreground))",
+        },
+        "header-promo": {
+          DEFAULT: "hsl(var(--header-promo))",
+          foreground: "hsl(var(--header-promo-foreground))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
