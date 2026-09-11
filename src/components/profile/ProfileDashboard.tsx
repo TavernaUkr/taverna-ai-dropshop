@@ -17,7 +17,7 @@ import {
   Flag,
   MessageSquare,
   MapPin,
-  Megaphone,
+  
   Archive,
   Star,
 } from "lucide-react";
@@ -259,25 +259,6 @@ export const ProfileDashboard = () => {
         </button>
       )}
 
-      {/* Promotion Panel Button - For Admins and Moderators */}
-      {isAuthenticated && (isAdmin || isModerator) && (
-        <button
-          onClick={() => navigate("/manager")}
-          className="w-full flex items-center gap-4 p-4 rounded-xl border transition-all bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/30 hover:border-purple-500"
-        >
-          <div className="w-12 h-12 rounded-full flex items-center justify-center bg-gradient-to-br from-purple-500/20 to-pink-500/20">
-            <Megaphone className="h-6 w-6 text-purple-500" />
-          </div>
-          <div className="flex-1 text-left">
-            <h4 className="font-semibold text-foreground">Просування</h4>
-            <p className="text-xs text-muted-foreground">
-              Постити та рекламувати будь-який товар
-            </p>
-          </div>
-          <ChevronRight className="h-5 w-5 text-purple-500" />
-        </button>
-      )}
-
       {/* Store Management Button - For Suppliers and Shop Managers */}
       {isAuthenticated && (isOnlySupplier || isShopManager) && !isAdmin && (
         <button
@@ -297,25 +278,6 @@ export const ProfileDashboard = () => {
             </p>
           </div>
           <ChevronRight className="h-5 w-5 text-emerald-500" />
-        </button>
-      )}
-
-      {/* Promotion Panel Button - For Suppliers (not Admin/Moderator, they already have it above) */}
-      {isAuthenticated && isOnlySupplier && !isAdmin && !isModerator && (
-        <button
-          onClick={() => navigate("/manager")}
-          className="w-full flex items-center gap-4 p-4 rounded-xl border transition-all bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/30 hover:border-purple-500"
-        >
-          <div className="w-12 h-12 rounded-full flex items-center justify-center bg-gradient-to-br from-purple-500/20 to-pink-500/20">
-            <Megaphone className="h-6 w-6 text-purple-500" />
-          </div>
-          <div className="flex-1 text-left">
-            <h4 className="font-semibold text-foreground">Просування</h4>
-            <p className="text-xs text-muted-foreground">
-              Постити та рекламувати товари
-            </p>
-          </div>
-          <ChevronRight className="h-5 w-5 text-purple-500" />
         </button>
       )}
 
