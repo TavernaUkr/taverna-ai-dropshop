@@ -4,10 +4,12 @@ import { DevRoleSwitcher } from "@/components/profile/DevRoleSwitcher";
 type TestRole = "guest" | "customer" | "supplier" | "shop_manager" | "moderator" | "admin";
 
 /**
- * Floating "Жук" button available on every preview page,
- * so roles can be switched from admin panel, balance, manager, etc.
+ * Floating "Жук" button available on every preview/dev page.
+ * Completely disabled in production builds.
  */
 export const FloatingDevRoleSwitcher = () => {
+  if (import.meta.env.PROD) return null;
+
   const { canUseDevRoleSwitcher, effectiveRole, setDevRoleOverride, realProfile } =
     useTelegramAuthContext();
 

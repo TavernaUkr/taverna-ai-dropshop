@@ -174,8 +174,8 @@ export function SupplierAuditCards() {
                 </div>
 
                 <div className="mt-3 flex flex-wrap gap-1.5">
-                  {current.categories.map((c) => (
-                    <Badge key={c} variant="secondary" className="text-[10px]">
+                  {current.categories.map((c, idx) => (
+                    <Badge key={`${current.id}-${c}-${idx}`} variant="secondary" className="text-[10px]">
                       {c}
                     </Badge>
                   ))}
